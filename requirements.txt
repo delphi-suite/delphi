@@ -1,0 +1,12 @@
+torch==2.1.2
+datasets==2.16.1
+transformers==4.36.2
+tqdm==4.66.1
+ipywidgets==8.1.1
+nbformat==5.9.2
+pytest==7.4.4
+black==23.12.1
+jaxtyping==0.2.25
+beartype==0.16.4
+pre-commit==3.6.0
+isort==5.13.2
