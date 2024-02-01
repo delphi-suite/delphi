@@ -47,6 +47,13 @@ def get_correct_probs(model, sample_tok):
     return probs[range(len(probs)), sample_tok[1:]]
 
 
+def get_correct_and_all_probs(model, sample_tok):
+    """Get probabilities for the actual next token and for all predictions"""
+    probs = get_probs(model, sample_tok)
+    correct_probs = probs[range(len(probs)), sample_tok[1:]]
+    return correct_probs, probs
+
+
 def get_correct_and_top_probs(model, sample_tok, top_k=3):
     """Get probabilities for the actual next token and for top k predictions"""
     probs = get_probs(model, sample_tok)
