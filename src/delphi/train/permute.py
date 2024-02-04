@@ -28,12 +28,14 @@ class Random:
 
 def permute(seed: int, list: list, epoch: int = 0) -> list:
     """
-    Permute a list in place using Fisher-Yates shuffle
+    Shuffle a list in place in place using Fisher-Yates shuffle
+    Epoch will move the seed to the corresponding epoch
+    The list should be the total training epoch
     """
-
     random = Random(seed)
-    for i in range(len(list)):
-        max_index = len(list) - i
-        j = random.random_number(max_index) + i
-        list[i], list[j] = list[j], list[i]
+    for j in range(epoch + 1):
+        for i in range(len(list)):
+            max_index = len(list) - i
+            j = random.random_number(max_index) + i
+            list[i], list[j] = list[j], list[i]
     return list
