@@ -1,0 +1,3 @@
+[submodule "src/delphi/train/llama2.c"]
+	path = src/delphi/train/llama2.c
+	url = https://github.com/delphi-suite/llama2.c.git
