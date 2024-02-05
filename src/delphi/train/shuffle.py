@@ -12,7 +12,7 @@ class RNG:
         assert 0 <= seed < self.m
         self.state = seed
 
-    def __call__(self):
+    def __call__(self) -> int:
         self.state = (self.state * self.a) % self.m
         return self.state
 
