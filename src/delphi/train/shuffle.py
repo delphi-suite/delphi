@@ -32,7 +32,7 @@ def shuffle_list(in_out: list, seed: int):
 
 def shuffle_epoch(samples: list, seed: int, epoch_nr: int):
     """Shuffle the samples in-place for a given training epoch"""
-    rng = RNG(10_000 + seed)
+    rng = RNG((10_000 + seed) % RNG.m)
     for _ in range(epoch_nr):
         rng()
     shuffle_seed = rng()
