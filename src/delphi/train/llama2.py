@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from llama2.model import ModelArgs, Transformer
+from llama2c.model import ModelArgs, Transformer
 
 
 @dataclass
@@ -11,4 +11,4 @@ class LLaMA2Args(ModelArgs):
 class LLaMA2(Transformer):
     
     def __init__(self, params) -> None:
-        super().__init__(self, params)
+        super().__init__(params)
