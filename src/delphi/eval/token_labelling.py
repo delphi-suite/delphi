@@ -121,7 +121,9 @@ def label_sentence(tokens: Union[Doc, list[Token]]) -> list[dict[str, bool]]:
 
 
 def label_batch_sentences(
-    sentences: list, tokenized: bool = True, verbose: bool = False
+    sentences: Union[list[str], list[list[str]]],
+    tokenized: bool = True,
+    verbose: bool = False,
 ) -> list[list]:
     """
     Labels tokens in a sentence batchwise. Takes the context of the token into
@@ -133,7 +135,7 @@ def label_batch_sentences(
         A batch/list of sentences, each being a list of tokens.
     tokenized : bool, optional
         Whether the sentences are already tokenized, by default True. If the sentences
-        are full strings and not lists of tokens, then set to False.
+        are full strings and not lists of tokens, then set to False. If true then `sentences` must be list[list[str]].
     verbose : bool, optional
         Whether to print the tokens and their labels to the console, by default False.
 
