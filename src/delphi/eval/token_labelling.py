@@ -4,6 +4,7 @@ It takes the context of the token into account.
 Additionally, it can visualize the sentences and their poart-of-speech (POS) tags.
 """
 
+from pprint import pprint
 from typing import Callable, Optional
 
 import spacy  # pylint: disable=import-error
@@ -75,7 +76,7 @@ def explain_Token_labels(token: Optional[Token] = None) -> None:
             print("   ", label.ljust(10), key)
 
 
-def label_single_Token(token: Token) -> dict[str, bool]:
+def label_single_token(token: Token) -> dict[str, bool]:
     """
     Labels a single token. A token, that has been analyzed by the spaCy
     library.
@@ -98,32 +99,8 @@ def label_single_Token(token: Token) -> dict[str, bool]:
     return labels
 
 
-def label_sentence(tokens: Doc | list[Token]) -> list[dict[str, bool]]:
-    """
-    Labels spaCy Tokens in a sentence. Takes the context of the token into account
-    for dependency labels (e.g. subject, object, ...), IF dependency labels are turned on.
-
-    Parameters
-    ----------
-    tokens : list[Token]
-        A list of tokens.
-
-    Returns
-    -------
-    list[dict[str, bool]]
-        Returns a list of the tokens' labels.
-    """
-    labelled_tokens = list()  # list holding labels for all tokens of sentence
-    for token in tokens:
-        labels = label_single_Token(token)
-        labelled_tokens.append(labels)
-    return labelled_tokens
-
-
-def label_batch_sentences(
-    sentences: list[str] | list[list[str]],
-    tokenized: bool = True,
-    verbose: bool = False,
+def label_batch_token(
+    sentences: list, tokenized: bool = True, verbose: bool = False
 ) -> list[list]:
     """
     Labels tokens in a sentence batchwise. Takes the context of the token into
@@ -141,7 +118,7 @@ def label_batch_sentences(
 
     Returns
     -------
-    list[list[dict[str, bool]]
+    list[list]
         Returns a list of sentences. Each sentence contains a list of its
         corresponding token length where each entry provides the labels/categories
         for the token. Sentence -> Token -> Labels
@@ -149,7 +126,7 @@ def label_batch_sentences(
     # Load english language model
     nlp = spacy.load("en_core_web_sm")
     # labelled tokens, list holding sentences holding tokens holding corresponding token labels
-    labelled_sentences: list[list[dict[str, bool]]] = list()
+    labelled_sentences = list()
 
     # go through each sentence in the batch
     for sentence in sentences:
@@ -165,16 +142,22 @@ def label_batch_sentences(
             doc = nlp(sentence)
 
         labelled_tokens = list()  # list holding labels for all tokens of sentence
-        labelled_tokens = label_sentence(doc)
 
-        # print the token and its labels to console
-        if verbose is True:
-            # go through each token in the sentence
-            for token, labelled_token in zip(doc, labelled_tokens):
-                print(f"Token: {token}")
+        for token in doc:
+            labels = list()  #  The list holding labels of a single token
+            for _, category_check in TOKEN_LABELS.items():
+                label = category_check(token)
+                labels.append(label)
+            # add current token's to the list
+            labelled_tokens.append(labels)
+
+            # print the token and its labels to console
+            if verbose is True:
+                print(f"Token: {token.text}")
                 print(" | ".join(list(TOKEN_LABELS.keys())))
                 printable = [
-                    str(l).ljust(len(name)) for name, l in labelled_token.items()
+                    str(l).ljust(len(cname))
+                    for l, cname in zip(labels, TOKEN_LABELS.keys())
                 ]
                 printable = " | ".join(printable)
                 print(printable)
