@@ -5,7 +5,7 @@ Additionally, it can visualize the sentences and their poart-of-speech (POS) tag
 """
 
 from pprint import pprint
-from typing import List, Optional
+from typing import Callable, Optional
 
 import spacy  # pylint: disable=import-error
 from spacy.tokens import Doc  # pylint: disable=import-error
@@ -17,12 +17,12 @@ from spacy.tokens import Token
 spacy.cli.download("en_core_web_sm", False, False, "-q")
 
 
-CATEGORIES = {
-    # custom categories
+TOKEN_LABELS: dict[str, Callable] = {
+    # --- custom categories ---
     "Starts with space": (lambda token: token.text.startswith(" ")),  # bool
     "Capitalized": (lambda token: token.text[0].isupper()),  # bool
-    # POS (part-of-speech) categories
-    # "POS Tag": (lambda token: token.pos_),  # 'NOUN', 'VB', ..
+    # --- POS (part-of-speech) categories ---
+    # -> "POS Tag": (lambda token: token.pos_),  # 'NOUN', 'VB', ..
     "Is Noun": (lambda token: token.pos_ == "NOUN"),  # redundant
     "Is Pronoun": (lambda token: token.pos_ == "PRON"),  # redundant
     "Is Adjective": (lambda token: token.pos_ == "ADJ"),  # redundant
@@ -31,15 +31,15 @@ CATEGORIES = {
     "Is Preposition": (lambda token: token.pos_ == "ADP"),  # redundant
     "Is Conjunction": (lambda token: token.pos_ == "CONJ"),  # redundant
     "Is Interjunction": (lambda token: token.pos_ == "INTJ"),  # redundant
-    # dependency categories
-    # "Dependency": (lambda token: token.dep_),  # 'nsubj', 'ROOT', 'dobj', ..
-    "Is Subject": (lambda token: token.dep_ == "nsubj"),
-    "Is Object": (lambda token: token.dep_ == "dobj"),
-    "Is Root": (
-        lambda token: token.dep_ == "ROOT"
-    ),  # root of the sentence (often a verb)
-    "Is auxiliary": (lambda token: token.dep_ == "aux"),  # redundant
-    # Named entity recognition (NER) categories
+    #  --- dependency categories ---
+    # -> "Dependency": (lambda token: token.dep_),  # 'nsubj', 'ROOT', 'dobj', ..
+    # "Is Subject": (lambda token: token.dep_ == "nsubj"),
+    # "Is Object": (lambda token: token.dep_ == "dobj"),
+    # "Is Root": (
+    #     lambda token: token.dep_ == "ROOT"
+    # ),  # root of the sentence (often a verb)
+    # "Is auxiliary": (lambda token: token.dep_ == "aux"),  # redundant
+    # --- Named entity recognition (NER) categories ---
     # "Named Entity Type": (lambda token: token.ent_type_),  # '', 'PERSON', 'ORG', 'GPE', ..
     "Is Named Entity": (lambda token: token.ent_type_ != ""),
 }
@@ -64,8 +64,8 @@ def explain_token_labels(token: Optional[Token] = None) -> None:
         print("Token dependency:".ljust(20), spacy.glossary.explain(token.dep_))
         print("Token POS:".ljust(20), spacy.glossary.explain(token.pos_))
         print(" Token labels ".center(45, "-"))
-        for i, (label, value) in enumerate(zip(CATEGORIES.keys(), labels)):
-            print(f" {i:2}  ", label.ljust(20), value)
+        for i, (label_name, value) in enumerate(labels.items()):
+            print(f" {i:2}  ", label_name.ljust(20), value)
 
     else:
         glossary = spacy.glossary.GLOSSARY
@@ -76,7 +76,7 @@ def explain_token_labels(token: Optional[Token] = None) -> None:
             print("   ", label.ljust(10), key)
 
 
-def label_single_token(token: Token) -> List:
+def label_single_token(token: Token) -> dict[str, bool]:
     """
     Labels a single token.
 
@@ -87,27 +87,27 @@ def label_single_token(token: Token) -> List:
 
     Returns
     -------
-    List
-        The labels of the token.
+    dict[str, bool]
+        Returns a dictionary with the token's labels as keys and their
+        corresponding boolean values.
     """
     assert isinstance(token, Token)
-    labels = list()  #  The list holding labels of a single token
-    for _, category_check in CATEGORIES.items():
-        label = category_check(token)
-        labels.append(label)
+    labels = dict()  #  The list holding labels of a single token
+    for label_name, category_check in TOKEN_LABELS.items():
+        labels[label_name] = category_check(token)
     return labels
 
 
 def label_batch_token(
-    sentences: List, tokenized: bool = True, verbose: bool = False
-) -> List[List]:
+    sentences: list, tokenized: bool = True, verbose: bool = False
+) -> list[list]:
     """
     Labels tokens in a sentence batchwise. Takes the context of the token into
     account for dependency labels (e.g. subject, object, ...).
 
     Parameters
     ----------
-    sentences : List
+    sentences : list
         A batch/list of sentences, each being a list of tokens.
     tokenized : bool, optional
         Whether the sentences are already tokenized, by default True. If the sentences
@@ -117,7 +117,7 @@ def label_batch_token(
 
     Returns
     -------
-    List[List]
+    list[list]
         Returns a list of sentences. Each sentence contains a list of its
         corresponding token length where each entry provides the labels/categories
         for the token. Sentence -> Token -> Labels
@@ -125,7 +125,7 @@ def label_batch_token(
     assert isinstance(sentences, list)
     # Load english language model
     nlp = spacy.load("en_core_web_sm")
-    # labelled tokens, List holding sentences holding tokens holding corresponding token labels
+    # labelled tokens, list holding sentences holding tokens holding corresponding token labels
     labelled_sentences = list()
 
     for sentence in sentences:
@@ -140,11 +140,11 @@ def label_batch_token(
             # sentence is a single string
             doc = nlp(sentence)
 
-        labelled_tokens = list()  # List holding labels for all tokens of sentence
+        labelled_tokens = list()  # list holding labels for all tokens of sentence
 
         for token in doc:
             labels = list()  #  The list holding labels of a single token
-            for _, category_check in CATEGORIES.items():
+            for _, category_check in TOKEN_LABELS.items():
                 label = category_check(token)
                 labels.append(label)
             # add current token's to the list
@@ -153,10 +153,10 @@ def label_batch_token(
             # print the token and its labels to console
             if verbose is True:
                 print(f"Token: {token.text}")
-                print(" | ".join(list(CATEGORIES.keys())))
+                print(" | ".join(list(TOKEN_LABELS.keys())))
                 printable = [
                     str(l).ljust(len(cname))
-                    for l, cname in zip(labels, CATEGORIES.keys())
+                    for l, cname in zip(labels, TOKEN_LABELS.keys())
                 ]
                 printable = " | ".join(printable)
                 print(printable)
