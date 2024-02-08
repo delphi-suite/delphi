@@ -121,7 +121,9 @@ def label_sentence(tokens: Union[Doc, list[Token]]) -> list[dict[str, bool]]:
 
 
 def label_batch_sentences(
-    sentences: list, tokenized: bool = True, verbose: bool = False
+    sentences: Union[list[str], list[list[str]]],
+    tokenized: bool = True,
+    verbose: bool = False,
 ) -> list[list]:
     """
     Labels tokens in a sentence batchwise. Takes the context of the token into

@@ -11,4 +11,8 @@ beartype==0.16.4
 pre-commit==3.6.0
 isort==5.13.2
 spacy==3.7.2
+<<<<<<< HEAD
 chardet==5.2.0
+=======
+chardet==5.2.0
+>>>>>>> a71e2a8 (improve notebook explanation)
