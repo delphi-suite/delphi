@@ -1,10 +1,12 @@
+from typing import List
+
 import pytest
 import torch
-from beartype.roar import BeartypeCallHintViolation
 from IPython.display import HTML
+from jaxtyping import Int
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from delphi.eval.compare_models import ModelComparison, compare_models
+from delphi.eval.compare_models import ModelComparison, NextTokenStats, compare_models
 from delphi.eval.utils import load_text_from_dataset, load_validation_dataset, tokenize
 
 torch.set_grad_enabled(False)
@@ -52,10 +54,6 @@ def test_compare_models(model, sample_tok):
     )
     K = 3
     model_comparison = compare_models(model, model_instruct, sample_tok, top_k=K)
-    assert isinstance(model_comparison, ModelComparison)
-
-    assert model_comparison.correct_prob_base_model.shape == sample_tok.shape
-    assert model_comparison.correct_prob_lift_model.shape == sample_tok.shape
-    assert model_comparison.top_k_tokens_lift_model.shape == (sample_tok.shape[0], K)
-    assert model_comparison.top_k_probs_base_model.shape == (sample_tok.shape[0], K)
-    assert model_comparison.top_k_probs_lift_model.shape == (sample_tok.shape[0], K)
+    assert isinstance(model_comparison[0], NextTokenStats)
+    assert len(model_comparison) == sample_tok.shape[0]
+    assert len(model_comparison[0].topk) == K

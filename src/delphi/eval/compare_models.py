@@ -1,20 +1,36 @@
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 import torch.nn as nn
-from jaxtyping import Int  # Add the missing import statement
+from jaxtyping import Int
 from transformers import PreTrainedModel
 
 from delphi.eval.utils import get_correct_and_all_probs
 
 
 @dataclass
-class ModelComparison:
-    correct_prob_base_model: torch.Tensor
-    correct_prob_lift_model: torch.Tensor
-    top_k_tokens_lift_model: torch.Tensor
-    top_k_probs_base_model: torch.Tensor
-    top_k_probs_lift_model: torch.Tensor
+class ModelId:
+    model_name: str
+
+
+def identify_model(model: PreTrainedModel) -> ModelId:
+    return ModelId(model_name=model.config.name_or_path)
+
+
+@dataclass
+class TokenPrediction:
+    token: int
+    base_model_prob: float
+    lift_model_prob: float
+
+
+@dataclass
+class NextTokenStats:
+    base_model: ModelId
+    lift_model: ModelId
+    next_prediction: TokenPrediction
+    topk: list[TokenPrediction]
 
 
 def _pad_start(tensor: torch.Tensor) -> torch.Tensor:
@@ -30,23 +46,18 @@ def _pad_start(tensor: torch.Tensor) -> torch.Tensor:
 def compare_models(
     model_a: PreTrainedModel,
     model_b: PreTrainedModel,
-    sample_tok: Int[torch.Tensor, "pos"],
+    sample_tok: Int[torch.Tensor, "seq"],
     top_k: int = 3,
-) -> ModelComparison:
+) -> list[NextTokenStats]:
     """
     Compare the probabilities of the next token for two models and get the top k token predictions according to model B.
     Args:
     - model_a: The first model (assumed to be the base model)
     - model_b: The second model (assumed to be the improved model)
-    - tokens: The tokenized prompt
+    - sample_tok: The tokenized prompt
     - top_k: The number of top token predictions to retrieve (default is 5)
     Returns:
-    - A ModelComparison with tensors for:
-        - The probabilities of the actual next token according to model A
-        - The probabilities of the actual next token according to model B
-        - The top k token predictions according to model B
-        - The probabilities of these tokens according to model A
-        - The probabilities of these tokens according to model B
+        A list of NextTokenStats objects, one for each token in the prompt.
     Tensors are aligned to the token they are predicting (by prepending a -1 to the start of the tensor)
     """
     assert (
@@ -68,10 +79,28 @@ def compare_models(
     top_k_a_probs = _pad_start(top_k_a_probs)
     top_k_b_probs = _pad_start(top_k_b.values)
 
-    return ModelComparison(
-        correct_prob_base_model=next_probs_a,
-        correct_prob_lift_model=next_probs_b,
-        top_k_tokens_lift_model=top_k_b_tokens,
-        top_k_probs_base_model=top_k_a_probs,
-        top_k_probs_lift_model=top_k_b_probs,
-    )
+    comparisons = []
+
+    for next_p_a, next_p_b, top_toks_b, top_probs_a, top_probs_b in zip(
+        next_probs_a, next_probs_b, top_k_b_tokens, top_k_a_probs, top_k_b_probs
+    ):
+        nts = NextTokenStats(
+            base_model=identify_model(model_a),
+            lift_model=identify_model(model_b),
+            next_prediction=TokenPrediction(
+                token=int(next_p_a.item()),
+                base_model_prob=next_p_a.item(),
+                lift_model_prob=next_p_b.item(),
+            ),
+            topk=[
+                TokenPrediction(
+                    token=int(top_toks_b[i].item()),
+                    base_model_prob=top_probs_a[i].item(),
+                    lift_model_prob=top_probs_b[i].item(),
+                )
+                for i in range(top_k)
+            ],
+        )
+        comparisons.append(nts)
+
+    return comparisons
