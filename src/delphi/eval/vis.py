@@ -1,14 +1,14 @@
-import typing
 import uuid
+from typing import cast
 
-import torch as t
+import torch
 from IPython.core.display import HTML
 from IPython.core.display_functions import display
 from jaxtyping import Float, Int
 from transformers import PreTrainedTokenizerBase
 
 
-def probs_to_colors(probs: Float[t.Tensor, "next_pos"]) -> list[str]:
+def probs_to_colors(probs: Float[torch.Tensor, "next_pos"]) -> list[str]:
     # for the endoftext token
     # no prediction, no color
     colors = ["white"]
@@ -19,18 +19,18 @@ def probs_to_colors(probs: Float[t.Tensor, "next_pos"]) -> list[str]:
     return colors
 
 
-def to_tok_prob_str(tok: int, prob: float, tokenizer: PreTrainedTokenizerBase):
+def to_tok_prob_str(tok: int, prob: float, tokenizer: PreTrainedTokenizerBase) -> str:
     tok_str = tokenizer.decode(tok).replace(" ", "&nbsp;").replace("\n", r"\n")
     prob_str = f"{prob:.2%}"
     return f"{prob_str:>6} |{tok_str}|"
 
 
 def token_to_html(
-    token,
+    token: int,
     tokenizer: PreTrainedTokenizerBase,
     bg_color: str,
     data: dict,
-):
+) -> str:
     data = data or {}  # equivalent to if not data: data = {}
     # non-breakable space, w/o it leading spaces wouldn't be displayed
     str_token = tokenizer.decode(token).replace(" ", "&nbsp;")
@@ -78,11 +78,11 @@ _token_style_str = " ".join([f"{k}: {v};" for k, v in _token_style.items()])
 
 # TODO: basic unit test for visualizations w/ Selenium
 def vis_sample_prediction_probs(
-    sample_tok: Int[t.Tensor, "pos"],
-    correct_probs: Float[t.Tensor, "pos"],
-    top_k_probs: t.return_types.topk,
+    sample_tok: Int[torch.Tensor, "pos"],
+    correct_probs: Float[torch.Tensor, "pos"],
+    top_k_probs: torch.return_types.topk,
     tokenizer: PreTrainedTokenizerBase,
-):
+) -> str:
     colors = probs_to_colors(correct_probs)
     token_htmls = []
 
@@ -93,7 +93,7 @@ def vis_sample_prediction_probs(
     hover_div_id = f"hover_info_{unique_id}"
 
     for i in range(sample_tok.shape[0]):
-        tok = typing.cast(int, sample_tok[i].item())
+        tok = cast(int, sample_tok[i].item())
         data = {}
         if i > 0:
             correct_prob = correct_probs[i - 1].item()
@@ -102,7 +102,7 @@ def vis_sample_prediction_probs(
             top_k_probs_values = top_k_probs.values[i - 1]
             for j in range(top_k_probs_tokens.shape[0]):
                 top_tok = top_k_probs_tokens[j].item()
-                top_tok = typing.cast(int, top_tok)
+                top_tok = cast(int, top_tok)
                 top_prob = top_k_probs_values[j].item()
                 data[f"top{j}"] = to_tok_prob_str(top_tok, top_prob, tokenizer)
 

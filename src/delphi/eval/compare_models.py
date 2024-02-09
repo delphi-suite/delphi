@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from jaxtyping import Int  # Add the missing import statement
+from transformers import PreTrainedModel
 
 from delphi.eval.utils import get_correct_and_all_probs
 
@@ -27,8 +28,8 @@ def _pad_start(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def compare_models(
-    model_a: nn.Module,
-    model_b: nn.Module,
+    model_a: PreTrainedModel,
+    model_b: PreTrainedModel,
     sample_tok: Int[torch.Tensor, "pos"],
     top_k: int = 3,
 ) -> ModelComparison:

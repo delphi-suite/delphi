@@ -1,9 +1,10 @@
 from collections.abc import Callable
-from typing import cast
+from typing import List, cast
 
 import torch
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
+from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 ALLOWED_CHARS = set(
     " \n\"'(),.:?!0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -16,6 +17,13 @@ def get_all_logprobs(
     # batch, seq, vocab
     logits = model(input_ids).logits
     return torch.log_softmax(logits, dim=-1)
+
+
+# convenience wrapper for calling on a single sample
+def get_single_logprobs(
+    model: Callable, input_ids: Int[torch.Tensor, "seq"]
+) -> Float[torch.Tensor, "seq vocab"]:
+    return get_all_logprobs(model, input_ids.unsqueeze(0))[0]
 
 
 def gather_logprobs(
@@ -48,56 +56,39 @@ def load_validation_dataset(dataset_name: str) -> Dataset:
     return cast(Dataset, dataset)
 
 
-# TODO: replace this with HF dataset instance using function (see #25)
-def load_orig_ds_txt(split: str) -> list[str]:
-    # checking just startswith, because you can include slice like "train[:1000]"
-    assert split.startswith("train") or split.startswith("validation")
-    hf_ds = load_dataset(f"roneneldan/TinyStories", split=split)
-    dataset = []
-    # hf_ds by type could be an IterableDataset, which is not subscriptable
-    # in practice, it's not
-    for sample_txt in hf_ds["text"]:  # type: ignore
+def load_text_from_dataset(dataset: Dataset) -> list[str]:
+    text = []
+    for sample_txt in dataset["story"]:
         # encoding issues and rare weird prompts
         if not set(sample_txt).issubset(ALLOWED_CHARS):
             continue
-        dataset.append(sample_txt)
-    return dataset
+        text.append(sample_txt)
+    return text
 
 
-def tokenize(tokenizer, sample_txt: str) -> Int[torch.Tensor, "pos"]:
+def tokenize(
+    tokenizer: PreTrainedTokenizerBase, sample_txt: str
+) -> Int[torch.Tensor, "seq"]:
     # supposedly this can be different than prepending the bos token id
-    return tokenizer.encode(tokenizer.bos_token + sample_txt, return_tensors="pt")[0]
+    return cast(
+        Int[torch.Tensor, "seq"],
+        tokenizer.encode(tokenizer.bos_token + sample_txt, return_tensors="pt")[0],
+    )
 
 
-def get_logits(model, sample_tok):
-    sample_tok = sample_tok.unsqueeze(0)
-    return model(sample_tok).logits[0]
-
-
-def get_probs(model, sample_tok):
-    logits = get_logits(model, sample_tok)
-    # drop the value for the last position, as we don't know
-    # what is the correct next token there
-    # pos, d_vocab
-    return torch.softmax(logits, dim=-1)[:-1]
-
-
-def get_correct_probs(model, sample_tok):
-    probs = get_probs(model, sample_tok)
-    # out of d_vocab values, take the one that corresponds to the correct next token
-    return probs[range(len(probs)), sample_tok[1:]]
-
-
-def get_correct_and_all_probs(model, sample_tok):
+def get_correct_and_all_probs(
+    model: PreTrainedModel, sample_tok: Int[torch.Tensor, "seq"]
+) -> tuple[Float[torch.Tensor, "next_seq"], Float[torch.Tensor, "next_seq vocab"]]:
     """Get probabilities for the actual next token and for all predictions"""
-    probs = get_probs(model, sample_tok)
+    probs = get_single_logprobs(model, sample_tok)
     correct_probs = probs[range(len(probs)), sample_tok[1:]]
     return correct_probs, probs
 
 
-def get_correct_and_top_probs(model, sample_tok, top_k=3):
+def get_correct_and_top_probs(
+    model: PreTrainedModel, sample_tok: Int[torch.Tensor, "seq"], top_k: int = 3
+) -> tuple[Float[torch.Tensor, "next_seq"], torch.return_types.topk]:
     """Get probabilities for the actual next token and for top k predictions"""
-    probs = get_probs(model, sample_tok)
-    correct_probs = probs[range(len(probs)), sample_tok[1:]]
+    correct_probs, probs = get_correct_and_all_probs(model, sample_tok)
     top_k_probs = torch.topk(probs, top_k, dim=-1)
     return correct_probs, top_k_probs
