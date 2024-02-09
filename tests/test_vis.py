@@ -1,12 +1,8 @@
-from typing import List
-
 import pytest
 import torch
-from IPython.display import HTML
-from jaxtyping import Int
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from delphi.eval.compare_models import ModelComparison, NextTokenStats, compare_models
+from delphi.eval.compare_models import NextTokenStats, compare_models
 from delphi.eval.utils import load_text_from_dataset, load_validation_dataset, tokenize
 
 torch.set_grad_enabled(False)
