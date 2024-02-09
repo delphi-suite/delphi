@@ -80,7 +80,8 @@ def get_correct_and_all_probs(
     model: PreTrainedModel, sample_tok: Int[torch.Tensor, "seq"]
 ) -> tuple[Float[torch.Tensor, "next_seq"], Float[torch.Tensor, "next_seq vocab"]]:
     """Get probabilities for the actual next token and for all predictions"""
-    probs = get_single_logprobs(model, sample_tok)
+    # remove the first token (the bos token)
+    probs = get_single_logprobs(model, sample_tok)[1:]
     correct_probs = probs[range(len(probs)), sample_tok[1:]]
     return correct_probs, probs
 

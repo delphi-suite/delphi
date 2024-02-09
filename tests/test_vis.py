@@ -4,8 +4,8 @@ from beartype.roar import BeartypeCallHintViolation
 from IPython.display import HTML
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from delphi.vis.compare_models import ModelComparison, compare_models
-from delphi.vis.utils import load_orig_ds_txt, tokenize
+from delphi.eval.compare_models import ModelComparison, compare_models
+from delphi.eval.utils import load_text_from_dataset, load_validation_dataset, tokenize
 
 torch.set_grad_enabled(False)
 
@@ -31,7 +31,7 @@ def model(model_name):
 # define a pytest fixture for the raw dataset
 @pytest.fixture
 def ds_txt():
-    return load_orig_ds_txt("validation[:100]")
+    return load_text_from_dataset(load_validation_dataset("tinystories-v2-clean"))[:100]
 
 
 # define a pytest fixture for the tokenized dataset
