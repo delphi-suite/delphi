@@ -4,7 +4,7 @@ It takes the context of the token into account.
 Additionally, it can visualize the sentences and their poart-of-speech (POS) tags.
 """
 
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import spacy  # pylint: disable=import-error
 from spacy.tokens import Doc  # pylint: disable=import-error
@@ -98,7 +98,7 @@ def label_single_Token(token: Token) -> dict[str, bool]:
     return labels
 
 
-def label_sentence(tokens: Union[Doc, list[Token]]) -> list[dict[str, bool]]:
+def label_sentence(tokens: Doc | list[Token]) -> list[dict[str, bool]]:
     """
     Labels spaCy Tokens in a sentence. Takes the context of the token into account
     for dependency labels (e.g. subject, object, ...), IF dependency labels are turned on.
@@ -121,7 +121,7 @@ def label_sentence(tokens: Union[Doc, list[Token]]) -> list[dict[str, bool]]:
 
 
 def label_batch_sentences(
-    sentences: Union[list[str], list[list[str]]],
+    sentences: list[str] | list[list[str]],
     tokenized: bool = True,
     verbose: bool = False,
 ) -> list[list]:
@@ -167,18 +167,10 @@ def label_batch_sentences(
         labelled_tokens = list()  # list holding labels for all tokens of sentence
         labelled_tokens = label_sentence(doc)
 
-        # go through each token in the sentence
-        for token, labelled_token in zip(doc, labelled_tokens):
-            # labelled_token = label_single_Token(token)
-            # labels = list()  #  The list holding labels of a single token
-            # for _, category_check in TOKEN_LABELS.items():
-            #     label = category_check(token)
-            #     labels.append(label)
-            # add current token's to the list
-            # labelled_tokens.append(labelled_token)
-
-            # print the token and its labels to console
-            if verbose is True:
+        # print the token and its labels to console
+        if verbose is True:
+            # go through each token in the sentence
+            for token, labelled_token in zip(doc, labelled_tokens):
                 print(f"Token: {token}")
                 print(" | ".join(list(TOKEN_LABELS.keys())))
                 printable = [
