@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from jaxtyping import Int  # Add the missing import statement
 
-from delphi.vis.utils import get_correct_and_all_probs
+from delphi.eval.utils import get_correct_and_all_probs
 
 
 @dataclass
