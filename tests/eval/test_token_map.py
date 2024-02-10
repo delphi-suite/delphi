@@ -4,7 +4,7 @@ from pickle import load
 import pytest
 from datasets import Dataset
 
-from delphi.dataset.token_map import token_map
+from delphi.eval.token_map import token_map
 
 
 def test_token_map():
@@ -29,41 +29,15 @@ def test_token_map():
         7: [(0, 8), (1, 8), (2, 8)],
     }
 
+    # fmt: off
     tokenized_dataset = Dataset.from_dict(
-        {
+        { # one really long prompt
             "tokens": [
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    0,
-                    6,
-                    7,
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    0,
-                    6,
-                    7,
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    0,
-                    6,
-                    7,
-                ],
+                [0, 1, 2, 3, 4, 5, 0, 6, 7, 0, 1, 2, 3, 4, 5, 0, 6, 7, 0, 1, 2, 3, 4, 5, 0, 6, 7]
             ]
         }
     )
+    # fmt: on
     mapping = token_map(tokenized_dataset)
     assert mapping == {
         0: [(0, 0), (0, 6), (0, 9), (0, 15), (0, 18), (0, 24)],
