@@ -28,7 +28,9 @@ from torch.distributed import destroy_process_group, init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from llama2 import LLaMA2, LLaMA2Args
-from llama2c import model_export
+from llama2c import model_export, Task
+
+from shuffle import shuffle_epoch
 
 # -----------------------------------------------------------------------------
 # I/O
@@ -89,6 +91,7 @@ assert vocab_source in ["llama2", "custom"]
 assert vocab_source == "custom" or vocab_size == 32000, "The vocab from Meta has 32K tokens"
 
 # various inits, derived attributes, I/O setup
+seed = 1337
 ddp = int(os.environ.get("RANK", -1)) != -1  # is this a ddp run?
 if ddp:
     init_process_group(backend="nccl")
@@ -115,7 +118,7 @@ if master_process:
 
 if master_process:
     os.makedirs(out_dir, exist_ok=True)
-torch.manual_seed(1337 + seed_offset)
+torch.manual_seed(seed + seed_offset)
 torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
 torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 device_type = "cuda" if "cuda" in device else "cpu"  # for later use in torch.autocast
@@ -128,7 +131,16 @@ ctx = (
 )
 
 # task-specific setup
-iter_batches = None  # TODO: replace with functions from Goncalo
+iter_batches = partial(
+    Task.iter_batches,
+    batch_size=batch_size,
+    max_seq_len=max_seq_len,
+    vocab_size=vocab_size,
+    vocab_source=vocab_source,
+    device=device,
+    num_workers=0,
+    seed=seed
+)
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
