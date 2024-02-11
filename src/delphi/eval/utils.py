@@ -30,7 +30,8 @@ def gather_logprobs(
 
 
 def get_all_and_next_logprobs(
-    model: Callable, input_ids: Int[torch.Tensor, "batch seq"]
+    model: Callable,
+    input_ids: Int[torch.Tensor, "batch seq"],
 ) -> tuple[
     Float[torch.Tensor, "batch shorter_seq vocab"],
     Float[torch.Tensor, "batch shorter_seq"],
@@ -40,17 +41,28 @@ def get_all_and_next_logprobs(
     return logprobs, gather_logprobs(logprobs, next_tokens)
 
 
+def get_all_and_next_logprobs_single(
+    model: Callable,
+    input_ids: Int[torch.Tensor, "seq"],
+) -> tuple[
+    Float[torch.Tensor, "shorter_seq vocab"],
+    Float[torch.Tensor, "shorter_seq"],
+]:
+    all_logprobs, next_logprobs = get_all_and_next_logprobs(
+        model, input_ids.unsqueeze(0)
+    )
+    return all_logprobs[0], next_logprobs[0]
+
+
 def get_next_and_top_k_probs(
     model: PreTrainedModel, input_ids: Int[torch.Tensor, "seq"], k: int = 3
 ) -> tuple[
     Float[torch.Tensor, "shorter_seq"],
     torch.return_types.topk,
 ]:
-    all_logprobs, next_logprobs = get_all_and_next_logprobs(
-        model, input_ids.unsqueeze(0)
-    )
-    all_probs = torch.exp(all_logprobs[0])
-    next_probs = torch.exp(next_logprobs[0])
+    all_logprobs, next_logprobs = get_all_and_next_logprobs_single(model, input_ids)
+    all_probs = torch.exp(all_logprobs)
+    next_probs = torch.exp(next_logprobs)
     top_k = torch.topk(all_probs, k, dim=-1)
     return next_probs, top_k
 
