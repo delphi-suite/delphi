@@ -76,7 +76,6 @@ _token_style = {
 _token_style_str = " ".join([f"{k}: {v};" for k, v in _token_style.items()])
 
 
-# TODO: basic unit test for visualizations w/ Selenium
 def vis_sample_prediction_probs(
     sample_tok: Int[torch.Tensor, "pos"],
     correct_probs: Float[torch.Tensor, "pos"],
