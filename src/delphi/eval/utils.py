@@ -56,10 +56,7 @@ def get_all_and_next_logprobs_single(
 
 def get_next_and_top_k_probs(
     model: PreTrainedModel, input_ids: Int[torch.Tensor, "seq"], k: int = 3
-) -> tuple[
-    Float[torch.Tensor, "shorter_seq"],
-    torch.return_types.topk,
-]:
+) -> tuple[Float[torch.Tensor, "shorter_seq"], torch.return_types.topk,]:
     all_logprobs, next_logprobs = get_all_and_next_logprobs_single(model, input_ids)
     all_probs = torch.exp(all_logprobs)
     next_probs = torch.exp(next_logprobs)
