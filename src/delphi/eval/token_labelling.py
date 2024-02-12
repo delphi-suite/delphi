@@ -22,14 +22,23 @@ TOKEN_LABELS: dict[str, Callable] = {
     "Capitalized": (lambda token: token.text[0].isupper()),  # bool
     # --- POS (part-of-speech) categories ---
     # -> "POS Tag": (lambda token: token.pos_),  # 'NOUN', 'VB', ..
-    "Is Noun": (lambda token: token.pos_ == "NOUN"),  # redundant
-    "Is Pronoun": (lambda token: token.pos_ == "PRON"),  # redundant
     "Is Adjective": (lambda token: token.pos_ == "ADJ"),  # redundant
-    "Is Verb": (lambda token: "VB" in token.tag_),  # redundant
+    "Is Adposition": (lambda token: token.pos_ == "ADP"),  # redundant
     "Is Adverb": (lambda token: token.pos_ == "ADV"),  # redundant
-    "Is Preposition": (lambda token: token.pos_ == "ADP"),  # redundant
-    "Is Conjunction": (lambda token: token.pos_ == "CONJ"),  # redundant
+    "Is Auxiliary": (lambda token: token.pos_ == "AUX"),  # redundant
+    "Is Coordinating conjuction": (lambda token: token.pos_ == "CCONJ"),  # redundant
+    "Is Determiner": (lambda token: token.pos_ == "DET"),  # redundant
     "Is Interjunction": (lambda token: token.pos_ == "INTJ"),  # redundant
+    "Is Noun": (lambda token: token.pos_ == "NOUN"),  # redundant
+    "Is Numeral": (lambda token: token.pos_ == "NUM"),  # redundant
+    "Is Particle": (lambda token: token.pos_ == "PART"),  # redundant
+    "Is Pronoun": (lambda token: token.pos_ == "PRON"),  # redundant
+    "Is Proper Noun": (lambda token: token.pos_ == "PROPN"),  # redundant
+    "Is Punctuation": (lambda token: token.pos_ == "PUNCT"),  # redundant
+    "Is Subordinating conjuction": (lambda token: token.pos_ == "SCONJ"),  # redundant
+    "Is Symbol": (lambda token: token.pos_ == "SYM"),  # redundant
+    "Is Verb": (lambda token: token.pos_ == "VERB"),  # redundant
+    "Is Other": (lambda token: token.pos_ == "X"),  # redundant
     #  --- dependency categories ---
     # -> "Dependency": (lambda token: token.dep_),  # 'nsubj', 'ROOT', 'dobj', ..
     # "Is Subject": (lambda token: token.dep_ == "nsubj"),
@@ -44,7 +53,7 @@ TOKEN_LABELS: dict[str, Callable] = {
 }
 
 
-def explain_Token_labels(token: Optional[Token] = None) -> None:
+def explain_token_labels(token: Optional[Token] = None) -> None:
     """
     Prints the explanation of a specific token's labels or of ALL
     possible labels (POS, dependency, NER, ...), if no token is provided.
@@ -75,7 +84,7 @@ def explain_Token_labels(token: Optional[Token] = None) -> None:
             print("   ", label.ljust(10), key)
 
 
-def label_single_Token(token: Token) -> dict[str, bool]:
+def label_single_token(token: Token) -> dict[str, bool]:
     """
     Labels a single token. A token, that has been analyzed by the spaCy
     library.
