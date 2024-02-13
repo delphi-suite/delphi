@@ -43,7 +43,6 @@ def main(model_name, dataset_split, batch_size):
 
     # model accepts 2D tensors (batch_size, seq_len)
     val_sequences = torch.tensor([s["tokens"] for s in val_ds])
-    val_sequences = val_sequences[:220]
 
     output_folder = "Correct_logprobs"
     os.makedirs(output_folder, exist_ok=True)
