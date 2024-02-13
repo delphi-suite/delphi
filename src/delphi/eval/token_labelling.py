@@ -66,7 +66,7 @@ def explain_token_labels(token: Optional[Token] = None) -> None:
     """
     if token is not None:
         # get token labels
-        labels = label_single_Token(token)
+        labels = label_single_token(token)
         print(" Explanation of token labels ".center(45, "-"))
         print("Token text:".ljust(20), token.text)
         print("Token dependency:".ljust(20), spacy.glossary.explain(token.dep_))
@@ -124,7 +124,7 @@ def label_sentence(tokens: Doc | list[Token]) -> list[dict[str, bool]]:
     """
     labelled_tokens = list()  # list holding labels for all tokens of sentence
     for token in tokens:
-        labels = label_single_Token(token)
+        labels = label_single_token(token)
         labelled_tokens.append(labels)
     return labelled_tokens
 
@@ -133,7 +133,7 @@ def label_batch_sentences(
     sentences: list[str] | list[list[str]],
     tokenized: bool = True,
     verbose: bool = False,
-) -> list[list]:
+) -> list[list[dict[str, bool]]]:
     """
     Labels tokens in a sentence batchwise. Takes the context of the token into
     account for dependency labels (e.g. subject, object, ...).
@@ -195,12 +195,3 @@ def label_batch_sentences(
             print("\n")
 
     return labelled_sentences
-
-
-if __name__ == "__main__":
-    result = label_batch_token(
-        ["Hi, my name is Joshua.", "The highway is full of car s, Peter."],
-        tokenized=False,
-        verbose=True,
-    )
-    print(result)
