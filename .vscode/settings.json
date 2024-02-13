@@ -10,4 +10,5 @@
     "isort.args": [
         "--profile black"
     ],
+    "black-formatter.importStrategy": "fromEnvironment",
 }
