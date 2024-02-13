@@ -50,8 +50,11 @@ def compare_models(
     device = model_a.device
     sample_tok = sample_tok.to(device)
 
-    probs_a, next_probs_a = get_all_and_next_logprobs_single(model_a, sample_tok)
-    probs_b, next_probs_b = get_all_and_next_logprobs_single(model_b, sample_tok)
+    logprobs_a, next_probs_a = get_all_and_next_logprobs_single(model_a, sample_tok)
+    logprobs_b, next_probs_b = get_all_and_next_logprobs_single(model_b, sample_tok)
+
+    probs_a = torch.exp(logprobs_a)
+    probs_b = torch.exp(logprobs_b)
 
     top_k_b = torch.topk(probs_b, top_k, dim=-1)
     top_k_a_probs = torch.gather(probs_a, 1, top_k_b.indices)
