@@ -4,6 +4,7 @@ from typing import cast
 import torch
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
+from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 
 def get_all_logprobs(
@@ -14,6 +15,13 @@ def get_all_logprobs(
     return torch.log_softmax(logits, dim=-1)
 
 
+# convenience wrapper for calling on a single sample
+def get_single_logprobs(
+    model: Callable, input_ids: Int[torch.Tensor, "seq"]
+) -> Float[torch.Tensor, "seq vocab"]:
+    return get_all_logprobs(model, input_ids.unsqueeze(0))[0]
+
+
 def gather_logprobs(
     logprobs: Float[torch.Tensor, "batch seq vocab"],
     tokens: Int[torch.Tensor, "batch seq"],
@@ -21,12 +29,39 @@ def gather_logprobs(
     return torch.gather(logprobs, -1, tokens.unsqueeze(-1)).squeeze(-1)
 
 
-def get_next_logprobs(
-    model: Callable, input_ids: Int[torch.Tensor, "batch seq"]
-) -> Float[torch.Tensor, "batch shorter_seq"]:
+def get_all_and_next_logprobs(
+    model: Callable,
+    input_ids: Int[torch.Tensor, "batch seq"],
+) -> tuple[
+    Float[torch.Tensor, "batch shorter_seq vocab"],
+    Float[torch.Tensor, "batch shorter_seq"],
+]:
     logprobs = get_all_logprobs(model, input_ids[:, :-1])
     next_tokens = input_ids[:, 1:]
-    return gather_logprobs(logprobs, next_tokens)
+    return logprobs, gather_logprobs(logprobs, next_tokens)
+
+
+def get_all_and_next_logprobs_single(
+    model: Callable,
+    input_ids: Int[torch.Tensor, "seq"],
+) -> tuple[
+    Float[torch.Tensor, "shorter_seq vocab"],
+    Float[torch.Tensor, "shorter_seq"],
+]:
+    all_logprobs, next_logprobs = get_all_and_next_logprobs(
+        model, input_ids.unsqueeze(0)
+    )
+    return all_logprobs[0], next_logprobs[0]
+
+
+def get_next_and_top_k_probs(
+    model: PreTrainedModel, input_ids: Int[torch.Tensor, "seq"], k: int = 3
+) -> tuple[Float[torch.Tensor, "shorter_seq"], torch.return_types.topk,]:
+    all_logprobs, next_logprobs = get_all_and_next_logprobs_single(model, input_ids)
+    all_probs = torch.exp(all_logprobs)
+    next_probs = torch.exp(next_logprobs)
+    top_k = torch.topk(all_probs, k, dim=-1)
+    return next_probs, top_k
 
 
 def load_validation_dataset(dataset_name: str) -> Dataset:
@@ -42,3 +77,13 @@ def load_validation_dataset(dataset_name: str) -> Dataset:
         split="train",
     )
     return cast(Dataset, dataset)
+
+
+def tokenize(
+    tokenizer: PreTrainedTokenizerBase, sample_txt: str
+) -> Int[torch.Tensor, "seq"]:
+    # supposedly this can be different than prepending the bos token id
+    return cast(
+        Int[torch.Tensor, "seq"],
+        tokenizer.encode(tokenizer.bos_token + sample_txt, return_tensors="pt")[0],
+    )
