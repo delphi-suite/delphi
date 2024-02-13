@@ -21,24 +21,25 @@ TOKEN_LABELS: dict[str, Callable] = {
     "Starts with space": (lambda token: token.text.startswith(" ")),  # bool
     "Capitalized": (lambda token: token.text[0].isupper()),  # bool
     # --- POS (part-of-speech) categories ---
+    # They include the Universal POS tags (https://universaldependencies.org/u/pos/)
     # -> "POS Tag": (lambda token: token.pos_),  # 'NOUN', 'VB', ..
-    "Is Adjective": (lambda token: token.pos_ == "ADJ"),  # redundant
-    "Is Adposition": (lambda token: token.pos_ == "ADP"),  # redundant
-    "Is Adverb": (lambda token: token.pos_ == "ADV"),  # redundant
-    "Is Auxiliary": (lambda token: token.pos_ == "AUX"),  # redundant
-    "Is Coordinating conjuction": (lambda token: token.pos_ == "CCONJ"),  # redundant
-    "Is Determiner": (lambda token: token.pos_ == "DET"),  # redundant
-    "Is Interjunction": (lambda token: token.pos_ == "INTJ"),  # redundant
-    "Is Noun": (lambda token: token.pos_ == "NOUN"),  # redundant
-    "Is Numeral": (lambda token: token.pos_ == "NUM"),  # redundant
-    "Is Particle": (lambda token: token.pos_ == "PART"),  # redundant
-    "Is Pronoun": (lambda token: token.pos_ == "PRON"),  # redundant
-    "Is Proper Noun": (lambda token: token.pos_ == "PROPN"),  # redundant
-    "Is Punctuation": (lambda token: token.pos_ == "PUNCT"),  # redundant
-    "Is Subordinating conjuction": (lambda token: token.pos_ == "SCONJ"),  # redundant
-    "Is Symbol": (lambda token: token.pos_ == "SYM"),  # redundant
-    "Is Verb": (lambda token: token.pos_ == "VERB"),  # redundant
-    "Is Other": (lambda token: token.pos_ == "X"),  # redundant
+    "Is Adjective": (lambda token: token.pos_ == "ADJ"),
+    "Is Adposition": (lambda token: token.pos_ == "ADP"),
+    "Is Adverb": (lambda token: token.pos_ == "ADV"),
+    "Is Auxiliary": (lambda token: token.pos_ == "AUX"),
+    "Is Coordinating conjuction": (lambda token: token.pos_ == "CCONJ"),
+    "Is Determiner": (lambda token: token.pos_ == "DET"),
+    "Is Interjunction": (lambda token: token.pos_ == "INTJ"),
+    "Is Noun": (lambda token: token.pos_ == "NOUN"),
+    "Is Numeral": (lambda token: token.pos_ == "NUM"),
+    "Is Particle": (lambda token: token.pos_ == "PART"),
+    "Is Pronoun": (lambda token: token.pos_ == "PRON"),
+    "Is Proper Noun": (lambda token: token.pos_ == "PROPN"),
+    "Is Punctuation": (lambda token: token.pos_ == "PUNCT"),
+    "Is Subordinating conjuction": (lambda token: token.pos_ == "SCONJ"),
+    "Is Symbol": (lambda token: token.pos_ == "SYM"),
+    "Is Verb": (lambda token: token.pos_ == "VERB"),
+    "Is Other": (lambda token: token.pos_ == "X"),
     #  --- dependency categories ---
     # -> "Dependency": (lambda token: token.dep_),  # 'nsubj', 'ROOT', 'dobj', ..
     # "Is Subject": (lambda token: token.dep_ == "nsubj"),
@@ -46,7 +47,7 @@ TOKEN_LABELS: dict[str, Callable] = {
     # "Is Root": (
     #     lambda token: token.dep_ == "ROOT"
     # ),  # root of the sentence (often a verb)
-    # "Is auxiliary": (lambda token: token.dep_ == "aux"),  # redundant
+    # "Is auxiliary": (lambda token: token.dep_ == "aux"),
     # --- Named entity recognition (NER) categories ---
     # "Named Entity Type": (lambda token: token.ent_type_),  # '', 'PERSON', 'ORG', 'GPE', ..
     "Is Named Entity": (lambda token: token.ent_type_ != ""),
