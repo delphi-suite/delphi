@@ -7,7 +7,11 @@
         "source.organizeImports": "explicit"
     },
     "python.analysis.typeCheckingMode": "basic",
+
     "isort.args": [
         "--profile black"
     ],
+
+    "black-formatter.importStrategy": "fromEnvironment",
+
 }
