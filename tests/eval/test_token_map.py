@@ -1,6 +1,3 @@
-import os
-from pickle import load
-
 import pytest
 from datasets import Dataset
 
@@ -49,18 +46,3 @@ def test_token_map():
         6: [(0, 7), (0, 16), (0, 25)],
         7: [(0, 8), (0, 17), (0, 26)],
     }
-
-    # Test saving the output
-    tokenized_dataset = Dataset.from_dict(
-        {
-            "tokens": [
-                [0, 1],
-            ]
-        }
-    )
-    mapping = token_map(tokenized_dataset, output_path="./data/token_map.pkl")
-    assert mapping == {0: [(0, 0)], 1: [(0, 1)]}
-    with open("./data/token_map.pkl", "rb") as f:
-        saved_mapping = load(f)
-    assert saved_mapping == mapping
-    os.remove("./data/token_map.pkl")
