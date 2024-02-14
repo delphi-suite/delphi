@@ -1,14 +1,7 @@
-"""
-This script creates labels for tokens in a sentence. 
-It takes the context of the token into account. 
-Additionally, it can visualize the sentences and their poart-of-speech (POS) tags.
-"""
-
 from typing import Callable, Optional
 
-import spacy  # pylint: disable=import-error
-from spacy.tokens import Doc  # pylint: disable=import-error
-from spacy.tokens import Token
+import spacy
+from spacy.tokens import Doc, Token
 
 # make sure the english language model capabilities are installed by the equivalent of:
 # python -m spacy download en_core_web_sm
@@ -101,8 +94,7 @@ def label_single_token(token: Token) -> dict[str, bool]:
         Returns a dictionary with the token's labels as keys and their
         corresponding boolean values.
     """
-    assert isinstance(token, Token)
-    labels = dict()  #  The list holding labels of a single token
+    labels = dict()  #  The dict holding labels of a single token
     for label_name, category_check in TOKEN_LABELS.items():
         labels[label_name] = category_check(token)
     return labels

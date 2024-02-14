@@ -7,7 +7,7 @@ import delphi.eval.token_labelling as tl
 
 
 @pytest.fixture
-def create_dummy_doc() -> tuple[str, Doc, dict[str, bool]]:
+def dummy_doc() -> tuple[str, Doc, dict[str, bool]]:
     """
     Create a dummy Doc (list of Tokens) with specific attributes for testing purposes.
     """
@@ -57,23 +57,23 @@ def create_dummy_doc() -> tuple[str, Doc, dict[str, bool]]:
     return text, doc, PETER_TOKEN_LABEL
 
 
-def test_explain_token_labels(create_dummy_doc):
+def test_explain_token_labels(dummy_doc):
     """
     Test the explain_token_labels function.
     """
     # explain all labels
     tl.explain_token_labels()
     # print explanations for the first token in doc
-    text, doc, PETER_TOKEN_LABEL = create_dummy_doc
+    text, doc, PETER_TOKEN_LABEL = dummy_doc
     tl.explain_token_labels(doc[0])
 
 
-def test_label_single_token(create_dummy_doc):
+def test_label_single_token(dummy_doc):
     """
     Test the label_single_token function.
     """
     # create a dummy token
-    text, doc, PETER_TOKEN_LABEL = create_dummy_doc
+    text, doc, PETER_TOKEN_LABEL = dummy_doc
     token = doc[0]
     # label the token
     labels = tl.label_single_token(token)
@@ -81,11 +81,11 @@ def test_label_single_token(create_dummy_doc):
     assert labels == PETER_TOKEN_LABEL
 
 
-def test_label_sentence(create_dummy_doc):
+def test_label_sentence(dummy_doc):
     """
     Test the label_sentence function.
     """
-    text, doc, PETER_TOKEN_LABEL = create_dummy_doc
+    text, doc, PETER_TOKEN_LABEL = dummy_doc
     # label the sentence
     labels = tl.label_sentence(doc)
     # assert the first token is labeled correctly
@@ -95,12 +95,12 @@ def test_label_sentence(create_dummy_doc):
         assert label == tl.label_single_token(token)
 
 
-def test_label_batch_sentences(create_dummy_doc):
+def test_label_batch_sentences(dummy_doc):
     """
     Test the label_batch_sentences function.
     """
     # create a batch of sentences
-    text, doc, PETER_TOKEN_LABEL = create_dummy_doc
+    text, doc, PETER_TOKEN_LABEL = dummy_doc
     text = text.split(" ")
     batch = [text, text, text]
     # label the batch

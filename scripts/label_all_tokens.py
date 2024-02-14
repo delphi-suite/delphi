@@ -60,7 +60,7 @@ def main():
         tokens_str += f"{i},{decode(tokenizer, i)}\n"
 
     # Save the list of all tokens to a file
-    filename = "all_tokens_" + model_name.replace("/", "-") + ".txt"
+    filename = "all_tokens_list.txt"
     filepath = SAVE_DIR / filename
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(tokens_str)
@@ -93,7 +93,7 @@ def main():
         labelled_token_ids_dict.update(labelled_sentence_dict)
 
     # Save the labelled tokens to a file
-    filename = "labelled_token_ids_dict_" + model_name.replace("/", "-") + ".pkl"
+    filename = "labelled_token_ids_dict_.pkl"
     filepath = SAVE_DIR / filename
     with open(filepath, "wb") as f:
         pickle.dump(labelled_token_ids_dict, f)
