@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from tqdm.auto import tqdm
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from delphi.eval import token_labelling
 
@@ -82,7 +82,7 @@ def main():
         # decode the token_ids to get a list of tokens, a 'sentence'
         tokens = decode(tokenizer, token_ids)  # list of tokens == sentence
         # put the sentence into a list, to make it a batch of sentences
-        sentences = [tokens]
+        sentences = [tokens]  # CHECK AGAIN
         # label the batch of sentences
         labels = token_labelling.label_batch_sentences(
             sentences, tokenized=True, verbose=False
