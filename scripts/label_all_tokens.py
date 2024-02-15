@@ -72,7 +72,7 @@ def main():
     # let's label each token
     labelled_token_ids_dict: dict[int, dict[str, bool]] = {}  # token_id: labels
     max_token_id = tokenizer.vocab_size  # stop at which token id, vocab size
-    # we iterate (batchwise) over all token_ids, individually takes too much time
+    # we iterate over all token_ids individually
     for token_id in tqdm(range(0, max_token_id), desc="Labelling tokens"):
         # decode the token_ids to get a list of tokens, a 'sentence'
         tokens = decode(tokenizer, token_id)  # list of tokens == sentence
