@@ -82,14 +82,14 @@ def explain_token_labels(token: Optional[Token] = None) -> None:
             print("   ", label.ljust(10), key)
 
 
-def label_single_token(token: Token) -> dict[str, bool]:
+def label_single_token(token: Token | None) -> dict[str, bool]:
     """
     Labels a single token. A token, that has been analyzed by the spaCy
     library.
 
     Parameters
     ----------
-    token : Token
+    token : Token | None
         The token to be labelled.
 
     Returns
@@ -99,6 +99,13 @@ def label_single_token(token: Token) -> dict[str, bool]:
         corresponding boolean values.
     """
     labels = dict()  #  The dict holding labels of a single token
+    # if token is None, then it is a '' empty strong token or similar
+    if token is None:
+        for label_name, category_check in TOKEN_LABELS.items():
+            labels[label_name] = False
+        labels["Is Other"] = True
+        return labels
+    # all other cases / normal tokens
     for label_name, category_check in TOKEN_LABELS.items():
         labels[label_name] = category_check(token)
     return labels
@@ -120,6 +127,12 @@ def label_sentence(tokens: Doc | list[Token]) -> list[dict[str, bool]]:
         Returns a list of the tokens' labels.
     """
     labelled_tokens = list()  # list holding labels for all tokens of sentence
+    # if the list is empty it is because token is '' empty string or similar
+    if len(tokens) == 0:
+        labels = label_single_token(None)
+        labelled_tokens.append(labels)
+        return labelled_tokens
+    # in all other cases
     for token in tokens:
         labels = label_single_token(token)
         labelled_tokens.append(labels)
