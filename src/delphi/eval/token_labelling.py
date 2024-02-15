@@ -2,11 +2,15 @@ from typing import Callable, Optional
 
 import spacy
 from spacy.tokens import Doc, Token
+from spacy.util import is_package
 
 # make sure the english language model capabilities are installed by the equivalent of:
 # python -m spacy download en_core_web_sm
 # Should be run once, initially. Download only starts if not already installed.
-spacy.cli.download("en_core_web_sm", False, False, "-q")
+SPACY_MODEL = "en_core_web_trf"
+NLP = None  # global var to hold the language model
+if not is_package(SPACY_MODEL):
+    spacy.cli.download("en_core_web_trf", False, False)
 
 
 TOKEN_LABELS: dict[str, Callable] = {
@@ -148,8 +152,11 @@ def label_batch_sentences(
         corresponding token length where each entry provides the labels/categories
         for the token. Sentence -> Token -> Labels
     """
-    # Load english language model
-    nlp = spacy.load("en_core_web_sm")
+    global NLP
+
+    if NLP is None:
+        # Load english language model
+        NLP = spacy.load("en_core_web_trf")
     # labelled tokens, list holding sentences holding tokens holding corresponding token labels
     labelled_sentences: list[list[dict[str, bool]]] = list()
 
@@ -157,14 +164,14 @@ def label_batch_sentences(
     for sentence in sentences:
         if tokenized:
             # sentence is a list of tokens
-            doc = Doc(nlp.vocab, words=sentence)
+            doc = Doc(NLP.vocab, words=sentence)  # type: ignore
             # Apply the spaCy pipeline, except for the tokenizer
-            for name, proc in nlp.pipeline:
+            for name, proc in NLP.pipeline:
                 if name != "tokenizer":
                     doc = proc(doc)
         else:
             # sentence is a single string
-            doc = nlp(sentence)
+            doc = NLP(sentence)  # type: ignore
 
         labelled_tokens = list()  # list holding labels for all tokens of sentence
         labelled_tokens = label_sentence(doc)
