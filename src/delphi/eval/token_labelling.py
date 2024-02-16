@@ -165,11 +165,11 @@ def label_batch_sentences(
         corresponding token length where each entry provides the labels/categories
         for the token. Sentence -> Token -> Labels
     """
-    global NLP
+    global NLP, SPACY_MODEL
 
     if NLP is None:
         # Load english language model
-        NLP = spacy.load("en_core_web_trf")
+        NLP = spacy.load(SPACY_MODEL)
     # labelled tokens, list holding sentences holding tokens holding corresponding token labels
     labelled_sentences: list[list[dict[str, bool]]] = list()
 
