@@ -7,10 +7,10 @@ from spacy.util import is_package
 # make sure the english language model capabilities are installed by the equivalent of:
 # python -m spacy download en_core_web_sm
 # Should be run once, initially. Download only starts if not already installed.
-SPACY_MODEL = "en_core_web_trf"
+SPACY_MODEL = "en_core_web_sm"  # small: "en_core_web_sm", large: "en_core_web_trf"
 NLP = None  # global var to hold the language model
 if not is_package(SPACY_MODEL):
-    spacy.cli.download("en_core_web_trf", False, False)
+    spacy.cli.download(SPACY_MODEL, False, False)
 
 
 TOKEN_LABELS: dict[str, Callable] = {
