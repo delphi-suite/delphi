@@ -2,6 +2,7 @@
 
 import argparse
 import pickle
+import os
 
 from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval.token_map import token_map
