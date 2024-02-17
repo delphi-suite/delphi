@@ -10,3 +10,7 @@ jaxtyping==0.2.25
 beartype==0.16.4
 pre-commit==3.6.0
 isort==5.13.2
+spacy==3.7.2
+chardet==5.2.0
+sentencepiece==0.1.99
+protobuf==4.25.2
