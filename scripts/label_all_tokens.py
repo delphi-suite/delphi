@@ -1,6 +1,7 @@
 import argparse
 import pickle
 
+import pandas as pd
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
@@ -101,6 +102,34 @@ def main():
     # compare
     assert labelled_token_ids_dict == pickled
     print(" completed.")
+
+    # ----------- CSV ------------------------
+    print("\nCreating the CSV ...")
+    # Create a pandas dataframe / CSV from the label dict
+    df = pd.DataFrame(labelled_token_ids_dict.items(), columns=["token_id", "label"])
+    # split the label column into multiple columns
+    df = df.join(pd.DataFrame(df.pop("label").tolist()))
+    # Change datatype of columns to float
+    df = df.astype(int)
+
+    print("Sanity check pandas csv ...", end="")
+    # Perform sanity check, that the table was created correctly
+    for row_index, row_values in df.iterrows():
+        token_id = row_values.iloc[0]
+        label_pandas = list(
+            row_values.iloc[1:]
+        )  # we exclude the token_id from the colum
+        label_dict = list(labelled_token_ids_dict[token_id].values())[:]
+        assert (
+            label_pandas == label_dict
+        ), f"The dataframes are not equal for row {token_id}\n{label_pandas}\n{label_dict}"
+    print(" completed.")
+
+    # save the dataframe to a csv
+    filename = "labelled_token_ids_df.csv"
+    filepath = SAVE_DIR / filename
+    df.to_csv(filepath, index=False)
+    print(f"Saved the labelled tokens as CSV to:\n\t{filepath}\n")
 
     print(" END ".center(50, "="))
 
