@@ -1,6 +1,6 @@
 import argparse
 import pickle
-from pathlib import Path
+from importlib.resources import files
 
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
@@ -36,7 +36,7 @@ def main():
 
     # Access command-line arguments
     # Directory to save the results
-    SAVE_DIR = Path("src/delphi/eval/")
+    SAVE_DIR = files("delphi").joinpath("static")
     model_name = args.model_name
 
     print("\n", " LABEL ALL TOKENS ".center(50, "="), "\n")
@@ -60,8 +60,8 @@ def main():
 
     # Save the list of all tokens to a file
     filename = "all_tokens_list.txt"
-    filepath = SAVE_DIR / filename
-    with open(filepath, "w", encoding="utf-8") as f:
+    filepath = SAVE_DIR.joinpath(filename)
+    with open(f"{filepath}", "w", encoding="utf-8") as f:
         f.write(tokens_str)
 
     print(f"Saved the list of all tokens to:\n\t{filepath}\n")
@@ -89,7 +89,7 @@ def main():
     # Save the labelled tokens to a file
     filename = "labelled_token_ids_dict.pkl"
     filepath = SAVE_DIR / filename
-    with open(filepath, "wb") as f:
+    with open(f"{filepath}", "wb") as f:
         pickle.dump(labelled_token_ids_dict, f)
 
     print(f"Saved the labelled tokens to:\n\t{filepath}\n")
@@ -97,7 +97,7 @@ def main():
     # sanity check that The pickled and the original dict are the same
     print("Sanity check ...", end="")
     # load pickle
-    with open(filepath, "rb") as f:
+    with open(f"{filepath}", "rb") as f:
         pickled = pickle.load(f)
     # compare
     assert labelled_token_ids_dict == pickled
