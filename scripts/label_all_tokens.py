@@ -1,10 +1,10 @@
 import argparse
 import pickle
-from importlib.resources import files
 
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
+from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval import token_labelling
 
 
@@ -35,14 +35,13 @@ def main():
     args = parser.parse_args()
 
     # Access command-line arguments
-    # Directory to save the results
-    SAVE_DIR = files("delphi").joinpath("static")
+
     model_name = args.model_name
 
     print("\n", " LABEL ALL TOKENS ".center(50, "="), "\n")
     print(f"You chose the model: {model_name}\n")
     print(
-        f"The language model will be loaded from Huggingface and its tokenizer used to do two things:\n\t1) Create a list of all tokens in the tokenizer's vocabulary.\n\t2) Label each token with its part of speech, dependency, and named entity recognition tags.\nThe respective results will be saved to files located at: '{SAVE_DIR}'\n"
+        f"The language model will be loaded from Huggingface and its tokenizer used to do two things:\n\t1) Create a list of all tokens in the tokenizer's vocabulary.\n\t2) Label each token with its part of speech, dependency, and named entity recognition tags.\nThe respective results will be saved to files located at: '{STATIC_ASSETS_DIR}'\n"
     )
 
     # ================ (1) =================
@@ -60,7 +59,7 @@ def main():
 
     # Save the list of all tokens to a file
     filename = "all_tokens_list.txt"
-    filepath = SAVE_DIR.joinpath(filename)
+    filepath = STATIC_ASSETS_DIR.joinpath(filename)
     with open(f"{filepath}", "w", encoding="utf-8") as f:
         f.write(tokens_str)
 
@@ -88,7 +87,7 @@ def main():
 
     # Save the labelled tokens to a file
     filename = "labelled_token_ids_dict.pkl"
-    filepath = SAVE_DIR / filename
+    filepath = STATIC_ASSETS_DIR.joinpath(filename)
     with open(f"{filepath}", "wb") as f:
         pickle.dump(labelled_token_ids_dict, f)
 
