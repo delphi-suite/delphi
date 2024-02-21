@@ -1,10 +1,11 @@
 import ipywidgets
 import numpy as np
 import plotly.graph_objects as go
-from beartype.typing import Dict
 
 
-def visualize_per_token_category(input: Dict[str, Dict[str, tuple]]) -> ipywidgets.VBox:
+def visualize_per_token_category(
+    input: dict[str, dict[str, tuple]], log_scale=False, **kwargs: str
+) -> ipywidgets.VBox:
     model_names = list(input.keys())
     categories = list(input[model_names[0]].keys())
     category = categories[0]
@@ -24,10 +25,21 @@ def visualize_per_token_category(input: Dict[str, Dict[str, tuple]]) -> ipywidge
                 symmetric=False,
                 array=err_hi,
                 arrayminus=err_low,
-                color="purple",
+                color=kwargs.get("bar_color", "purple"),
+            ),
+            marker=dict(
+                color=kwargs.get("marker_color", "SkyBlue"),
+                size=15,
+                line=dict(color=kwargs.get("line_color", "MediumPurple"), width=2),
             ),
         ),
-        layout=go.Layout(yaxis=dict(title="Loss")),
+        layout=go.Layout(
+            yaxis=dict(
+                title="Loss",
+                type="log" if log_scale else "linear",
+            ),
+            plot_bgcolor=kwargs.get("bg_color", "AliceBlue"),
+        ),
     )
 
     selected_category = ipywidgets.Dropdown(
@@ -38,12 +50,11 @@ def visualize_per_token_category(input: Dict[str, Dict[str, tuple]]) -> ipywidge
     )
 
     def response(change):
-        if selected_category.value:
-            means, err_lo, err_hi = get_plot_values(selected_category.value)
-            with g.batch_update():
-                g.data[0].y = means
-                g.data[0].error_y["array"] = err_hi
-                g.data[0].error_y["arrayminus"] = err_lo
+        means, err_lo, err_hi = get_plot_values(selected_category.value)
+        with g.batch_update():
+            g.data[0].y = means
+            g.data[0].error_y["array"] = err_hi
+            g.data[0].error_y["arrayminus"] = err_lo
 
     selected_category.observe(response, names="value")
 
