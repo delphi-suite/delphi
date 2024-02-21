@@ -51,16 +51,7 @@ def main(
         logprobs_tensor = get_all_and_next_logprobs(model, batch_sequences_tensor)[1]
         logprobs[i:batch_end, 1:] = logprobs_tensor.cpu().numpy()
 
-        # logprobs_list.append(next_logprobs)
-
-    # accumulated_logprobs = torch.cat(logprobs_list, dim=0)
-
-    # nan_tensor = torch.full((accumulated_logprobs.size(0), 1), float("nan"))
-    # extended_next_logprobs = torch.cat(
-    #     [nan_tensor, accumulated_logprobs], dim=1
-    # )  # 513 tokens
-
-    df_dataset = pd.DataFrame({"logprobs": logprobs.tolist()})
+    df_dataset = pd.DataFrame({"logprobs": [row for row in logprobs]})
     hf_dataset = Dataset.from_pandas(df_dataset)
 
     # change the repo_id to your hf username in generate_logprobs.sh
