@@ -5,7 +5,7 @@
 BATCH_SIZE=80
 DATASET_NAME="delphi-suite/tinystories-v2-clean-tokenized"
 USERNAME="transcendingvictor"  # Your Hugging Face username
-TOKEN="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"  # Your Hugging Face API token
+TOKEN="hf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaa"  # Your Hugging Face API token
 
 # List of models
 declare -a MODEL_NAMES=("delphi-suite/delphi-llama2-100k"

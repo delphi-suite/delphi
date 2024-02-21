@@ -33,19 +33,21 @@ def main(
     """
     val_ds = load_validation_dataset(dataset_name)
 
-    # model accepts 2D tensors (batch_size, seq_len)
-    val_sequences = torch.tensor([s["tokens"] for s in val_ds])
-
-    if funct_test:
-        val_sequences = val_sequences[:320]
-
     model = AutoModelForCausalLM.from_pretrained(model_name)
 
     logprobs_list = []
-    for i in tqdm(range(0, len(val_sequences), batch_size)):
-        batch_sequences = val_sequences[i : i + batch_size]
-        _, next_logprobs = get_all_and_next_logprobs(model, batch_sequences)
+    total_sequences = (
+        len(val_ds) if not funct_test else 320
+    )  # Use only 320 sequences if funct_test is True
+
+    for i in tqdm(range(0, total_sequences, batch_size)):
+        batch_end = min(i + batch_size, total_sequences)
+        batch_sequences = [val_ds[j]["tokens"] for j in range(i, batch_end)]
+        batch_sequences_tensor = torch.tensor(batch_sequences)
+
+        _, next_logprobs = get_all_and_next_logprobs(model, batch_sequences_tensor)
         logprobs_list.append(next_logprobs)
+
     accumulated_logprobs = torch.cat(logprobs_list, dim=0)
 
     nan_tensor = torch.full((accumulated_logprobs.size(0), 1), float("nan"))
