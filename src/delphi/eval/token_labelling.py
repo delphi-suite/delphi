@@ -1,5 +1,8 @@
+import pickle
+from pathlib import Path
 from typing import Callable, Optional
 
+import pandas as pd
 import spacy
 from spacy.tokens import Doc, Token
 from spacy.util import is_package
@@ -13,6 +16,7 @@ SPACY_MODEL = "en_core_web_sm"  # small: "en_core_web_sm", large: "en_core_web_t
 NLP = None  # global var to hold the language model
 if not is_package(SPACY_MODEL):
     spacy.cli.download(SPACY_MODEL, False, False)
+labelled_token_ids_dict: dict[int, dict[str, bool]] = {}
 
 
 TOKEN_LABELS: dict[str, Callable] = {
@@ -227,6 +231,7 @@ def label_tokens_from_tokenizer(
     tokens_str, labelled_token_ids_dict
 
     """
+    global labelled_token_ids_dict
 
     def decode(
         tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
@@ -242,7 +247,7 @@ def label_tokens_from_tokenizer(
         tokens_str += f"{i},{decode(tokenizer, i)}\n"
 
     # 2) let's label each token
-    labelled_token_ids_dict: dict[int, dict[str, bool]] = {}  # token_id: labels
+    labelled_token_ids_dict = {}  # token_id: labels
     max_token_id = vocab_size  # stop at which token id, vocab size
     # we iterate over all token_ids individually
     for token_id in tqdm(range(0, max_token_id), desc="Labelling tokens"):
@@ -258,3 +263,45 @@ def label_tokens_from_tokenizer(
         labelled_token_ids_dict[token_id] = label
 
     return tokens_str, labelled_token_ids_dict
+
+
+def import_token_labels(path: str | Path):
+    """
+    Imports token labels from a file. May be a .pkl or a .csv
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the file.
+
+    Returns
+    -------
+    dict[int, dict[str, bool]]
+        Returns the labelled tokens dict. Each token_id has its own dict having the labels.
+    """
+    global labelled_token_ids_dict
+    if isinstance(path, str):
+        path = Path(path)
+    # make sure the file_type is compatible
+    file_type = path.suffix
+    assert file_type in [
+        ".csv",
+        ".pkl",
+    ], f"Invalid file type. Allowed: csv, pkl. Got: {file_type}"
+    # load the file if CSV
+    if file_type == ".csv":
+        df = pd.read_csv(str(path))
+        categories = list(df.columns[1:])  # excluding first column: token_id
+        loaded_label_dict: dict[int, dict[str, bool]] = {}
+        # go through each row and construct the dict
+        for _, row in df.iterrows():
+            token_id = row["token_id"]
+            labels = {cat: (row[cat] == 1) for cat in categories}
+            loaded_label_dict[token_id] = labels
+
+    # load the file if a pickle
+    elif file_type == ".pkl":
+        with open(path, "rb") as f:
+            loaded_label_dict = pickle.load(f)
+
+    return loaded_label_dict
