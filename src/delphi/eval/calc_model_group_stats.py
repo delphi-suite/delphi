@@ -6,7 +6,6 @@ def calc_model_group_stats(
     tokenized_corpus_dataset: list,
     logprob_datasets: dict[str, list[list[float]]],
     token_groups: dict[int, dict[str, bool]],
-    models: list[str],
     token_labels: list[str],
 ) -> dict[tuple[str, str], dict[str, float]]:
     """
@@ -16,7 +15,7 @@ def calc_model_group_stats(
     - tokenized_corpus_dataset: the tokenized corpus dataset, e.g. load_dataset(constants.tokenized_corpus_dataset))["validation"]
     - logprob_datasets: a dict of lists of logprobs, e.g. {"llama2": load_dataset("transcendingvictor/llama2-validation-logprobs")["validation"]["logprobs"]}
     - token_groups: a dict of token groups, e.g. {0: {"Is Noun": True, "Is Verb": False, ...}, 1: {...}, ...}
-    - models: a list of model names, e.g. ["llama2", "gpt2", ...]
+    - models: a list of model names, e.g. constants.LLAMA2_MODELS
     - token_labels: a list of token group descriptions, e.g. ["Is Noun", "Is Verb", ...]
 
     returns: a dict of (model, token group) pairs to a dict of stats,
@@ -28,7 +27,7 @@ def calc_model_group_stats(
     stats calculated: mean, median, min, max, 25th percentile, 75th percentile
     """
     model_group_stats = {}
-    for model in models:
+    for model in logprob_datasets:
         group_logprobs = {}
         print(f"Processing model {model}")
         dataset = logprob_datasets[model]
