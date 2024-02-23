@@ -305,3 +305,18 @@ def import_token_labels(path: str | Path):
             loaded_label_dict = pickle.load(f)
 
     return loaded_label_dict
+
+
+def convert_label_dict_to_df(
+    labelled_token_ids_dict: dict[int, dict[str, bool]]
+) -> pd.DataFrame:
+    """
+    Takes a `labelled_token_ids_dict` and converts it into a Pandas Dataframe.
+    """
+    df = pd.DataFrame(labelled_token_ids_dict.items(), columns=["token_id", "label"])
+    # split the label column into multiple columns
+    df = df.join(pd.DataFrame(df.pop("label").tolist()))
+    # Change datatype of columns to float
+    df = df.astype(int)
+
+    return df
