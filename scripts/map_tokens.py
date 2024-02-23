@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-import pickle
 import os
+import pickle
 
 from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval.token_map import token_map
