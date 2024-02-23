@@ -1,19 +1,15 @@
 from collections.abc import Callable
-from typing import cast, Union
+from typing import cast
 
 import torch
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
 from transformers import (
     PreTrainedModel,
-    PreTrainedTokenizer,
     PreTrainedTokenizerBase,
-    PreTrainedTokenizerFast,
 )
 
 from delphi.eval import constants
-
-GenericPreTrainedTokenizer = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 
 
 def get_all_logprobs(
