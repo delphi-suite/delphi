@@ -1,4 +1,6 @@
+# TODO: move this to delphi/static
 # Static Data Files
+
 
 ## `token_map.pkl`
 pickle file: All locations of all tokens. dict of token to list of (doc, pos) pairs.
