@@ -3,6 +3,8 @@ from typing import Callable, Optional
 import spacy
 from spacy.tokens import Doc, Token
 from spacy.util import is_package
+from tqdm.auto import tqdm
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 # make sure the english language model capabilities are installed by the equivalent of:
 # python -m spacy download en_core_web_sm
@@ -208,3 +210,51 @@ def label_batch_sentences(
             print("\n")
 
     return labelled_sentences
+
+
+def label_tokens_from_tokenizer(
+    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+) -> tuple[str, dict[int, dict[str, bool]]]:
+    """
+    Labels all tokens in a tokenizer's vocabulary with the corresponding token categories (POS, named entity, etc). Returns two things: 1) `tokens_str`, a string where each token comprises 'token_id,token_str\n' and 2) `labelled_token_ids_dict` a dict that contains for each token_id (key) the corresponding token labels, which is in turn a dict, whith the label categories as keys and their boolean values as the dict's values.
+
+    Parameters
+    ----------
+    tokenizer : The tokenizer with its tokens to be labelled.
+
+    Returns
+    -------
+    tokens_str, labelled_token_ids_dict
+
+    """
+
+    def decode(
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        token_ids: int | list[int],
+    ) -> str:
+        return tokenizer.decode(token_ids, skip_special_tokens=True)
+
+    vocab_size = tokenizer.vocab_size
+
+    # 1) Create a list of all tokens in the tokenizer's vocabulary
+    tokens_str = ""  # will hold all tokens and their ids
+    for i in range(vocab_size):
+        tokens_str += f"{i},{decode(tokenizer, i)}\n"
+
+    # 2) let's label each token
+    labelled_token_ids_dict: dict[int, dict[str, bool]] = {}  # token_id: labels
+    max_token_id = vocab_size  # stop at which token id, vocab size
+    # we iterate over all token_ids individually
+    for token_id in tqdm(range(0, max_token_id), desc="Labelling tokens"):
+        # decode the token_ids to get a list of tokens, a 'sentence'
+        token = decode(tokenizer, token_id)  # list of tokens == sentence
+        # put the sentence into a list, to make it a batch of sentences
+        sentences = [token]
+        # label the batch of sentences
+        labels = label_batch_sentences(sentences, tokenized=True, verbose=False)
+        # create a dict with the token_ids and their labels
+        # update the labelled_token_ids_dict with the new dict
+        label = labels[0][0]  # first sentence of batch, label of first token
+        labelled_token_ids_dict[token_id] = label
+
+    return tokens_str, labelled_token_ids_dict

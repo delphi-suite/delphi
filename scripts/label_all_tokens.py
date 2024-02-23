@@ -27,17 +27,17 @@ def main():
     # Setup argparse
     parser = argparse.ArgumentParser(description="Tokenization and labeling utility.")
     parser.add_argument(
-        "--model_name",
+        "--model-name",
         type=str,
         help="Name of the model to use for tokenization and labeling.",
         default="delphi-suite/delphi-llama2-100k",
         required=False,
     )
     parser.add_argument(
-        "--save_dir", type=str, help="Directory to save the results.", required=True
+        "--save-dir", type=str, help="Directory to save the results.", required=True
     )
     parser.add_argument(
-        "--output_format",
+        "--output-format",
         type=str,
         help="Format to save the results in. Options: csv, pkl. Default: csv.",
         default="csv",
@@ -67,18 +67,15 @@ def main():
 
     # Load the tokenizer from Huggingface
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    vocab_size = tokenizer.vocab_size
-    print("Loaded the tokenizer.\nThe vocab size is:", vocab_size)
+    print("Loaded the tokenizer.\nThe vocab size is:", tokenizer.vocab_size)
 
-    # Create a list of all tokens in the tokenizer's vocabulary
-    tokens_str = ""  # will hold all tokens and their ids
-    for i in range(tokenizer.vocab_size):
-        tokens_str += f"{i},{decode(tokenizer, i)}\n"
+    tokens_str, labelled_token_ids_dict = token_labelling.label_tokens_from_tokenizer(
+        tokenizer
+    )
 
     # Save the list of all tokens to a file
     filename = "all_tokens_list.txt"
-    # filepath = SAVE_DIR / filename # TODO: use the static files of python module
-    filepath = Path("src/delphi/eval/") / filename
+    filepath = SAVE_DIR / filename  # TODO: use the static files of python module
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(tokens_str)
 
@@ -86,23 +83,6 @@ def main():
 
     # ================ (2) =================
     print("(2) Label each token ...")
-
-    # let's label each token
-    labelled_token_ids_dict: dict[int, dict[str, bool]] = {}  # token_id: labels
-    max_token_id = tokenizer.vocab_size  # stop at which token id, vocab size
-    # we iterate over all token_ids individually
-    for token_id in tqdm(range(0, max_token_id), desc="Labelling tokens"):
-        # decode the token_ids to get a list of tokens, a 'sentence'
-        tokens = decode(tokenizer, token_id)  # list of tokens == sentence
-        # put the sentence into a list, to make it a batch of sentences
-        sentences = [tokens]
-        # label the batch of sentences
-        labels = token_labelling.label_batch_sentences(
-            sentences, tokenized=True, verbose=False
-        )
-        # create a dict with the token_ids and their labels
-        # update the labelled_token_ids_dict with the new dict
-        labelled_token_ids_dict[token_id] = labels[0][0]
 
     if output_format == "pkl":
         # Save the labelled tokens to a file
