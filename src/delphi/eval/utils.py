@@ -11,6 +11,8 @@ from transformers import (
     PreTrainedTokenizerFast,
 )
 
+from delphi.eval import constants
+
 GenericPreTrainedTokenizer = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 
 
@@ -94,3 +96,16 @@ def tokenize(
         Int[torch.Tensor, "seq"],
         tokenizer.encode(tokenizer.bos_token + sample_txt, return_tensors="pt")[0],
     )
+
+
+def load_logprob_dataset(model: str):
+    return cast(
+        Dataset, load_dataset(f"transcendingvictor/{model}-validation-logprobs")
+    )
+
+
+def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
+    return {
+        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]
+        for model in constants.LLAMA2_MODELS
+    }
