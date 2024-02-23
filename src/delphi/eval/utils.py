@@ -4,10 +4,7 @@ from typing import cast
 import torch
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
-from transformers import (
-    PreTrainedModel,
-    PreTrainedTokenizerBase,
-)
+from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 from delphi.eval import constants
 
