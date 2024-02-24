@@ -36,7 +36,6 @@ def main(
 
     model = AutoModelForCausalLM.from_pretrained(model_name)
 
-    # logprobs_list = []
     total_sequences = (
         len(val_ds) if not funct_test else 320
     )  # Use only 320 sequences if funct_test is True
