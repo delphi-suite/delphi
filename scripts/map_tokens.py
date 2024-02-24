@@ -3,6 +3,7 @@
 import argparse
 import pickle
 
+from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval.token_map import token_map
 from delphi.eval.utils import load_validation_dataset
 
@@ -18,5 +19,5 @@ if __name__ == "__main__":
 
     mapping = token_map(dataset)
 
-    with open(f"data/{args.output}", "wb") as f:
+    with open(f"{STATIC_ASSETS_DIR}/{args.output}", "wb") as f:
         pickle.dump(mapping, file=f)
