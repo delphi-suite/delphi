@@ -9,6 +9,5 @@ class LLaMA2Args(ModelArgs):
 
 
 class LLaMA2(Transformer):
-    
     def __init__(self, params) -> None:
         super().__init__(params)

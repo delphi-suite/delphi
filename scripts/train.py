@@ -1,6 +1,7 @@
-from delphi.train.training import DDP,TrainingConfig, model_initialization, train_loop
-from delphi.train.utils import load_config
 from argparse import ArgumentParser
+
+from delphi.train.training import DDP, TrainingConfig, model_initialization, train_loop
+from delphi.train.utils import load_config
 
 
 def main():
@@ -11,5 +12,5 @@ def main():
 
     config = load_config(args.config)
     TrainConf = TrainingConfig(config)
-    model,model_args = model_initialization(config)
+    model, model_args = model_initialization(config)
     train_loop(model, TrainConf)

@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+
+import torch.nn.functional as F
 from mamba_ssm.models.config_mamba import MambaConfig
 from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
-import torch.nn.functional as F
+
 
 @dataclass
 class MambaArgs(MambaConfig):
@@ -9,7 +11,6 @@ class MambaArgs(MambaConfig):
 
 
 class Mamba(MambaLMHeadModel):
-    
     def __init__(self, params) -> None:
         super().__init__(params)
 
@@ -20,6 +21,8 @@ class Mamba(MambaLMHeadModel):
         """
         hidden_states = self.backbone(input_ids)
         logits = self.lm_head(hidden_states)
-        self.last_loss = F.cross_entropy(logits.view(-1, logits.size(-1)), target_ids.view(-1), ignore_index=-1)
-        
+        self.last_loss = F.cross_entropy(
+            logits.view(-1, logits.size(-1)), target_ids.view(-1), ignore_index=-1
+        )
+
         return logits
