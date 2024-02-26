@@ -1,4 +1,5 @@
 import argparse
+import os
 import pickle
 
 from tqdm.auto import tqdm
@@ -32,10 +33,14 @@ def main():
         default="delphi-suite/delphi-llama2-100k",
         required=False,
     )
+    parser.add_argument(
+        "--output",
+        help="Output path name. Must include at least output file name.",
+        default="labelled_token_ids_dict.pkl",
+    )
     args = parser.parse_args()
 
     # Access command-line arguments
-
     model_name = args.model_name
 
     print("\n", " LABEL ALL TOKENS ".center(50, "="), "\n")
@@ -86,8 +91,13 @@ def main():
         labelled_token_ids_dict[token_id] = labels[0][0]
 
     # Save the labelled tokens to a file
-    filename = "labelled_token_ids_dict.pkl"
-    filepath = STATIC_ASSETS_DIR.joinpath(filename)
+    if os.path.split(args.output)[0] == "":
+        filepath = STATIC_ASSETS_DIR.joinpath(args.output)
+        print(f"Outputting file {args.output} to path {filepath}")
+    else:
+        filepath = os.path.expandvars(args.output)
+        print(f"Outputting to path {filepath}")
+
     with open(f"{filepath}", "wb") as f:
         pickle.dump(labelled_token_ids_dict, f)
 
