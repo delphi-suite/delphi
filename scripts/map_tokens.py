@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import pickle
 
 from delphi.constants import STATIC_ASSETS_DIR

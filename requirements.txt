@@ -14,3 +14,5 @@ spacy==3.7.2
 chardet==5.2.0
 sentencepiece==0.1.99
 protobuf==4.25.2
+plotly==5.18.0
+spacy-transformers==1.3.4

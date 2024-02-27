@@ -6,6 +6,8 @@ from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
+from delphi.eval import constants
+
 
 def get_all_logprobs(
     model: Callable, input_ids: Int[torch.Tensor, "batch seq"]
@@ -87,3 +89,14 @@ def tokenize(
         Int[torch.Tensor, "seq"],
         tokenizer.encode(tokenizer.bos_token + sample_txt, return_tensors="pt")[0],
     )
+
+
+def load_logprob_dataset(model: str) -> Dataset:
+    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")  # type: ignore
+
+
+def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
+    return {
+        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]
+        for model in constants.LLAMA2_MODELS
+    }
