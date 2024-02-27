@@ -9,6 +9,10 @@ Interpreting Small Language Models Across Time and Scale
 3. install the project in editable state `pip install -e .`
 4. run tests `pytest`
 
+## llama2c Setup
+1. `git submodule init`
+2. `git submodule update`
+
 # formatting
 
 We're using black & isort to format the code. To make sure your changes adhere to the rules:
