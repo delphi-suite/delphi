@@ -3,8 +3,8 @@ import numpy as np
 
 def calc_model_group_stats(
     tokenized_corpus_dataset: list,
-    logprob_datasets: dict[str, list[list[float]]],
-    token_groups: dict[int, dict[str, bool]],
+    logprobs_by_dataset: dict[str, list[list[float]]],
+    token_labels_by_token: dict[int, dict[str, bool]],
     token_labels: list[str],
 ) -> dict[tuple[str, str], dict[str, float]]:
     """
@@ -26,10 +26,10 @@ def calc_model_group_stats(
     stats calculated: mean, median, min, max, 25th percentile, 75th percentile
     """
     model_group_stats = {}
-    for model in logprob_datasets:
+    for model in logprobs_by_dataset:
         group_logprobs = {}
         print(f"Processing model {model}")
-        dataset = logprob_datasets[model]
+        dataset = logprobs_by_dataset[model]
         for ix_doc_lp, document_lps in enumerate(dataset):
             tokens = tokenized_corpus_dataset[ix_doc_lp]["tokens"]
             for ix_token, token in enumerate(tokens):
@@ -37,7 +37,7 @@ def calc_model_group_stats(
                     continue
                 logprob = document_lps[ix_token]
                 for token_group_desc in token_labels:
-                    if token_groups[token][token_group_desc]:
+                    if token_labels_by_token[token][token_group_desc]:
                         if token_group_desc not in group_logprobs:
                             group_logprobs[token_group_desc] = []
                         group_logprobs[token_group_desc].append(logprob)
