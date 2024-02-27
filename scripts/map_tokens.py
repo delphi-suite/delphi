@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-<<<<<<< HEAD
-import os
-import pickle
-=======
 
 import pandas as pd
 from datasets import Dataset
->>>>>>> a5b5e63 (map_tokens from risky pickle to safe hf)
 
 from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval.token_map import token_map
@@ -42,11 +37,8 @@ if __name__ == "__main__":
 
     complete_mapping = [mapping.get(key, None) for key in range(4096)]
 
-<<<<<<< HEAD
-=======
     hf_dataset = Dataset.from_dict({"prompt_pos_idx": complete_mapping})
 
->>>>>>> 256f162 (using a list, not a dict)
     repo_id = f"{args.username}/v0-token-map"  # location in to hf
 
     hf_dataset.push_to_hub(
