@@ -69,13 +69,16 @@ def get_next_and_top_k_probs(
 def load_validation_dataset(dataset_name: str, split_slice: str = "") -> Dataset:
     if "/" not in dataset_name:
         dataset_name = f"delphi-suite/{dataset_name}"
-    data_str = f"data/validation-*.parquet"
     dataset = load_dataset(
         dataset_name,
-        data_files=data_str,
+        data_files="data/validation-*.parquet",
         verification_mode="no_checks",
-        # this seems to be the only split when using data_files
-        # regardless of the files we're actually loading
+        # Currently, load_dataset returns a dataset dict *unless* a split is specified,
+        # EVEN IF NO SPLIT WITHIN THE DATA FILES SPECIFIED. If there's no split arg,
+        # huggingface just just says everything is in the "train" split and returns {"train": dataset}.
+        # In our case the data_files glob already specifies just the validation files, so we
+        # shouldn't need to specify a split. But we do need to specify a split to get a dataset object,
+        # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
         split=f"train{split_slice}",
     )
     return cast(Dataset, dataset)
