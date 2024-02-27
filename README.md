@@ -2,18 +2,22 @@
 
 Interpreting Small Language Models Across Time and Scale
 
-# setup
+# Setup
 
-1. make python 3.10 virtual env in `.venv`
-2. install dependencies `pip install -r requirements.txt`
-3. install the project in editable state `pip install -e .`
-4. run tests `pytest`
+1. Clone this repo and submodules: `git clone https://github.com/delphi-suite/delphi.git --recurse-submodules`
+2. make python 3.10 virtual env in `.venv`
+3. install dependencies `pip install -r requirements.txt`
+4. install the project in editable state `pip install -e .`
+5. run tests `pytest`
 
-## llama2c Setup
-1. `git submodule init`
-2. `git submodule update`
+## Submodule Setup
+If you cloned without `--recurse-submodules`, you can still install the submodules later with:
+```bash
+git submodule init
+git submodule update
+```
 
-# formatting
+# Formatting
 
 We're using black & isort to format the code. To make sure your changes adhere to the rules:
 
@@ -23,7 +27,7 @@ We're using black & isort to format the code. To make sure your changes adhere t
 
 When you save a file vscode should automatically format it. Otherwise, pre-commit will do that, but you will need to add the changes and commit again.
 
-# pull requests
+# Pull Requests
 
 1. make a branch
    - if it relates to an existing issue
