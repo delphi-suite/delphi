@@ -40,10 +40,13 @@ if __name__ == "__main__":
         dataset
     )  # outputs the dictionary: dict[int, list[tuple[int, int]]]
 
-    complete_mapping = {key: mapping.get(key, None) for key in range(4096)}
+    complete_mapping = [mapping.get(key, None) for key in range(4096)]
 
-    hf_dataset = Dataset.from_dict({"prompt_pos_idx": list(complete_mapping.values())})
+<<<<<<< HEAD
+=======
+    hf_dataset = Dataset.from_dict({"prompt_pos_idx": complete_mapping})
 
+>>>>>>> 256f162 (using a list, not a dict)
     repo_id = f"{args.username}/v0-token-map"  # location in to hf
 
     hf_dataset.push_to_hub(
