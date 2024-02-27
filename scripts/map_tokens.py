@@ -27,17 +27,19 @@ if __name__ == "__main__":
         type=str,
         help="Hugging Face API token",
     )
+    parser.add_argument(
+        "--tokenizer-size",
+        type=int,
+        default=4096,
+        help="Size of the tokenizer",
+    )
     args = parser.parse_args()
 
     dataset = load_validation_dataset(args.dataset_name)
 
-    mapping = token_map(
-        dataset
-    )  # outputs the dictionary: dict[int, list[tuple[int, int]]]
-
-    complete_mapping = [mapping.get(key, None) for key in range(4096)]
-
-    hf_dataset = Dataset.from_dict({"prompt_pos_idx": complete_mapping})
+    hf_dataset = Dataset.from_dict(
+        {"prompt_pos_idx": token_map(dataset, args.tokenizer_size)}
+    )
 
     repo_id = f"{args.username}/v0-token-map"  # location in to hf
 
