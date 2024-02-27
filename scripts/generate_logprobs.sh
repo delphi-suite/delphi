@@ -4,7 +4,7 @@
 BATCH_SIZE=80  # This worked well in my CPU, but 200 was too much
 DATASET_NAME="delphi-suite/tinystories-v2-clean-tokenized"
 USERNAME="transcendingvictor"  # your Hugging Face username
-TOKEN="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"  # your Hugging Face API token
+TOKEN="hf_aaaaaaaaaaaaaaaaaaaaaaaaaa"  # your Hugging Face API token
 
 
 # List of models
