@@ -16,7 +16,6 @@ SPACY_MODEL = "en_core_web_sm"  # small: "en_core_web_sm", large: "en_core_web_t
 NLP = None  # global var to hold the language model
 if not is_package(SPACY_MODEL):
     spacy.cli.download(SPACY_MODEL, False, False)
-labelled_token_ids_dict: dict[int, dict[str, bool]] = {}
 
 
 TOKEN_LABELS: dict[str, Callable] = {
@@ -231,7 +230,6 @@ def label_tokens_from_tokenizer(
     tokens_str, labelled_token_ids_dict
 
     """
-    global labelled_token_ids_dict
 
     def decode(
         tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
@@ -288,6 +286,9 @@ def import_token_labels(path: str | Path):
         ".csv",
         ".pkl",
     ], f"Invalid file type. Allowed: csv, pkl. Got: {file_type}"
+    # make sure file exists
+    if not path.exists():
+        raise FileNotFoundError(f"There is no file under {path}")
     # load the file if CSV
     if file_type == ".csv":
         df = pd.read_csv(str(path))
@@ -295,8 +296,8 @@ def import_token_labels(path: str | Path):
         loaded_label_dict: dict[int, dict[str, bool]] = {}
         # go through each row and construct the dict
         for _, row in df.iterrows():
-            token_id = row["token_id"]
-            labels = {cat: (row[cat] == 1) for cat in categories}
+            token_id = int(row["token_id"])
+            labels = {cat: bool(row[cat] == 1) for cat in categories}
             loaded_label_dict[token_id] = labels
 
     # load the file if a pickle
