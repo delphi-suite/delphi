@@ -66,7 +66,7 @@ def get_next_and_top_k_probs(
     return next_probs, top_k
 
 
-def load_validation_dataset(dataset_name: str) -> Dataset:
+def load_validation_dataset(dataset_name: str, split_slice: str = "") -> Dataset:
     if "/" not in dataset_name:
         dataset_name = f"delphi-suite/{dataset_name}"
     data_str = f"data/validation-*.parquet"
@@ -76,7 +76,7 @@ def load_validation_dataset(dataset_name: str) -> Dataset:
         verification_mode="no_checks",
         # this seems to be the only split when using data_files
         # regardless of the files we're actually loading
-        split="train",
+        split=f"train{split_slice}",
     )
     return cast(Dataset, dataset)
 
