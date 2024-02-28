@@ -86,7 +86,7 @@ def main():
 
     if output_format == "pkl":
         # Save the labelled tokens to a file
-        filename = "labelled_token_ids_dict.pkl"
+        filename = "labelled_token_ids.pkl"
         filepath = SAVE_DIR / filename
         with open(filepath, "wb") as f:
             pickle.dump(labelled_token_ids_dict, f)
@@ -105,14 +105,8 @@ def main():
     # ----------- CSV ------------------------
     if output_format == "csv":
         print("\nCreating the CSV ...")
-        # Create a pandas dataframe / CSV from the label dict
-        df = pd.DataFrame(
-            labelled_token_ids_dict.items(), columns=["token_id", "label"]
-        )
-        # split the label column into multiple columns
-        df = df.join(pd.DataFrame(df.pop("label").tolist()))
-        # Change datatype of columns to float
-        df = df.astype(int)
+
+        df = token_labelling.convert_label_dict_to_df(labelled_token_ids_dict)
 
         print("Sanity check pandas csv ...", end="")
         # Perform sanity check, that the table was created correctly
@@ -128,7 +122,7 @@ def main():
         print(" completed.")
 
         # save the dataframe to a csv
-        filename = "labelled_token_ids_df.csv"
+        filename = "labelled_token_ids.csv"
         filepath = SAVE_DIR / filename
         df.to_csv(filepath, index=False)
         print(f"Saved the labelled tokens as CSV to:\n\t{filepath}\n")
