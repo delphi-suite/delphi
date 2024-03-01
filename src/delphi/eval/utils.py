@@ -69,9 +69,10 @@ def get_next_and_top_k_probs(
 def load_validation_dataset(dataset_name: str, split_slice: str = "") -> Dataset:
     if "/" not in dataset_name:
         dataset_name = f"delphi-suite/{dataset_name}"
+    data_files_str = f"data/validation-*.parquet"
     dataset = load_dataset(
         dataset_name,
-        data_files="data/validation-*.parquet",
+        data_files=data_files_str,
         verification_mode="no_checks",
         # Currently, load_dataset returns a dataset dict *unless* a split is specified,
         # EVEN IF NO SPLIT WITHIN THE DATA FILES SPECIFIED. If there's no split arg,
@@ -82,6 +83,32 @@ def load_validation_dataset(dataset_name: str, split_slice: str = "") -> Dataset
         split=f"train{split_slice}",
     )
     return cast(Dataset, dataset)
+
+
+def load_delphi_dataset(dataset_name: str, split: str) -> Dataset:
+    # check that split is either "train" or "validation"
+    if split not in ["train", "validation"]:
+        raise ValueError(f"Split must be either 'train' or 'validation', not {split}")
+    if "/" not in dataset_name:
+        dataset_name = f"delphi-suite/{dataset_name}"
+    data_files_str = f"data/{split}-*.parquet"
+    dataset = load_dataset(
+        dataset_name,
+        data_files=data_files_str,
+        verification_mode="no_checks",
+        # Currently, load_dataset returns a dataset dict *unless* a split is specified,
+        # EVEN IF NO SPLIT WITHIN THE DATA FILES SPECIFIED. If there's no split arg,
+        # huggingface just just says everything is in the "train" split and returns {"train": dataset}.
+        # In our case the data_files glob already specifies just the validation files, so we
+        # shouldn't need to specify a split. But we do need to specify a split to get a dataset object,
+        # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
+        split=f"train{split_slice}",
+    )
+    return cast(Dataset, dataset)
+
+
+def load_train_dataset(dataset_name: str) -> Dataset:
+    return load_delphi_dataset(dataset_name, "train")
 
 
 def tokenize(
