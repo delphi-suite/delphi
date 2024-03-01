@@ -277,7 +277,6 @@ def import_token_labels(path: str | Path):
     dict[int, dict[str, bool]]
         Returns the labelled tokens dict. Each token_id has its own dict having the labels.
     """
-    global labelled_token_ids_dict
     if isinstance(path, str):
         path = Path(path)
     # make sure the file_type is compatible

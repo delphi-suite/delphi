@@ -1,5 +1,6 @@
 import argparse
 import pickle
+from pathlib import Path
 
 import pandas as pd
 from tqdm.auto import tqdm
@@ -47,8 +48,8 @@ def main():
 
     # Access command-line arguments
     # Directory to save the results
-    SAVE_DIR = Path(args.save_dir)
-    SAVE_DIR.mkdir(parents=True, exist_ok=True)  # create directory if it does not exist
+    save_dir = Path(args.save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)  # create directory if it does not exist
     model_name = args.model_name
     output_format = args.output_format
     assert output_format in [
@@ -59,7 +60,7 @@ def main():
     print("\n", " LABEL ALL TOKENS ".center(50, "="), "\n")
     print(f"You chose the model: {model_name}\n")
     print(
-        f"The language model will be loaded from Huggingface and its tokenizer used to do two things:\n\t1) Create a list of all tokens in the tokenizer's vocabulary.\n\t2) Label each token with its part of speech, dependency, and named entity recognition tags.\nThe respective results will be saved to files located at: '{STATIC_ASSETS_DIR}'\n"
+        f"The language model will be loaded from Huggingface and its tokenizer used to do two things:\n\t1) Create a list of all tokens in the tokenizer's vocabulary.\n\t2) Label each token with its part of speech, dependency, and named entity recognition tags.\nThe respective results will be saved to files located at: '{save_dir}'\n"
     )
 
     # ================ (1) =================
@@ -75,7 +76,7 @@ def main():
 
     # Save the list of all tokens to a file
     filename = "all_tokens_list.txt"
-    filepath = SAVE_DIR / filename  # TODO: use the static files of python module
+    filepath = save_dir / filename  # TODO: use the static files of python module
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(tokens_str)
 
@@ -87,7 +88,7 @@ def main():
     if output_format == "pkl":
         # Save the labelled tokens to a file
         filename = "labelled_token_ids.pkl"
-        filepath = SAVE_DIR / filename
+        filepath = save_dir / filename
         with open(filepath, "wb") as f:
             pickle.dump(labelled_token_ids_dict, f)
 
@@ -123,7 +124,7 @@ def main():
 
         # save the dataframe to a csv
         filename = "labelled_token_ids.csv"
-        filepath = SAVE_DIR / filename
+        filepath = save_dir / filename
         df.to_csv(filepath, index=False)
         print(f"Saved the labelled tokens as CSV to:\n\t{filepath}\n")
 
