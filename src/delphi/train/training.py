@@ -12,8 +12,9 @@ from functools import partial
 import torch
 from tqdm import tqdm
 
-from llama2c.model import ModelArgs as Llama2ModelArgs, Transformer as Llama2Model
 from llama2c import Task, model_export
+from llama2c.model import ModelArgs as Llama2ModelArgs
+from llama2c.model import Transformer as Llama2Model
 
 # -----------------------------------------------------------------------------
 # I/O
@@ -103,9 +104,7 @@ assert (
 
 # various inits, derived attributes, I/O setup
 seed = 1337
-tokens_per_iter = (
-    gradient_accumulation_steps * batch_size * max_seq_len
-)
+tokens_per_iter = gradient_accumulation_steps * batch_size * max_seq_len
 print(f"tokens per iteration will be: {tokens_per_iter:,}")
 print(
     f"breaks down as: {gradient_accumulation_steps} grad accum steps * {batch_size} batch size * {max_seq_len} max seq len"
@@ -200,6 +199,7 @@ checkpoint = None  # free up memory
 
 # wrap model into DDP container
 
+
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()
 def estimate_loss():
@@ -289,16 +289,13 @@ for epoch in range(max_epochs):
                     }
                     print(f"saving checkpoint to {out_dir}")
                     torch.save(checkpoint, os.path.join(out_dir, "ckpt.pt"))
-                    model_export(
-                        model, os.path.join(out_dir, "model.bin"), version=0
-                    )
+                    model_export(model, os.path.join(out_dir, "model.bin"), version=0)
         if iter_num == 0 and eval_only:
             break
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
         for micro_step in range(gradient_accumulation_steps):
-            
             logits = model(X, Y)
             loss = model.last_loss
             loss = loss / gradient_accumulation_steps
@@ -322,9 +319,7 @@ for epoch in range(max_epochs):
             # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
             lossf = loss.item() * gradient_accumulation_steps
             if local_iter_num >= 5:  # let the training loop settle a bit
-                mfu = model.estimate_mfu(
-                    batch_size * gradient_accumulation_steps, dt
-                )
+                mfu = model.estimate_mfu(batch_size * gradient_accumulation_steps, dt)
                 running_mfu = (
                     mfu if running_mfu == -1.0 else 0.9 * running_mfu + 0.1 * mfu
                 )

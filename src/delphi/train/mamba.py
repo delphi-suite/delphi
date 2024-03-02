@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from typing import Optional
 
+import torch
 import torch.nn.functional as F
 from mamba_ssm.models.config_mamba import MambaConfig
 from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
-import torch
-from typing import  Optional
+
 
 @dataclass
 class MambaArgs(MambaConfig):
@@ -12,10 +13,12 @@ class MambaArgs(MambaConfig):
 
 
 class Mamba(MambaLMHeadModel):
-    def __init__(self, params:MambaArgs) -> None:
+    def __init__(self, params: MambaArgs) -> None:
         super().__init__(params)
 
-    def forward(self, input_ids:torch.Tensor, target_ids:Optional[torch.Tensor] = None)-> torch.Tensor:
+    def forward(
+        self, input_ids: torch.Tensor, target_ids: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         "position_ids" is just to be compatible with Transformer generation. We don't use it.
         num_last_tokens: if > 0, only return the logits for the last n tokens
