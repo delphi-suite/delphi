@@ -5,3 +5,6 @@ extend-exclude = 'src/llama2c'
 profile = 'black'
 known_third_party = ['llama2c']
 extend_skip = ['src/llama2c']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
