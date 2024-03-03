@@ -1,0 +1,6 @@
+[tool.black]
+extend-exclude = 'src/llama2c'
+
+[tool.isort]
+profile = 'black'
+extend_skip = ['src/llama2c']
