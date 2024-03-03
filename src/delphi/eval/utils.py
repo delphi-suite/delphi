@@ -102,7 +102,7 @@ def load_delphi_dataset(dataset_name: str, split: str) -> Dataset:
         # In our case the data_files glob already specifies just the validation files, so we
         # shouldn't need to specify a split. But we do need to specify a split to get a dataset object,
         # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
-        split=f"train{split_slice}",
+        split=f"train",
     )
     return cast(Dataset, dataset)
 
