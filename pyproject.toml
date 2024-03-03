@@ -3,4 +3,5 @@ extend-exclude = 'src/llama2c'
 
 [tool.isort]
 profile = 'black'
+known_third_party = ['llama2c']
 extend_skip = ['src/llama2c']

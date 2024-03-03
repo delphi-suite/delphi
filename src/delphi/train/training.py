@@ -10,11 +10,10 @@ from datetime import datetime
 from functools import partial
 
 import torch
-from tqdm import tqdm
-
 from llama2c import Task, model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
+from tqdm import tqdm
 
 # -----------------------------------------------------------------------------
 # I/O
