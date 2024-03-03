@@ -8,12 +8,78 @@ import time
 from contextlib import nullcontext
 from datetime import datetime
 from functools import partial
+from typing import cast
 
+import numpy as np
 import torch
+from datasets import Dataset
 from llama2c import Task, model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
+from torch import Tensor
+from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+from delphi import constants
+from delphi.eval.utils import load_delphi_dataset
+from delphi.train.shuffle import shuffle_list
+
+
+class TokenizedDocumentDataset(Dataset):
+    def __init__(self, tokenized_docs, max_len):
+        self.tokenized_docs = tokenized_docs
+        self.doc_len = len(tokenized_docs[0]["tokens"])
+        self.max_len = max_len
+        self.indices = self._default_indices()
+        self._total_tokens = self.doc_len * len(self.tokenized_docs)
+        self.batched_tokens = (
+            torch.Tensor()
+        )  # will be initialized in initialize_samples
+
+    def initialize_samples(self):
+        # self.tokenized_docs is an (X, 1) tensor of dicts. Each entry is just {"tokens": [int]}
+        # where [int] is doc_len long
+        # we want to turn this into a (num_batches, max_len + 1) tensor of ints
+        # the +1 is for the last Y token prediction, and implies an overlap of 1 token between batches
+        # this is because each batch will be broken into X [:-1] and Y [1:]
+
+        num_tokens = self.doc_len * len(self.tokenized_docs)
+        num_batches = num_tokens // self.max_len
+        tensor_tokens = torch.stack(
+            [
+                torch.tensor(doc["tokens"], dtype=torch.int16)
+                for doc in self.tokenized_docs
+            ]
+        )
+        self.batched_tokens = tensor_tokens.flatten().unfold(
+            0, self.max_len + 1, self.max_len
+        )
+
+    def _default_indices(self):
+        return list(range(len(self.tokenized_docs)))
+
+    def shuffle(self, epoch: int):
+        """this is inefficient, but tinyevals are tiny, so nbd probably"""
+        # reset for idempotent determinism
+        self.indices = self._default_indices()
+        shuffle_list(self.indices, seed=epoch)
+
+    def __len__(self):
+        return self._total_tokens // self.max_len
+
+    def __getitem__(self, idx):
+        sample = self.batched_tokens[self.indices[idx], :]
+        X = sample[:-1]
+        Y = sample[1:]
+        return torch.tensor(X), torch.tensor(Y)
+
+    def __iter__(self):
+        while True:
+            # drop the last partial batch (last token doesn't have a Y token to predict)
+            for idx in self.indices:
+                X, Y = self[idx]
+                yield X, Y
+
 
 # -----------------------------------------------------------------------------
 # I/O
@@ -26,7 +92,8 @@ always_save_checkpoint = False  # if True, always save a checkpoint after each e
 init_from = "scratch"  # 'scratch' or 'resume'
 # wandb logging
 wandb_log = True  # disabled by default
-wandb_entity = "jannik-brinkmann"
+# wandb_entity = "jannik-brinkmann"
+wandb_entity = "jaiwithani"
 wandb_project = "delphi"
 wandb_run_name = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 # data
@@ -54,9 +121,27 @@ grad_clip = 1.0  # clip gradients at this value, or disable if == 0.0
 # learning rate decay settings
 decay_lr = True  # whether to decay the learning rate
 warmup_iters = 1000  # how many steps to warm up for
+
+
+# Jai Overrides TODO: remove these
+vocab_source = "custom"
+vocab_size = 4096
+max_seq_len = 512
+dim = 48
+n_layers = 2
+n_heads = 2
+n_kv_heads = 2
+max_epochs = 2
+eval_interval = 500
+eval_iters = 10
+
+
 # system
+# TODO: when fixing all of this, also dynamically detect env
+# and set the device accordingly (e.g. mps on macbooks, cuda on linux)
 device = (
-    "cuda"  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
+    # "cuda"  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
+    "mps"  # TODO: remove, this is for debugging on macbooks
 )
 dtype = "float32"  # float32|bfloat16|float16
 compile = False  # use PyTorch 2.0 to compile the model to be faster
@@ -75,23 +160,19 @@ config = {k: globals()[k] for k in config_keys}  # will be useful for logging
 # -----------------------------------------------------------------------------
 
 # fixing some hyperparams to sensible defaults
-num_batches = Task.get_num_batches(
-    batch_size=batch_size,
-    max_seq_len=max_seq_len,
-    vocab_size=vocab_size,
-    vocab_source=vocab_source,
-    device=device,
+train_docs_ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, "train")
+validation_docs_ds = load_delphi_dataset(
+    constants.TOKENIZED_CORPUS_DATASET, "validation"
 )
+
+train_ds = TokenizedDocumentDataset(train_docs_ds, max_seq_len)
+validation_ds = TokenizedDocumentDataset(validation_docs_ds, max_seq_len)
+
+num_batches = len(train_ds) // batch_size
+print(f"num_batches: {num_batches}")
 num_steps = num_batches // gradient_accumulation_steps
-eval_iters = Task.get_num_batches(
-    split="validation",
-    batch_size=batch_size,
-    max_seq_len=max_seq_len,
-    vocab_size=vocab_size,
-    vocab_source=vocab_source,
-    device=device,
-)
-eval_iters = min(12, eval_iters)
+eval_iters = min(12, len(validation_ds) // batch_size)
+
 lr_decay_iters = max_epochs * num_batches  # should be ~= max_iters per Chinchilla
 min_lr = 0.0  # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
@@ -122,13 +203,31 @@ ptdtype = {
 }[dtype]
 
 
+def batch_gen(
+    ds: Dataset,
+    batch_size: int,
+    device: str,
+    epoch: int,
+    seed: int,
+    num_workers: int = 0,
+):
+    # use epoch and seed in dataloader
+    dl = torch.utils.data.DataLoader(
+        ds,
+        batch_size=batch_size,
+        pin_memory=True,
+        num_workers=num_workers,
+    )
+    for x, y in dl:
+        x = x.to(device, non_blocking=True)
+        y = y.to(device, non_blocking=True)
+        yield x, y
+
+
 # task-specific setup
 iter_batches = partial(
-    Task.iter_batches,
+    batch_gen,
     batch_size=batch_size,
-    max_seq_len=max_seq_len,
-    vocab_size=vocab_size,
-    vocab_source=vocab_source,
     device=device,
     num_workers=0,
     seed=seed,
@@ -201,16 +300,16 @@ checkpoint = None  # free up memory
 
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()
-def estimate_loss():
+def estimate_loss(split_to_batch_iter):
     out = {}
     model.eval()
-    for split in ["train", "val"]:
-        batch_iter = iter_batches(split=split, epoch=epoch)
+    for split, batch_iter in split_to_batch_iter.items():
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(eval_iters):
             X, Y = next(batch_iter)
-            logits = model(X, Y)
-            loss = model.last_loss
+            # forward pass, which will also compute the loss
+            _logits = model(X, Y)
+            loss = cast(Tensor, model.last_loss)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -240,14 +339,22 @@ if wandb_log:
         entity=wandb_entity, project=wandb_project, name=wandb_run_name, config=config
     )
 
+
 # training loop
 t0 = time.time()
+
+
 local_iter_num = 0  # number of iterations in the lifetime of this process
 running_mfu = -1.0
 epoch = 0
 for epoch in range(max_epochs):
-    train_batch_iter = iter_batches(split="train", epoch=epoch)
-    X, Y = next(train_batch_iter)  # fetch the very first batch
+    train_docs_ds.shuffle(epoch)
+    validation_docs_ds.shuffle(epoch)
+    train_batch_iter = iter(DataLoader(train_docs_ds, batch_size=batch_size))  # type: ignore
+    val_batch_iter = iter(DataLoader(validation_docs_ds, batch_size=batch_size))  # type: ignore
+    # get the first batch
+    X, Y = next(train_batch_iter)
+
     for _ in tqdm(range(num_steps)):
         # determine and set the learning rate for this iteration
         lr = get_lr(iter_num) if decay_lr else learning_rate
@@ -256,7 +363,7 @@ for epoch in range(max_epochs):
 
         # evaluate the loss on train/val sets and write checkpoints
         if iter_num % eval_interval == 0:
-            losses = estimate_loss()
+            losses = estimate_loss({"train": train_batch_iter, "val": val_batch_iter})
             print(
                 f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
             )
@@ -327,5 +434,3 @@ for epoch in range(max_epochs):
             )
         iter_num += 1
         local_iter_num += 1
-
-i
