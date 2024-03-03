@@ -169,3 +169,6 @@ cython_debug/
 **/*.wandb
 **/wandb-summary.json
 **/wandb-metadata.json
+
+# scratch notebook
+notebooks/scratch.ipynb
