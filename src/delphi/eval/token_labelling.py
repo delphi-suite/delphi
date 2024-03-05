@@ -265,7 +265,7 @@ def label_tokens_from_tokenizer(
 
 def import_token_labels(path: str | Path):
     """
-    Imports token labels from a file. May be a .pkl or a .csv
+    Imports token labels from a *.csv file.
 
     Parameters
     ----------
@@ -281,28 +281,21 @@ def import_token_labels(path: str | Path):
         path = Path(path)
     # make sure the file_type is compatible
     file_type = path.suffix
-    assert file_type in [
-        ".csv",
-        ".pkl",
-    ], f"Invalid file type. Allowed: csv, pkl. Got: {file_type}"
+    assert (
+        file_type == ".csv"
+    ), f"Invalid file type. Allowed: csv, pkl. Got: {file_type}"
     # make sure file exists
     if not path.exists():
         raise FileNotFoundError(f"There is no file under {path}")
-    # load the file if CSV
-    if file_type == ".csv":
-        df = pd.read_csv(str(path))
-        categories = list(df.columns[1:])  # excluding first column: token_id
-        loaded_label_dict: dict[int, dict[str, bool]] = {}
-        # go through each row and construct the dict
-        for _, row in df.iterrows():
-            token_id = int(row["token_id"])
-            labels = {cat: bool(row[cat] == 1) for cat in categories}
-            loaded_label_dict[token_id] = labels
 
-    # load the file if a pickle
-    elif file_type == ".pkl":
-        with open(path, "rb") as f:
-            loaded_label_dict = pickle.load(f)
+    df = pd.read_csv(str(path))
+    categories = list(df.columns[1:])  # excluding first column: token_id
+    loaded_label_dict: dict[int, dict[str, bool]] = {}
+    # go through each row and construct the dict
+    for _, row in df.iterrows():
+        token_id = int(row["token_id"])
+        labels = {cat: bool(row[cat] == 1) for cat in categories}
+        loaded_label_dict[token_id] = labels
 
     return loaded_label_dict
 

@@ -160,9 +160,7 @@ def test_label_tokens_from_tokenizer():
 
 
 @pytest.mark.dependency(depends=["test_label_tokens_from_tokenizer"])
-@pytest.mark.parametrize(
-    "path", [Path("temp/token_labels.csv"), Path("temp/token_labels.pkl")]
-)
+@pytest.mark.parametrize("path", [Path("temp/token_labels.csv")])
 def test_import_token_labels(path: Path):
     global labelled_token_ids_dict
     assert (
@@ -174,14 +172,8 @@ def test_import_token_labels(path: Path):
     # create the path
     path.parent.mkdir(parents=True, exist_ok=True)
     # save the file
-    if path.suffix == ".pkl":
-        with open(path, "wb") as file:
-            pickle.dump(labelled_token_ids_dict, file)
-    elif path.suffix == ".csv":
-        df = tl.convert_label_dict_to_df(labelled_token_ids_dict)
-        df.to_csv(path, index=False)
-    else:
-        raise ValueError("The file ending is incorrect.")
+    df = tl.convert_label_dict_to_df(labelled_token_ids_dict)
+    df.to_csv(path, index=False)
 
     # load the file with our function to be tested
     loaded_dict = tl.import_token_labels(path)

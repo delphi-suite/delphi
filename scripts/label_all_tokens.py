@@ -37,13 +37,6 @@ def main():
     parser.add_argument(
         "--save-dir", type=str, help="Directory to save the results.", required=True
     )
-    parser.add_argument(
-        "--output-format",
-        type=str,
-        help="Format to save the results in. Options: csv, pkl. Default: csv.",
-        default="csv",
-        required=False,
-    )
     args = parser.parse_args()
 
     # Access command-line arguments
@@ -51,11 +44,6 @@ def main():
     save_dir = Path(args.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)  # create directory if it does not exist
     model_name = args.model_name
-    output_format = args.output_format
-    assert output_format in [
-        "csv",
-        "pkl",
-    ], f"Invalid output format. Allowed: csv, pkl. Got: {output_format}"
 
     print("\n", " LABEL ALL TOKENS ".center(50, "="), "\n")
     print(f"You chose the model: {model_name}\n")
@@ -85,48 +73,28 @@ def main():
     # ================ (2) =================
     print("(2) Label each token ...")
 
-    if output_format == "pkl":
-        # Save the labelled tokens to a file
-        filename = "labelled_token_ids.pkl"
-        filepath = save_dir / filename
-        with open(filepath, "wb") as f:
-            pickle.dump(labelled_token_ids_dict, f)
+    print("\nCreating the CSV ...")
 
-        print(f"Saved the labelled tokens to:\n\t{filepath}\n")
+    df = token_labelling.convert_label_dict_to_df(labelled_token_ids_dict)
 
-        # sanity check that The pickled and the original dict are the same
-        print("Sanity check ...", end="")
-        # load pickle
-        with open(filepath, "rb") as f:
-            pickled = pickle.load(f)
-        # compare
-        assert labelled_token_ids_dict == pickled
-        print(" completed.")
+    print("Sanity check pandas csv ...", end="")
+    # Perform sanity check, that the table was created correctly
+    for row_index, row_values in df.iterrows():
+        token_id = row_values.iloc[0]
+        label_pandas = list(
+            row_values.iloc[1:]
+        )  # we exclude the token_id from the colum
+        label_dict = list(labelled_token_ids_dict[token_id].values())[:]
+        assert (
+            label_pandas == label_dict
+        ), f"The dataframes are not equal for row {token_id}\n{label_pandas}\n{label_dict}"
+    print(" completed.")
 
-    # ----------- CSV ------------------------
-    if output_format == "csv":
-        print("\nCreating the CSV ...")
-
-        df = token_labelling.convert_label_dict_to_df(labelled_token_ids_dict)
-
-        print("Sanity check pandas csv ...", end="")
-        # Perform sanity check, that the table was created correctly
-        for row_index, row_values in df.iterrows():
-            token_id = row_values.iloc[0]
-            label_pandas = list(
-                row_values.iloc[1:]
-            )  # we exclude the token_id from the colum
-            label_dict = list(labelled_token_ids_dict[token_id].values())[:]
-            assert (
-                label_pandas == label_dict
-            ), f"The dataframes are not equal for row {token_id}\n{label_pandas}\n{label_dict}"
-        print(" completed.")
-
-        # save the dataframe to a csv
-        filename = "labelled_token_ids.csv"
-        filepath = save_dir / filename
-        df.to_csv(filepath, index=False)
-        print(f"Saved the labelled tokens as CSV to:\n\t{filepath}\n")
+    # save the dataframe to a csv
+    filename = "labelled_token_ids.csv"
+    filepath = save_dir / filename
+    df.to_csv(filepath, index=False)
+    print(f"Saved the labelled tokens as CSV to:\n\t{filepath}\n")
 
     print(" END ".center(50, "="))
 
