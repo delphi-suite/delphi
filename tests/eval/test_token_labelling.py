@@ -141,7 +141,6 @@ def is_valid_structure(obj: dict[int, dict[str, bool]]) -> bool:
     return True
 
 
-@pytest.mark.dependency()
 def test_label_tokens_from_tokenizer():
     """
     Simple test, checking if download of tokinzer and the labelling of all tokens in its vocabulary works.
@@ -159,16 +158,18 @@ def test_label_tokens_from_tokenizer():
     assert is_valid_structure(labelled_token_ids_dict) == True
 
 
-@pytest.mark.dependency(depends=["test_label_tokens_from_tokenizer"])
 @pytest.mark.parametrize("path", [Path("temp/token_labels.csv")])
 def test_import_token_labels(path: Path):
-    global labelled_token_ids_dict
-    assert (
-        labelled_token_ids_dict is not None
-    ), "It should be filled for the test to run. Check test-dependency."
-    assert (
-        labelled_token_ids_dict != {}
-    ), "It should be filled for the test to run. Check test-dependency."
+    """
+    Simple test, checking if the import of token labels works.
+
+    Note: Because we want to use pure pytest and not install any extra dependencies (e.g. pytest-depencency) we recreate the `labelled_tokens_dict` in this test as we did in `test_label_tokens_from_tokenizer`. This duplication is not ideal, but it is the best quick&dirty solution for now.
+    """
+    # create the labelled_token_ids_dict
+    model_name = "delphi-suite/delphi-llama2-100k"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    _, labelled_token_ids_dict = tl.label_tokens_from_tokenizer(tokenizer)
+
     # create the path
     path.parent.mkdir(parents=True, exist_ok=True)
     # save the file

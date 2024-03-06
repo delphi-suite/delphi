@@ -5,7 +5,6 @@ tqdm==4.66.1
 ipywidgets==8.1.1
 nbformat==5.9.2
 pytest==7.4.4
-pytest-dependency==0.6.0
 black==23.12.1
 jaxtyping==0.2.25
 beartype==0.16.4
