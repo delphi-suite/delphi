@@ -23,7 +23,13 @@ from tqdm import tqdm
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
 from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
-from delphi.train.utils import get_optimizer, initialize_model, resume_model
+from delphi.train.utils import (
+    estimate_loss,
+    get_lr,
+    get_optimizer,
+    initialize_model,
+    resume_model,
+)
 
 # -----------------------------------------------------------------------------
 # I/O
@@ -201,40 +207,6 @@ checkpoint = None  # free up memory
 # wrap model into DDP container
 
 
-# helps estimate an arbitrarily accurate loss over either split using many batches
-@torch.no_grad()
-def estimate_loss(split_to_ds):
-    out = {}
-    model.eval()
-    for split, ds in split_to_ds.items():
-        batch_iter = iter(DataLoader(ds, batch_size=batch_size))  # type: ignore
-        losses = torch.zeros(eval_iters)  # keep on CPU
-        for k in range(min(eval_iters, len(ds) // batch_size)):
-            X, Y = next(batch_iter)
-            # forward pass, which will also compute the loss
-            _logits = model(X, Y)
-            loss = cast(Tensor, model.last_loss)
-            losses[k] = loss.item()
-        out[split] = losses.mean()
-    model.train()
-    return out
-
-
-# learning rate decay scheduler (cosine with warmup)
-def get_lr(it):
-    # 1) linear warmup for warmup_iters steps
-    if it < warmup_iters:
-        return learning_rate * it / warmup_iters
-    # 2) if it > lr_decay_iters, return min learning rate
-    if it > lr_decay_iters:
-        return min_lr
-    # 3) in between, use cosine decay down to min learning rate
-    decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
-    assert 0 <= decay_ratio <= 1
-    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
-    return min_lr + coeff * (learning_rate - min_lr)
-
-
 # logging
 if wandb_log:
     import wandb
@@ -252,20 +224,29 @@ local_iter_num = 0  # number of iterations in the lifetime of this process
 running_mfu = -1.0
 epoch = 0
 for epoch in range(max_epochs):
+    train_ds.shuffle(epoch)
     train_batch_iter = iter(DataLoader(train_ds, batch_size=batch_size))  # type: ignore
-    # val_batch_iter = iter(DataLoader(validation_ds, batch_size=batch_size))  # type: ignore
     # get the first batch
     X, Y = next(train_batch_iter)
 
     for _ in tqdm(range(num_steps)):
         # determine and set the learning rate for this iteration
-        lr = get_lr(iter_num) if decay_lr else learning_rate
+        lr = (
+            get_lr(iter_num, warmup_iters, learning_rate, lr_decay_iters, min_lr)
+            if decay_lr
+            else learning_rate
+        )
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
         # evaluate the loss on train/val sets and write checkpoints
         if iter_num % eval_interval == 0:
-            losses = estimate_loss({"train": train_ds, "val": validation_ds})
+            losses = estimate_loss(
+                model=model,
+                eval_iters=eval_iters,
+                batch_size=batch_size,
+                split_to_ds={"train": train_ds, "val": validation_ds},
+            )
             print(
                 f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
             )
@@ -305,19 +286,16 @@ for epoch in range(max_epochs):
         # and using the GradScaler if data type is float16
         for micro_step in range(min(gradient_accumulation_steps, num_steps - iter_num)):
             logits = model(X, Y)
-            loss = model.last_loss
-            loss = loss / gradient_accumulation_steps
+            loss = model.last_loss / gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU
             X, Y = next(train_batch_iter)
             # backward pass, with gradient scaling if training in fp16
             loss.backward()
         # clip the gradient
         if grad_clip != 0.0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)  # type: ignore
         # step the optimizer and scaler if training in fp16
-
-        # wtf? this isn't a thing? commented out for now. -Jai
-        # optimizer.set()
+        optimizer.step()
 
         # flush the gradients as soon as we can, no need for this memory anymore
         optimizer.zero_grad(set_to_none=True)

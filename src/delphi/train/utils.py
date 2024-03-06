@@ -1,15 +1,15 @@
 import json
-import os
+import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import torch
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
 from torch import Tensor
 from torch.optim import AdamW
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 
 def load_config(config_path):
@@ -91,6 +91,7 @@ def estimate_loss(
     batch_size: int,
     split_to_ds: dict[str, Dataset],
 ) -> dict[str, float]:
+    """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
     model.eval()
     for split, ds in split_to_ds.items():
@@ -105,3 +106,17 @@ def estimate_loss(
         out[split] = losses.mean()
     model.train()
     return out
+
+
+def get_lr(it, warmup_iters, learning_rate, lr_decay_iters, min_lr):
+    # 1) linear warmup for warmup_iters steps
+    if it < warmup_iters:
+        return learning_rate * it / warmup_iters
+    # 2) if it > lr_decay_iters, return min learning rate
+    if it > lr_decay_iters:
+        return min_lr
+    # 3) in between, use cosine decay down to min learning rate
+    decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+    assert 0 <= decay_ratio <= 1
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
+    return min_lr + coeff * (learning_rate - min_lr)
