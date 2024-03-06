@@ -17,6 +17,16 @@ def load_config(config_path):
         return json.load(file)
 
 
+def get_device() -> str:
+    # cuda if available; else mps if apple silicon; else cpu
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
+
+
 @dataclass
 class ModelMidTrain:
     # hack for packing the values touched by resume_model in a single object

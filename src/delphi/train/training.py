@@ -4,17 +4,12 @@
 
 import os
 import time
-from contextlib import nullcontext
 from dataclasses import asdict
-from datetime import datetime
 from pathlib import Path
 
 import torch
-from llama2c import Task, model_export
-from llama2c.model import ModelArgs as Llama2ModelArgs
-from llama2c.model import Transformer as Llama2Model
-from torch import Tensor
-from torch.utils.data import DataLoader, Dataset
+from llama2c import model_export
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from delphi import constants
@@ -23,6 +18,7 @@ from delphi.train.gigaconfig import jai_config as config
 from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
 from delphi.train.utils import (
     estimate_loss,
+    get_device,
     get_lr,
     get_optimizer,
     initialize_model,
@@ -30,14 +26,8 @@ from delphi.train.utils import (
 )
 
 # system
-# TODO: when fixing all of this, also dynamically detect env
-# and set the device accordingly (e.g. cuda when available, mps on macbooks, cpu otherwise)
-device = (
-    # "cuda"  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
-    "mps"  # TODO: remove, this is for debugging on macbooks
-)
+device = get_device()
 dtype = "float32"  # float32|bfloat16|float16
-compile = False  # use PyTorch 2.0 to compile the model to be faster
 
 # -----------------------------------------------------------------------------
 
@@ -62,7 +52,9 @@ print(f"num_batches: {num_batches}")
 num_steps = num_batches // config.gradient_accumulation_steps
 config.eval_iters = min(12, len(validation_ds) // config.batch_size)
 
-lr_decay_iters = config.max_epochs * num_batches  # should be ~= max_iters per Chinchilla
+lr_decay_iters = (
+    config.max_epochs * num_batches
+)  # should be ~= max_iters per Chinchilla
 min_lr = 0.0  # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
 # validating checks
@@ -73,7 +65,9 @@ assert (
 
 # various inits, derived attributes, I/O setup
 seed = 1337
-tokens_per_iter = config.gradient_accumulation_steps * config.batch_size * config.max_seq_len
+tokens_per_iter = (
+    config.gradient_accumulation_steps * config.batch_size * config.max_seq_len
+)
 print(f"tokens per iteration will be: {tokens_per_iter:,}")
 print(
     f"breaks down as: {config.gradient_accumulation_steps} grad accum steps * {config.batch_size} batch size * {config.max_seq_len} max seq len"
@@ -166,7 +160,13 @@ for epoch in range(config.max_epochs):
     for _ in tqdm(range(num_steps)):
         # determine and set the learning rate for this iteration
         lr = (
-            get_lr(iter_num, config.warmup_iters, config.learning_rate, lr_decay_iters, min_lr)
+            get_lr(
+                iter_num,
+                config.warmup_iters,
+                config.learning_rate,
+                lr_decay_iters,
+                min_lr,
+            )
             if config.decay_lr
             else config.learning_rate
         )
@@ -220,17 +220,17 @@ for epoch in range(config.max_epochs):
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
-        for micro_step in range(min(config.gradient_accumulation_steps, num_steps - iter_num)):
+        for micro_step in range(
+            min(config.gradient_accumulation_steps, num_steps - iter_num)
+        ):
             logits = model(X, Y)
             loss = model.last_loss / config.gradient_accumulation_steps
             # immediately async prefetch next batch while model is doing the forward pass on the GPU
             X, Y = next(train_batch_iter)
-            # backward pass, with gradient scaling if training in fp16
             loss.backward()
         # clip the gradient
         if config.grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
-        # step the optimizer and scaler if training in fp16
         optimizer.step()
 
         # flush the gradients as soon as we can, no need for this memory anymore
@@ -244,7 +244,9 @@ for epoch in range(config.max_epochs):
             # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
             lossf = loss.item() * config.gradient_accumulation_steps
             if local_iter_num >= 5:  # let the training loop settle a bit
-                mfu = model.estimate_mfu(config.batch_size * config.gradient_accumulation_steps, dt)
+                mfu = model.estimate_mfu(
+                    config.batch_size * config.gradient_accumulation_steps, dt
+                )
                 running_mfu = (
                     mfu if running_mfu == -1.0 else 0.9 * running_mfu + 0.1 * mfu
                 )
