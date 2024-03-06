@@ -8,6 +8,7 @@ import time
 from contextlib import nullcontext
 from datetime import datetime
 from functools import partial
+from pathlib import Path
 from typing import cast
 
 import numpy as np
@@ -21,61 +22,8 @@ from tqdm import tqdm
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.shuffle import shuffle_list
-
-
-class TokenizedDocumentDataset(Dataset):
-    def __init__(self, tokenized_docs, max_seq_len):
-        self.tokenized_docs = tokenized_docs
-        self.doc_len = len(tokenized_docs[0]["tokens"])
-        self.max_len = max_seq_len
-        self._total_tokens = self.doc_len * len(self.tokenized_docs)
-        self.batched_tokens = (
-            torch.Tensor()
-        )  # will be initialized in initialize_samples
-
-    def initialize_samples(self):
-        # self.tokenized_docs is an (X, 1) tensor of dicts. Each entry is just {"tokens": [int]}
-        # where [int] is doc_len long
-        # we want to turn this into a (num_batches, max_len + 1) tensor of ints
-        # the +1 is for the last Y token prediction, and implies an overlap of 1 token between batches
-        # this is because each batch will be broken into X [:-1] and Y [1:]
-
-        tensor_tokens = torch.stack(
-            [torch.tensor(doc["tokens"]) for doc in self.tokenized_docs]
-        ).to(device)
-        self.batched_tokens = tensor_tokens.flatten().unfold(
-            0, self.max_len + 1, self.max_len
-        )
-        self.indices = self._default_indices()
-
-    def _default_indices(self):
-        return list(range(len(self.batched_tokens)))
-
-    def shuffle(self, epoch: int):
-        """this is inefficient, but tinyevals are tiny, so nbd probably"""
-        # reset for idempotent determinism
-        self.indices = self._default_indices()
-        shuffle_list(self.indices, seed=epoch)
-
-    def __len__(self):
-        return self._total_tokens // self.max_len
-
-    def get_sample_window(self, idx):
-        return self.batched_tokens[idx % len(self.batched_tokens), :]
-
-    def __getitem__(self, idx):
-        sample = self.get_sample_window(idx)
-        X = sample[:-1]
-        Y = sample[1:]
-        return X, Y
-
-    def __iter__(self):
-        while True:
-            for idx in self.indices:
-                X, Y = self[idx]
-                yield X, Y
-
+from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
+from delphi.train.utils import get_optimizer, initialize_model, resume_model
 
 # -----------------------------------------------------------------------------
 # I/O
@@ -156,7 +104,7 @@ config = {k: globals()[k] for k in config_keys}  # will be useful for logging
 
 # -----------------------------------------------------------------------------
 
-# fixing some hyperparams to sensible defaults
+# load data
 train_docs_ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, "train").select(
     range(256)
 )
@@ -164,11 +112,13 @@ validation_docs_ds = load_delphi_dataset(
     constants.TOKENIZED_CORPUS_DATASET, "validation"
 )
 
-train_ds = TokenizedDocumentDataset(train_docs_ds, max_seq_len)
-validation_ds = TokenizedDocumentDataset(validation_docs_ds, max_seq_len)
+train_ds = TokenizedChunksDataset(train_docs_ds, max_seq_len, device)
+validation_ds = TokenizedChunksDataset(validation_docs_ds, max_seq_len, device)
 
 train_ds.initialize_samples()
 validation_ds.initialize_samples()
+
+# fixing some hyperparams to sensible defaults
 
 num_batches = len(train_ds) // batch_size
 print(f"num_batches: {num_batches}")
@@ -222,48 +172,30 @@ model_args = dict(
 if init_from == "scratch":
     # init a new model from scratch
     print("Initializing a new model from scratch")
-    gptconf = Llama2ModelArgs(**model_args)
-    model = Llama2Model(gptconf)
+    model = initialize_model(**model_args)
+    checkpoint = None
 elif init_from == "resume":
     print(f"Resuming training from {out_dir}")
-    # resume training from a checkpoint.
-    ckpt_path = os.path.join(out_dir, "ckpt.pt")
-    checkpoint = torch.load(ckpt_path, map_location=device)
-    checkpoint_model_args = checkpoint["model_args"]
-    # force these config attributes to be equal otherwise we can't even resume training
-    # the rest of the attributes (e.g. dropout) can stay as desired from command line
-    for k in [
-        "dim",
-        "n_layers",
-        "n_heads",
-        "n_kv_heads",
-        "vocab_size",
-        "multiple_of",
-        "max_seq_len",
-    ]:
-        model_args[k] = checkpoint_model_args[k]
-    # create the model
-    gptconf = Llama2ModelArgs(**model_args)
-    model = Llama2Model(gptconf)
-    state_dict = checkpoint["model"]
-    # fix the keys of the state dictionary :(
-    # honestly no idea how checkpoints sometimes get this prefix, have to debug more
-    unwanted_prefix = "_orig_mod."
-    for k, v in list(state_dict.items()):
-        if k.startswith(unwanted_prefix):
-            state_dict[k[len(unwanted_prefix) :]] = state_dict.pop(k)
-    model.load_state_dict(state_dict)
-    iter_num = checkpoint["iter_num"]
-    best_val_loss = checkpoint["best_val_loss"]
+    model_mid_train = resume_model(Path(out_dir), device, **model_args)
+    model = model_mid_train.model
+    iter_num = model_mid_train.iter_num
+    best_val_loss = model_mid_train.best_val_loss
+    checkpoint = model_mid_train.checkpoint
 model.to(device)
 
 
 # optimizer
-optimizer = model.configure_optimizers(
-    weight_decay, learning_rate, (beta1, beta2), device_type
+optimizer = get_optimizer(
+    model=model,
+    weight_decay=weight_decay,
+    learning_rate=learning_rate,
+    beta_1=beta1,
+    beta_2=beta2,
+    device_type=device_type,
+    checkpoint=checkpoint
+    if checkpoint is not None and "optimizer" in checkpoint
+    else None,
 )
-if init_from == "resume" and "optimizer" in checkpoint:
-    optimizer.load_state_dict(checkpoint["optimizer"])
 checkpoint = None  # free up memory
 
 # wrap model into DDP container
