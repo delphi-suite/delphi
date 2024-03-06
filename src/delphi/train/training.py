@@ -12,12 +12,11 @@ from typing import cast
 
 import numpy as np
 import torch
-from datasets import Dataset
 from llama2c import Task, model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
 from torch import Tensor
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 from delphi import constants
@@ -26,11 +25,10 @@ from delphi.train.shuffle import shuffle_list
 
 
 class TokenizedDocumentDataset(Dataset):
-    def __init__(self, tokenized_docs, max_len):
+    def __init__(self, tokenized_docs, max_seq_len):
         self.tokenized_docs = tokenized_docs
         self.doc_len = len(tokenized_docs[0]["tokens"])
-        self.max_len = max_len
-        self.indices = self._default_indices()
+        self.max_len = max_seq_len
         self._total_tokens = self.doc_len * len(self.tokenized_docs)
         self.batched_tokens = (
             torch.Tensor()
@@ -43,20 +41,16 @@ class TokenizedDocumentDataset(Dataset):
         # the +1 is for the last Y token prediction, and implies an overlap of 1 token between batches
         # this is because each batch will be broken into X [:-1] and Y [1:]
 
-        num_tokens = self.doc_len * len(self.tokenized_docs)
-        num_batches = num_tokens // self.max_len
         tensor_tokens = torch.stack(
-            [
-                torch.tensor(doc["tokens"], dtype=torch.int16)
-                for doc in self.tokenized_docs
-            ]
-        )
+            [torch.tensor(doc["tokens"]) for doc in self.tokenized_docs]
+        ).to(device)
         self.batched_tokens = tensor_tokens.flatten().unfold(
             0, self.max_len + 1, self.max_len
         )
+        self.indices = self._default_indices()
 
     def _default_indices(self):
-        return list(range(len(self.tokenized_docs)))
+        return list(range(len(self.batched_tokens)))
 
     def shuffle(self, epoch: int):
         """this is inefficient, but tinyevals are tiny, so nbd probably"""
@@ -67,15 +61,17 @@ class TokenizedDocumentDataset(Dataset):
     def __len__(self):
         return self._total_tokens // self.max_len
 
+    def get_sample_window(self, idx):
+        return self.batched_tokens[idx % len(self.batched_tokens), :]
+
     def __getitem__(self, idx):
-        sample = self.batched_tokens[self.indices[idx], :]
+        sample = self.get_sample_window(idx)
         X = sample[:-1]
         Y = sample[1:]
-        return torch.tensor(X), torch.tensor(Y)
+        return X, Y
 
     def __iter__(self):
         while True:
-            # drop the last partial batch (last token doesn't have a Y token to predict)
             for idx in self.indices:
                 X, Y = self[idx]
                 yield X, Y
@@ -138,7 +134,7 @@ eval_iters = 10
 
 # system
 # TODO: when fixing all of this, also dynamically detect env
-# and set the device accordingly (e.g. mps on macbooks, cuda on linux)
+# and set the device accordingly (e.g. cuda when available, mps on macbooks, cpu otherwise)
 device = (
     # "cuda"  # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
     "mps"  # TODO: remove, this is for debugging on macbooks
@@ -151,22 +147,28 @@ config_keys = [
     for k, v in globals().items()
     if not k.startswith("_") and isinstance(v, (int, float, bool, str))
 ]
-exec(
-    open("./llama2c/configurator.py").read()
-)  # overrides from command line or config file
+# TODO: replace this with something sane
+# exec(
+#     open("./llama2c/configurator.py").read()
+# )  # overrides from command line or config file
 config = {k: globals()[k] for k in config_keys}  # will be useful for logging
 
 
 # -----------------------------------------------------------------------------
 
 # fixing some hyperparams to sensible defaults
-train_docs_ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, "train")
+train_docs_ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, "train").select(
+    range(256)
+)
 validation_docs_ds = load_delphi_dataset(
     constants.TOKENIZED_CORPUS_DATASET, "validation"
 )
 
 train_ds = TokenizedDocumentDataset(train_docs_ds, max_seq_len)
 validation_ds = TokenizedDocumentDataset(validation_docs_ds, max_seq_len)
+
+train_ds.initialize_samples()
+validation_ds.initialize_samples()
 
 num_batches = len(train_ds) // batch_size
 print(f"num_batches: {num_batches}")
@@ -201,37 +203,6 @@ ptdtype = {
     "bfloat16": torch.bfloat16,
     "float16": torch.float16,
 }[dtype]
-
-
-def batch_gen(
-    ds: Dataset,
-    batch_size: int,
-    device: str,
-    epoch: int,
-    seed: int,
-    num_workers: int = 0,
-):
-    # use epoch and seed in dataloader
-    dl = torch.utils.data.DataLoader(
-        ds,
-        batch_size=batch_size,
-        pin_memory=True,
-        num_workers=num_workers,
-    )
-    for x, y in dl:
-        x = x.to(device, non_blocking=True)
-        y = y.to(device, non_blocking=True)
-        yield x, y
-
-
-# task-specific setup
-iter_batches = partial(
-    batch_gen,
-    batch_size=batch_size,
-    device=device,
-    num_workers=0,
-    seed=seed,
-)
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
@@ -300,12 +271,13 @@ checkpoint = None  # free up memory
 
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()
-def estimate_loss(split_to_batch_iter):
+def estimate_loss(split_to_ds):
     out = {}
     model.eval()
-    for split, batch_iter in split_to_batch_iter.items():
+    for split, ds in split_to_ds.items():
+        batch_iter = iter(DataLoader(ds, batch_size=batch_size))  # type: ignore
         losses = torch.zeros(eval_iters)  # keep on CPU
-        for k in range(eval_iters):
+        for k in range(min(eval_iters, len(ds) // batch_size)):
             X, Y = next(batch_iter)
             # forward pass, which will also compute the loss
             _logits = model(X, Y)
@@ -348,10 +320,8 @@ local_iter_num = 0  # number of iterations in the lifetime of this process
 running_mfu = -1.0
 epoch = 0
 for epoch in range(max_epochs):
-    train_docs_ds.shuffle(epoch)
-    validation_docs_ds.shuffle(epoch)
-    train_batch_iter = iter(DataLoader(train_docs_ds, batch_size=batch_size))  # type: ignore
-    val_batch_iter = iter(DataLoader(validation_docs_ds, batch_size=batch_size))  # type: ignore
+    train_batch_iter = iter(DataLoader(train_ds, batch_size=batch_size))  # type: ignore
+    # val_batch_iter = iter(DataLoader(validation_ds, batch_size=batch_size))  # type: ignore
     # get the first batch
     X, Y = next(train_batch_iter)
 
@@ -363,7 +333,7 @@ for epoch in range(max_epochs):
 
         # evaluate the loss on train/val sets and write checkpoints
         if iter_num % eval_interval == 0:
-            losses = estimate_loss({"train": train_batch_iter, "val": val_batch_iter})
+            losses = estimate_loss({"train": train_ds, "val": validation_ds})
             print(
                 f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
             )
@@ -401,7 +371,7 @@ for epoch in range(max_epochs):
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
         # and using the GradScaler if data type is float16
-        for micro_step in range(gradient_accumulation_steps):
+        for micro_step in range(min(gradient_accumulation_steps, num_steps - iter_num)):
             logits = model(X, Y)
             loss = model.last_loss
             loss = loss / gradient_accumulation_steps
@@ -413,7 +383,10 @@ for epoch in range(max_epochs):
         if grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         # step the optimizer and scaler if training in fp16
-        optimizer.set()
+
+        # wtf? this isn't a thing? commented out for now. -Jai
+        # optimizer.set()
+
         # flush the gradients as soon as we can, no need for this memory anymore
         optimizer.zero_grad(set_to_none=True)
 
