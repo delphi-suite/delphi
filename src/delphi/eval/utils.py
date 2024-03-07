@@ -66,7 +66,7 @@ def get_next_and_top_k_probs(
     return next_probs, top_k
 
 
-def load_delphi_dataset(dataset_name: str, split: str) -> Dataset:
+def load_delphi_dataset(dataset_name: str, split: str, slice: str = "") -> Dataset:
     # check that split is either "train" or "validation"
     if split not in ["train", "validation"]:
         raise ValueError(f"Split must be either 'train' or 'validation', not {split}")
@@ -83,17 +83,17 @@ def load_delphi_dataset(dataset_name: str, split: str) -> Dataset:
         # In our case the data_files glob already specifies just the validation files, so we
         # shouldn't need to specify a split. But we do need to specify a split to get a dataset object,
         # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
-        split=f"train",
+        split=f"train{slice}",
     )
     return cast(Dataset, dataset)
 
 
-def load_validation_dataset(dataset_name: str) -> Dataset:
-    return load_delphi_dataset(dataset_name, "validation")
+def load_validation_dataset(dataset_name: str, slice: str = "") -> Dataset:
+    return load_delphi_dataset(dataset_name, "validation", slice)
 
 
-def load_train_dataset(dataset_name: str) -> Dataset:
-    return load_delphi_dataset(dataset_name, "train")
+def load_train_dataset(dataset_name: str, slice: str = "") -> Dataset:
+    return load_delphi_dataset(dataset_name, "train", slice)
 
 
 def tokenize(
