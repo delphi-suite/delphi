@@ -217,7 +217,7 @@ def train_step(
     # flush the gradients as soon as we can, no need for this memory anymore
     optimizer.zero_grad(set_to_none=True)
 
-    # timing and logging
+    # 4. log timing
     t1 = time.time()
     dt = t1 - t0
     t0 = t1
@@ -240,9 +240,6 @@ def train_step(
 for epoch in range(config.max_epochs):
     train_ds.shuffle(epoch)
     train_batch_iter = iter(DataLoader(train_ds, batch_size=config.batch_size))  # type: ignore
-    # get the first batch
-    X, Y = next(train_batch_iter)
-
     for _ in tqdm(range(num_steps)):
         breaknow, t0, iter_num, local_iter_num = train_step(
             train_ds,
