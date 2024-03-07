@@ -30,12 +30,9 @@ args_to_load_from_checkpoint = {
 
 def initialize_model(**model_args) -> torch.nn.Module:
     if model_args["architecture"] == ModelTypes.LLAMA2C:
-        llama_model_args = model_args.copy()
         # filter model_args for fields in Llama2ModelArgs
         llama2_arg_names = {f.name for f in fields(Llama2ModelArgs)}
-        llama2_args = {
-            k: v for k, v in llama_model_args.items() if k in llama2_arg_names
-        }
+        llama2_args = {k: v for k, v in model_args.items() if k in llama2_arg_names}
         return Llama2Model(Llama2ModelArgs(**llama2_args))
     else:
         raise NotImplementedError(
