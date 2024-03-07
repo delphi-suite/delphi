@@ -174,9 +174,14 @@ class EvalData:
 
 
 def save_checkpoint_if_needed(eval_data: EvalData):
+    # we save if it's not the first iter AND at least one of:
+    # 1) we have a new best validation loss
+    # 2) always_save_checkpoint is set
     if eval_data.iter_num == 0:
         return
-    if not (eval_data.new_best_val_loss or eval_data.config.always_save_checkpoint):
+    if (not eval_data.new_best_val_loss) and (
+        not eval_data.config.always_save_checkpoint
+    ):
         return
     checkpoint = {
         "model": eval_data.model.state_dict(),
