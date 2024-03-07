@@ -14,20 +14,22 @@ from tqdm import tqdm
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
+from delphi.train import wandb_utils
 from delphi.train.gigaconfig import jai_config as config
 from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
 from delphi.train.utils import (
+    EvalData,
     estimate_loss,
     get_device,
     get_lr,
     get_optimizer,
     initialize_model,
     resume_model,
+    save_checkpoint_if_needed,
 )
 
 # system
 device = get_device()
-dtype = "float32"  # float32|bfloat16|float16
 
 # -----------------------------------------------------------------------------
 
@@ -65,6 +67,7 @@ assert (
 
 # various inits, derived attributes, I/O setup
 seed = 1337
+
 tokens_per_iter = (
     config.gradient_accumulation_steps * config.batch_size * config.max_seq_len
 )
@@ -78,12 +81,6 @@ torch.manual_seed(seed)
 torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
 torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 device_type = "cuda" if "cuda" in device else "cpu"  # for later use in torch.autocast
-# note: float16 data type will automatically use a GradScaler
-ptdtype = {
-    "float32": torch.float32,
-    "bfloat16": torch.bfloat16,
-    "float16": torch.float16,
-}[dtype]
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
@@ -129,19 +126,13 @@ optimizer = get_optimizer(
 )
 checkpoint = None  # free up memory
 
-# wrap model into DDP container
 
+eval_callbacks = [save_checkpoint_if_needed]
 
 # logging
 if config.wandb_log:
-    import wandb
-
-    wandb.init(
-        entity=config.wandb_entity,
-        project=config.wandb_project,
-        name=config.wandb_run_name,
-        config=asdict(config),
-    )
+    wandb_utils.init_wandb(config)
+    eval_callbacks.append(wandb_utils.log_to_wandb)
 
 
 # training loop
@@ -151,6 +142,25 @@ t0 = time.time()
 local_iter_num = 0  # number of iterations in the lifetime of this process
 running_mfu = -1.0
 epoch = 0
+
+
+def set_lr(lr_decay_iters, min_lr, iter_num, optimizer):
+    lr = (
+        get_lr(
+            iter_num,
+            config.warmup_iters,
+            config.learning_rate,
+            lr_decay_iters,
+            min_lr,
+        )
+        if config.decay_lr
+        else config.learning_rate
+    )
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
+    return lr
+
+
 for epoch in range(config.max_epochs):
     train_ds.shuffle(epoch)
     train_batch_iter = iter(DataLoader(train_ds, batch_size=config.batch_size))  # type: ignore
@@ -158,22 +168,16 @@ for epoch in range(config.max_epochs):
     X, Y = next(train_batch_iter)
 
     for _ in tqdm(range(num_steps)):
-        # determine and set the learning rate for this iteration
-        lr = (
-            get_lr(
-                iter_num,
-                config.warmup_iters,
-                config.learning_rate,
-                lr_decay_iters,
-                min_lr,
-            )
-            if config.decay_lr
-            else config.learning_rate
-        )
-        for param_group in optimizer.param_groups:
-            param_group["lr"] = lr
+        # here's how each train step works:
+        # 1. Set learning rate
+        # 2. (every eval_interval steps) evaluate, log to wandb, save checkpoint
+        # 3. forward backward update
+        # 4. log timing
 
-        # evaluate the loss on train/val sets and write checkpoints
+        # 1. determine and set the learning rate for this iteration
+        lr = set_lr(lr_decay_iters, min_lr, iter_num, optimizer)
+
+        # 2. evaluate the loss on train/val sets and write checkpoints
         if iter_num % config.eval_interval == 0:
             losses = estimate_loss(
                 model=model,
@@ -181,45 +185,32 @@ for epoch in range(config.max_epochs):
                 batch_size=config.batch_size,
                 split_to_ds={"train": train_ds, "val": validation_ds},
             )
+            new_best_val_loss = False
+            if losses["val"] < best_val_loss or config.always_save_checkpoint:
+                best_val_loss = float(losses["val"])
+                new_best_val_loss = True
+            eval_data = EvalData(
+                iter_num=iter_num,
+                tokens_per_iter=tokens_per_iter,
+                running_mfu=running_mfu,
+                lr=lr,
+                losses=losses,
+                best_val_loss=best_val_loss,
+                new_best_val_loss=new_best_val_loss,
+                model=model,
+                model_args=model_args,
+                optimizer=optimizer,
+                config=config,
+            )
             print(
                 f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
             )
-            if config.wandb_log:
-                try:
-                    wandb.log(
-                        {
-                            "iter": iter_num,
-                            "tokens": iter_num * tokens_per_iter,
-                            "loss/train": losses["train"],
-                            "loss/val": losses["val"],
-                            "lr": lr,
-                            "mfu": running_mfu * 100,  # convert to percentage
-                        },
-                        step=iter_num,
-                    )
-                except Exception as e:
-                    print(f"logging to wandb failed: {e}")
-            if losses["val"] < best_val_loss or config.always_save_checkpoint:
-                best_val_loss = losses["val"]
-                if iter_num > 0:
-                    checkpoint = {
-                        "model": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                        "model_args": model_args,
-                        "iter_num": iter_num,
-                        "best_val_loss": best_val_loss,
-                        "config": config,
-                    }
-                    print(f"saving checkpoint to {config.out_dir}")
-                    torch.save(checkpoint, os.path.join(config.out_dir, "ckpt.pt"))
-                    model_export(
-                        model, os.path.join(config.out_dir, "model.bin"), version=0
-                    )
+            for callback in eval_callbacks:
+                callback(eval_data)
         if iter_num == 0 and config.eval_only:
             break
 
         # forward backward update, with optional gradient accumulation to simulate larger batch size
-        # and using the GradScaler if data type is float16
         for micro_step in range(
             min(config.gradient_accumulation_steps, num_steps - iter_num)
         ):
