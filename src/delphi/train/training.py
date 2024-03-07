@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from delphi.train import wandb_utils
-from delphi.train.gigaconfig import assert_config_sanity
 from delphi.train.gigaconfig import jai_config as config
 from delphi.train.iteration_params import set_iteration_params
 from delphi.train.train_step import train_step
@@ -16,9 +15,6 @@ from delphi.train.utils import (
     load_model_training_state,
     save_checkpoint_if_needed,
 )
-
-# validating checks
-assert_config_sanity(config)
 
 # system
 device = get_device()
@@ -40,42 +36,25 @@ torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
 # model init
 model_training_state = load_model_training_state(config, device)
-iter_num = model_training_state.iter_num
-best_val_loss = model_training_state.best_val_loss
-model = model_training_state.model
-optimizer = model_training_state.optimizer
-model_args = model_training_state.model_args
 
-
+# setup eval callbacks
 eval_callbacks = [save_checkpoint_if_needed]
 if config.wandb_log:
     wandb_utils.init_wandb(config)
     eval_callbacks.append(wandb_utils.log_to_wandb)
 
 
-local_iter_num = 0  # number of iterations in the lifetime of this process
-running_mfu = -1.0
-
 # training loop
-t0 = time.time()
-
 for epoch in range(config.max_epochs):
     train_ds.shuffle(epoch)
     train_batch_iter = iter(DataLoader(train_ds, batch_size=config.batch_size))  # type: ignore
     for _ in tqdm(range(iteration_params.num_steps)):
-        breaknow, t0, iter_num, local_iter_num, best_val_loss, running_mfu = train_step(
+        breaknow = train_step(
+            model_training_state,
             train_ds,
             validation_ds,
             iteration_params,
-            iter_num,
-            best_val_loss,
-            model_args,
-            model,
-            optimizer,
             eval_callbacks,
-            running_mfu,
-            t0,
-            local_iter_num,
             config,
             train_batch_iter,
         )

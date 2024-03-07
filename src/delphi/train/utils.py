@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -111,7 +112,12 @@ def get_lr(it, warmup_iters, learning_rate, lr_decay_iters, min_lr):
     return min_lr + coeff * (learning_rate - min_lr)
 
 
-def set_lr(lr_decay_iters: int, config: GigaConfig, optimizer: AdamW, iter_num: int):
+def set_lr(
+    lr_decay_iters: int,
+    config: GigaConfig,
+    optimizer: torch.optim.Optimizer,
+    iter_num: int,
+):
     lr = (
         get_lr(
             iter_num,
@@ -175,14 +181,20 @@ def save_checkpoint_if_needed(eval_data: EvalData):
 class ModelTrainingState:
     model: torch.nn.Module
     optimizer: torch.optim.Optimizer
-    iter_num: int
-    best_val_loss: float
     model_args: Any
+    iter_num: int
+    local_iter_num: int
+    best_val_loss: float
+    running_mfu: float
+    t0: float
 
 
 def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingState:
     iter_num = 0
+    local_iter_num = 0
     best_val_loss = 1e9
+    running_mfu = -1.0
+    t0 = time.time()
     model_args = dict(
         architecture=config.architecture,
         dim=config.dim,
@@ -217,7 +229,16 @@ def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingS
         else None,
     )
     checkpoint = None  # free up memory
-    return ModelTrainingState(model, optimizer, iter_num, best_val_loss, model_args)
+    return ModelTrainingState(
+        model=model,
+        optimizer=optimizer,
+        model_args=model_args,
+        iter_num=iter_num,
+        local_iter_num=local_iter_num,
+        best_val_loss=best_val_loss,
+        running_mfu=running_mfu,
+        t0=t0,
+    )
 
 
 def load_delphi_training_dataset(split: str, max_seq_len: int, device, limit: int = -1):

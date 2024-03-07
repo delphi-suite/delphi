@@ -37,9 +37,6 @@ class GigaConfig:
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
     )
     max_seq_len: int = 256
-    vocab_source: str = (
-        "llama2"  # llama2|custom; use Lllama 2 vocab from Meta, or custom trained
-    )
     vocab_size: int = 32000  # the Llama 2 tokenizer has 32K tokens
     # model
     dim: int = 288
@@ -67,7 +64,6 @@ class GigaConfig:
 # Jai Overrides TODO: remove these
 jai_config = GigaConfig(
     wandb_entity="jaiwithani",
-    vocab_source="custom",
     vocab_size=4096,
     max_seq_len=512,
     dim=48,
@@ -78,10 +74,3 @@ jai_config = GigaConfig(
     eval_interval=500,
     eval_iters=10,
 )
-
-
-def assert_config_sanity(config: GigaConfig):
-    assert config.vocab_source in ["llama2", "custom"]
-    assert (
-        config.vocab_source == "custom" or config.vocab_size == 32000
-    ), "The vocab from Meta has 32K tokens"
