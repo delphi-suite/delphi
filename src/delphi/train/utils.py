@@ -1,15 +1,19 @@
 import json
 import math
-from dataclasses import dataclass
+import os
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, cast
 
 import torch
+from llama2c import model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
 from torch import Tensor
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, Dataset
+
+from delphi.train.gigaconfig import GigaConfig
 
 
 def load_config(config_path):
@@ -130,3 +134,39 @@ def get_lr(it, warmup_iters, learning_rate, lr_decay_iters, min_lr):
     assert 0 <= decay_ratio <= 1
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
     return min_lr + coeff * (learning_rate - min_lr)
+
+
+@dataclass
+class EvalData:
+    # values we expose to eval callback functions
+    iter_num: int
+    tokens_per_iter: int
+    running_mfu: float
+    lr: float
+    losses: dict[str, float]
+    best_val_loss: float
+    new_best_val_loss: bool
+    model: torch.nn.Module
+    model_args: Any
+    optimizer: torch.optim.Optimizer
+    config: GigaConfig
+
+
+def save_checkpoint_if_needed(eval_data: EvalData):
+    if eval_data.iter_num == 0:
+        return
+    if not (eval_data.new_best_val_loss or eval_data.config.always_save_checkpoint):
+        return
+    checkpoint = {
+        "model": eval_data.model.state_dict(),
+        "optimizer": eval_data.optimizer.state_dict(),
+        "model_args": eval_data.model_args,
+        "iter_num": eval_data.iter_num,
+        "best_val_loss": eval_data.best_val_loss,
+        "config": asdict(eval_data.config),
+    }
+    print(f"saving checkpoint to {eval_data.config.out_dir}")
+    torch.save(checkpoint, os.path.join(eval_data.config.out_dir, "ckpt.pt"))
+    model_export(
+        eval_data.model, os.path.join(eval_data.config.out_dir, "model.bin"), version=0
+    )
