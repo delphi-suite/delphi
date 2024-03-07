@@ -4,6 +4,11 @@ from datetime import datetime
 
 @dataclass
 class GigaConfig:
+    """This is a terrible hack to get usable config objects to pass around
+    It's way too big and ties way too many things together. This should be broken
+    into several smaller configs.
+    """
+
     # I/O
     out_dir: str = "out"
     eval_interval: int = 2000
