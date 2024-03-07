@@ -24,6 +24,7 @@ args_to_load_from_checkpoint = {
     ModelTypes.MAMBA: [
         "n_layers",
         "model_dim",
+        "vocab_size",
     ],
 }
 
