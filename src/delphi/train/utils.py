@@ -83,15 +83,16 @@ def resume_model(resume_from_path: Path, device: str, **model_args) -> ModelMidT
 
 def get_optimizer(
     model: Llama2Model,
-    weight_decay,
-    learning_rate,
-    beta_1,
-    beta_2,
-    device_type,
+    config: GigaConfig,
+    device: str,
     checkpoint=None,
 ) -> AdamW:
+    device_type = "cuda" if "cuda" in device else "cpu"
     optimizer = model.configure_optimizers(
-        weight_decay, learning_rate, (beta_1, beta_2), device_type
+        config.weight_decay,
+        config.learning_rate,
+        (config.beta1, config.beta2),
+        device_type,
     )
     if checkpoint is not None:
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -134,6 +135,23 @@ def get_lr(it, warmup_iters, learning_rate, lr_decay_iters, min_lr):
     assert 0 <= decay_ratio <= 1
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
     return min_lr + coeff * (learning_rate - min_lr)
+
+
+def set_lr(lr_decay_iters: int, config: GigaConfig, optimizer: AdamW, iter_num: int):
+    lr = (
+        get_lr(
+            iter_num,
+            config.warmup_iters,
+            config.learning_rate,
+            lr_decay_iters,
+            config.min_lr,
+        )
+        if config.decay_lr
+        else config.learning_rate
+    )
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
+    return lr
 
 
 @dataclass

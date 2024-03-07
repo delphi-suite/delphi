@@ -46,6 +46,7 @@ class GigaConfig:
     # learning rate decay settings
     decay_lr: bool = True  # whether to decay the learning rate
     warmup_iters: int = 1000  # how many steps to warm up for
+    min_lr: float = 0.0  # should be ~learning_rate/10 per Chinchill
 
 
 # Jai Overrides TODO: remove these
