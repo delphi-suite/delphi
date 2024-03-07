@@ -34,7 +34,6 @@ config.eval_iters = min(12, len(validation_ds) // config.batch_size)
 lr_decay_iters = (
     config.max_epochs * num_batches
 )  # should be ~= max_iters per Chinchilla
-min_lr = 0.0  # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 
 # validating checks
 assert config.vocab_source in ["llama2", "custom"]
