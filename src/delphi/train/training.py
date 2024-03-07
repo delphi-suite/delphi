@@ -31,6 +31,7 @@ validation_ds = load_delphi_training_dataset("validation", config.max_seq_len, d
 iteration_params = set_iteration_params(config, train_ds, validation_ds)
 
 
+# setup
 os.makedirs(config.out_dir, exist_ok=True)
 torch.manual_seed(config.seed)
 torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
@@ -62,7 +63,7 @@ for epoch in range(config.max_epochs):
     train_ds.shuffle(epoch)
     train_batch_iter = iter(DataLoader(train_ds, batch_size=config.batch_size))  # type: ignore
     for _ in tqdm(range(iteration_params.num_steps)):
-        breaknow, t0, iter_num, local_iter_num, best_val_loss = train_step(
+        breaknow, t0, iter_num, local_iter_num, best_val_loss, running_mfu = train_step(
             train_ds,
             validation_ds,
             iteration_params,
