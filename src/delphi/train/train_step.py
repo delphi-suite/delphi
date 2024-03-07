@@ -41,7 +41,7 @@ def train_step(
             split_to_ds={"train": train_ds, "val": validation_ds},
         )
         new_best_val_loss = False
-        if losses["val"] < best_val_loss or config.always_save_checkpoint:
+        if losses["val"] < best_val_loss:
             best_val_loss = float(losses["val"])
             new_best_val_loss = True
         eval_data = EvalData(
