@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from delphi.train.architectures import ModelTypes
+
 
 @dataclass
 class GigaConfig:
@@ -8,6 +10,9 @@ class GigaConfig:
     It's way too big and ties way too many things together. This should be broken
     into several smaller configs.
     """
+
+    # model architecture
+    architecture = ModelTypes.LLAMA2C
 
     # I/O
     out_dir: str = "out"
