@@ -38,6 +38,6 @@ jobs:
       - name: black
         run: black --check .
       - name: isort
-        run: isort --check .
+        run: isort --profile black --check .
       - name: pytest
         run: pytest
