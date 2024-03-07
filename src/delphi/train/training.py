@@ -65,8 +65,7 @@ for epoch in range(config.max_epochs):
         breaknow, t0, iter_num, local_iter_num, best_val_loss = train_step(
             train_ds,
             validation_ds,
-            iteration_params.lr_decay_iters,
-            iteration_params.tokens_per_iter,
+            iteration_params,
             iter_num,
             best_val_loss,
             model_args,
@@ -78,8 +77,6 @@ for epoch in range(config.max_epochs):
             local_iter_num,
             config,
             train_batch_iter,
-            iteration_params.num_steps,
-            iteration_params.eval_iters,
         )
         if breaknow:
             break
