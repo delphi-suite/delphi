@@ -1,10 +1,5 @@
-"""
-
-"""
-
 import os
 import time
-from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
@@ -18,9 +13,8 @@ from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
 from delphi.train.train_step import train_step
 from delphi.train.utils import (
     get_device,
-    get_optimizer,
-    initialize_model,
-    resume_model,
+    load_dataset,
+    load_model_training_state,
     save_checkpoint_if_needed,
 )
 
@@ -28,21 +22,10 @@ from delphi.train.utils import (
 device = get_device()
 
 
-def load_dataset(split: str, device, limit: int = -1):
-    if limit == -1:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split)
-    else:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split).select(
-            range(limit)
-        )
-    token_ds = TokenizedChunksDataset(ds, config.max_seq_len, device)
-    token_ds.initialize_samples()
-    return token_ds
-
-
 # load data
-train_ds = load_dataset("train", device, limit=256)
-validation_ds = load_dataset("validation", device)
+
+train_ds = load_dataset("train", config.max_seq_len, device, limit=256)
+validation_ds = load_dataset("validation", config.max_seq_len, device)
 
 # fixing some hyperparams to sensible defaults
 
@@ -79,46 +62,16 @@ torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
 torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 device_type = "cuda" if "cuda" in device else "cpu"  # for later use in torch.autocast
 
+
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
-iter_num = 0
-best_val_loss = 1e9
 
 # model init
-model_args = dict(
-    dim=config.dim,
-    n_layers=config.n_layers,
-    n_heads=config.n_heads,
-    n_kv_heads=config.n_kv_heads,
-    vocab_size=config.vocab_size,
-    multiple_of=config.multiple_of,
-    max_seq_len=config.max_seq_len,
-    dropout=config.dropout,
-)  # start with model_args from command line
-if config.init_from == "scratch":
-    # init a new model from scratch
-    print("Initializing a new model from scratch")
-    model = initialize_model(**model_args)
-    checkpoint = None
-elif config.init_from == "resume":
-    print(f"Resuming training from {config.out_dir}")
-    model_mid_train = resume_model(Path(config.out_dir), device, **model_args)
-    model = model_mid_train.model
-    iter_num = model_mid_train.iter_num
-    best_val_loss = model_mid_train.best_val_loss
-    checkpoint = model_mid_train.checkpoint
-model.to(device)
-
-
-# optimizer
-optimizer = get_optimizer(
-    model=model,
-    config=config,
-    device=device,
-    checkpoint=checkpoint
-    if checkpoint is not None and "optimizer" in checkpoint
-    else None,
-)
-checkpoint = None  # free up memory
+model_training_state = load_model_training_state(config, device)
+iter_num = model_training_state.iter_num
+best_val_loss = model_training_state.best_val_loss
+model = model_training_state.model
+optimizer = model_training_state.optimizer
+model_args = model_training_state.model_args
 
 
 eval_callbacks = [save_checkpoint_if_needed]

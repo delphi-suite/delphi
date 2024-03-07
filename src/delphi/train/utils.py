@@ -13,7 +13,10 @@ from torch import Tensor
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, Dataset
 
+from delphi import constants
+from delphi.eval.utils import load_delphi_dataset
 from delphi.train.gigaconfig import GigaConfig
+from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
 
 
 def load_config(config_path):
@@ -188,3 +191,63 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     model_export(
         eval_data.model, os.path.join(eval_data.config.out_dir, "model.bin"), version=0
     )
+
+
+@dataclass
+class ModelTrainingState:
+    model: torch.nn.Module
+    optimizer: torch.optim.Optimizer
+    iter_num: int
+    best_val_loss: float
+    model_args: Any
+
+
+def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingState:
+    iter_num = 0
+    best_val_loss = 1e9
+    model_args = dict(
+        dim=config.dim,
+        n_layers=config.n_layers,
+        n_heads=config.n_heads,
+        n_kv_heads=config.n_kv_heads,
+        vocab_size=config.vocab_size,
+        multiple_of=config.multiple_of,
+        max_seq_len=config.max_seq_len,
+        dropout=config.dropout,
+    )  # start with model_args from command line
+    if config.init_from == "scratch":
+        # init a new model from scratch
+        print("Initializing a new model from scratch")
+        model = initialize_model(**model_args)
+        checkpoint = None
+    elif config.init_from == "resume":
+        print(f"Resuming training from {config.out_dir}")
+        model_mid_train = resume_model(Path(config.out_dir), device, **model_args)
+        model = model_mid_train.model
+        iter_num = model_mid_train.iter_num
+        best_val_loss = model_mid_train.best_val_loss
+        checkpoint = model_mid_train.checkpoint
+    model.to(device)
+    # optimizer
+    optimizer = get_optimizer(
+        model=model,
+        config=config,
+        device=device,
+        checkpoint=checkpoint
+        if checkpoint is not None and "optimizer" in checkpoint
+        else None,
+    )
+    checkpoint = None  # free up memory
+    return ModelTrainingState(model, optimizer, iter_num, best_val_loss, model_args)
+
+
+def load_dataset(split: str, max_seq_len: int, device, limit: int = -1):
+    if limit == -1:
+        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split)
+    else:
+        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split).select(
+            range(limit)
+        )
+    token_ds = TokenizedChunksDataset(ds, max_seq_len, device)
+    token_ds.initialize_samples()
+    return token_ds
