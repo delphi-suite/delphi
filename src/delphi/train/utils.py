@@ -246,7 +246,11 @@ def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingS
     return ModelTrainingState(model, optimizer, iter_num, best_val_loss, model_args)
 
 
-def load_dataset(split: str, max_seq_len: int, device, limit: int = -1):
+def load_delphi_training_dataset(split: str, max_seq_len: int, device, limit: int = -1):
+    """For training, we want (X, Y) pairs, where X is a chunk of text and Y is the next token.)
+    To construct this, we take the original tokenized dataset, break it into max_seq_len+1 length chunks,
+    and then take [:-1] as X and [1:] as Y.
+    """
     if limit == -1:
         ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split)
     else:

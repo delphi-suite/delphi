@@ -52,6 +52,8 @@ class GigaConfig:
     decay_lr: bool = True  # whether to decay the learning rate
     warmup_iters: int = 1000  # how many steps to warm up for
     min_lr: float = 0.0  # should be ~learning_rate/10 per Chinchill
+    # reproducibility
+    seed = 1337
 
 
 # Jai Overrides TODO: remove these
@@ -68,3 +70,10 @@ jai_config = GigaConfig(
     eval_interval=500,
     eval_iters=10,
 )
+
+
+def assert_config_sanity(config: GigaConfig):
+    assert config.vocab_source in ["llama2", "custom"]
+    assert (
+        config.vocab_source == "custom" or config.vocab_size == 32000
+    ), "The vocab from Meta has 32K tokens"
