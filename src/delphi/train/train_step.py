@@ -22,6 +22,7 @@ def train_step(
     config,
     train_batch_iter,
     num_steps,
+    eval_iters,
 ):
     # here's how each train step works:
     # 1. Set learning rate
@@ -36,7 +37,7 @@ def train_step(
     if iter_num % config.eval_interval == 0:
         losses = estimate_loss(
             model=model,
-            eval_iters=config.eval_iters,
+            eval_iters=eval_iters,
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
         )
