@@ -13,6 +13,7 @@ def init_wandb(config: GigaConfig):
         config=asdict(config),
     )
 
+
 def log_to_wandb(eval_data: EvalData):
     try:
         wandb.log(
