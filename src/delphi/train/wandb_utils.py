@@ -1,6 +1,5 @@
 from dataclasses import asdict
 
-import torch
 import wandb
 
 from delphi.train.gigaconfig import GigaConfig
