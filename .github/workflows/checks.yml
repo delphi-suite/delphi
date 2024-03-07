@@ -40,6 +40,6 @@ jobs:
       - name: isort_version_check
         run: isort --version
       - name: isort
-        run: isort --profile black --check .
+        run: isort --check .
       - name: pytest
         run: pytest
