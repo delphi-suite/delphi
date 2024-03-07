@@ -1,6 +1,8 @@
 from dataclasses import asdict
 
+import torch
 import wandb
+
 from delphi.train.gigaconfig import GigaConfig
 from delphi.train.utils import EvalData
 
