@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from beartype import beartype
+
 from delphi.train.architectures import ModelTypes
 
 
+@beartype
 @dataclass
 class GigaConfig:
     """This is a terrible hack to get usable config objects to pass around
