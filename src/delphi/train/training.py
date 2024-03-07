@@ -194,7 +194,7 @@ def train_step(
             callback(eval_data)
 
     if iter_num == 0 and config.eval_only:
-        return True, None, None, None
+        return True, None, None, None, None
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
     X, Y = next(train_batch_iter)
