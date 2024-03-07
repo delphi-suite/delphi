@@ -37,8 +37,8 @@ jobs:
           pip install -e .
       - name: black
         run: black --check .
-      - name: isort_version_check
-        run: isort --version
+      - name: isort_diff
+        run: isort --check . --diff
       - name: isort
         run: isort --check .
       - name: pytest
