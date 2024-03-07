@@ -234,14 +234,14 @@ def train_step(
         )
     iter_num += 1
     local_iter_num += 1
-    return False, t0, iter_num, local_iter_num
+    return False, t0, iter_num, local_iter_num, best_val_loss
 
 
 for epoch in range(config.max_epochs):
     train_ds.shuffle(epoch)
     train_batch_iter = iter(DataLoader(train_ds, batch_size=config.batch_size))  # type: ignore
     for _ in tqdm(range(num_steps)):
-        breaknow, t0, iter_num, local_iter_num = train_step(
+        breaknow, t0, iter_num, local_iter_num, best_val_loss = train_step(
             train_ds,
             validation_ds,
             lr_decay_iters,
