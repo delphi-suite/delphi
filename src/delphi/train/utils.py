@@ -12,12 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.architectures import (
-    ModelTypes,
-    export_model,
-    initialize_model,
-    load_model,
-)
+from delphi.train.architectures import export_model, initialize_model, load_model
 from delphi.train.gigaconfig import GigaConfig
 from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
 
