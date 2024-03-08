@@ -47,10 +47,12 @@ def main():
         config = copy.copy(debug_config)
     else:
         config = GigaConfig()
+    # config file overrides default values
     if args.config_file is not None:
         with open(args.config_file, "r") as f:
             config_dict = json.load(f)
         update_config(config, config_dict)
+    # specific arguments override everything else
     update_config(config, vars(args))
 
     # run training
