@@ -23,6 +23,8 @@ def load_config(config_path):
         return json.load(file)
 
 
+# TODO: make this configurable. Set from config if available
+# def get_device() -> torch.device
 def get_device() -> str:
     # cuda if available; else mps if apple silicon; else cpu
     if torch.cuda.is_available():
@@ -211,6 +213,7 @@ def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingS
         print("Initializing a new model from scratch")
         model = initialize_model(**model_args)
         checkpoint = None
+    # TODO: resume from huggingface model
     elif config.init_from == "resume":
         print(f"Resuming training from {config.out_dir}")
         model_mid_train = resume_model(Path(config.out_dir), device, **model_args)

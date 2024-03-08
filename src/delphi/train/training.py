@@ -72,7 +72,3 @@ def run_training(config: GigaConfig):
             )
             if breaknow:
                 break
-
-
-if __name__ == "__main__":
-    run_training(debug_config)

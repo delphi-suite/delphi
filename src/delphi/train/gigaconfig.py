@@ -36,6 +36,7 @@ class GigaConfig:
     batch_size: int = (
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
     )
+    # TODO: delete this, use doc size always
     max_seq_len: int = 256
     vocab_size: int = 32000  # the Llama 2 tokenizer has 32K tokens
     # model
@@ -59,6 +60,7 @@ class GigaConfig:
     min_lr: float = 0.0  # should be ~learning_rate/10 per Chinchill
     # reproducibility
     seed = 1337
+    # TODO: seeds for batch ordering and weight initialization
     # debugging
     train_sample_limit: int = -1  # -1 implies no limit
     val_sample_limit: int = -1

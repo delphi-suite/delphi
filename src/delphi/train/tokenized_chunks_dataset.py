@@ -8,9 +8,7 @@ class TokenizedChunksDataset(Dataset):
     def __init__(self, tokenized_docs, max_seq_len, device):
         self.device = device
         self.tokenized_docs = tokenized_docs
-        self.doc_len = len(tokenized_docs[0]["tokens"])
         self.max_len = max_seq_len
-        self._total_tokens = self.doc_len * len(self.tokenized_docs)
         self.batched_tokens = (
             torch.Tensor()
         )  # will be initialized in initialize_samples
@@ -39,7 +37,7 @@ class TokenizedChunksDataset(Dataset):
         shuffle_list(self.indices, seed=epoch)
 
     def __len__(self):
-        return self._total_tokens // self.max_len
+        return len(self.batched_tokens)
 
     def get_sample_window(self, idx):
         return self.batched_tokens[idx % len(self.batched_tokens), :]
