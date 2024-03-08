@@ -172,3 +172,6 @@ cython_debug/
 
 # scratch notebook
 notebooks/scratch.ipynb
+
+# dsstore
+.DS_Store
