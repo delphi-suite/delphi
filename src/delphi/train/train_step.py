@@ -55,7 +55,6 @@ def train_step(
         if losses["val"] < model_training_state.best_val_loss:
             model_training_state.best_val_loss = float(losses["val"])
             new_best_val_loss = True
-        # TODO: refactor EvalData to use ModelTrainingState
         eval_data = EvalData(
             tokens_per_iter=iteration_params.tokens_per_iter,
             losses=losses,
