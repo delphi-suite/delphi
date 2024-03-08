@@ -5,7 +5,10 @@ from llama2c import model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
 
-from delphi.train.mamba import Mamba, MambaArgs
+try:
+    from delphi.train.mamba import Mamba, MambaArgs
+except Exception as e:
+    print("no mamba for you")
 
 
 class ModelTypes:

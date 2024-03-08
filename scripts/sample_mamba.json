@@ -4,7 +4,7 @@
     "log_interval": 1,
     "eval_iters": 10,
     "eval_only": false,
-    "architecture": "ModelTypes.MAMBA",
+    "architecture": "mamba",
     "always_save_checkpoint": false,
     "init_from": "scratch",
     "wandb_log": true,
