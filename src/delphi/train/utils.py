@@ -60,31 +60,6 @@ def get_device(device_str: str = "auto") -> torch.device:
     return torch.device(device_str)
 
 
-@dataclass
-class ModelMidTrain:
-    # hack for packing the values touched by resume_model in a single object
-    model: torch.nn.Module
-    iter_num: int
-    best_val_loss: float
-    checkpoint: Any
-
-
-def resume_model(
-    resume_from_path: Path, device: torch.device, **model_args
-) -> ModelMidTrain:
-    ckpt_path = resume_from_path / "ckpt.pt"
-    checkpoint = torch.load(ckpt_path, map_location=device)
-    model = load_model(model_args, checkpoint)
-    iter_num = checkpoint["iter_num"]
-    best_val_loss = checkpoint["best_val_loss"]
-    return ModelMidTrain(
-        model=model,
-        iter_num=iter_num,
-        best_val_loss=best_val_loss,
-        checkpoint=checkpoint,
-    )
-
-
 def get_optimizer(
     model: torch.nn.Module,
     config: GigaConfig,
@@ -219,11 +194,10 @@ def load_model_training_state(
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
         print(f"Resuming training from {config.out_dir}")
-        model_mid_train = resume_model(Path(config.out_dir), device, **model_args)
-        model = model_mid_train.model
-        iter_num = model_mid_train.iter_num
-        best_val_loss = model_mid_train.best_val_loss
-        checkpoint = model_mid_train.checkpoint
+        checkpoint = torch.load(Path(config.out_dir) / "ckpt.pt", map_location=device)
+        model = load_model(model_args, checkpoint)
+        iter_num = checkpoint["iter_num"]
+        best_val_loss = checkpoint["best_val_loss"]
     model.to(device)
     # optimizer
     optimizer = get_optimizer(
