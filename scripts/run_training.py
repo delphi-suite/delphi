@@ -39,6 +39,7 @@ def main():
     )
     args = parser.parse_args()
 
+    # setup config
     if args.debug:
         config = copy.copy(debug_config)
     else:
@@ -48,6 +49,8 @@ def main():
         with open(args.config_file, "r") as f:
             config_dict = json.load(f)
         update_config(config, config_dict)
+
+    # run training
     run_training(config)
 
 
