@@ -2,7 +2,13 @@ import time
 
 import torch
 
-from delphi.train.utils import EvalData, ModelTrainingState, estimate_loss, set_lr
+from delphi.train.utils import (
+    EvalData,
+    ModelTrainingState,
+    estimate_loss,
+    get_next_xy,
+    set_lr,
+)
 
 
 def train_step(
@@ -13,6 +19,7 @@ def train_step(
     eval_callbacks,
     config,
     train_batch_iter,
+    device: torch.device,
 ) -> bool:
     """
     Runs a training step, updating (mutating in place) model_training_state
@@ -43,6 +50,7 @@ def train_step(
             eval_iters=iteration_params.eval_iters,
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
+            device=device,
         )
         new_best_val_loss = False
         if losses["val"] < model_training_state.best_val_loss:
@@ -72,7 +80,7 @@ def train_step(
         return True
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
-    X, Y = next(train_batch_iter)
+    X, Y = get_next_xy(train_batch_iter, device)
     print(
         f"gradient accumulation steps: {config.gradient_accumulation_steps}, "
         f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
@@ -86,7 +94,7 @@ def train_step(
         logits = model(X, Y)
         loss = model.last_loss / config.gradient_accumulation_steps
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
-        X, Y = next(train_batch_iter)
+        X, Y = get_next_xy(train_batch_iter, device)
         loss.backward()
     # clip the gradient
     if config.grad_clip != 0.0:

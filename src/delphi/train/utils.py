@@ -15,7 +15,6 @@ from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
 from delphi.train.architectures import export_model, initialize_model, load_model
 from delphi.train.gigaconfig import GigaConfig
-from delphi.train.tokenized_chunks_dataset import TokenizedChunksDataset
 
 
 def load_config(config_path):
@@ -87,6 +86,7 @@ def estimate_loss(
     eval_iters: int,
     batch_size: int,
     split_to_ds: dict[str, Dataset],
+    device: torch.device,
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
@@ -95,7 +95,7 @@ def estimate_loss(
         batch_iter = iter(DataLoader(ds, batch_size=batch_size))  # type: ignore
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
-            X, Y = next(batch_iter)
+            X, Y = get_next_xy(batch_iter, device)
             # forward pass, which will also compute the loss
             _logits = model(X, Y)
             loss = cast(Tensor, model.last_loss)
@@ -251,9 +251,7 @@ def load_model_training_state(
     )
 
 
-def load_delphi_training_dataset(
-    split: str, max_seq_len: int, device: torch.device, limit: int = -1
-):
+def load_delphi_training_dataset(split: str, limit: int = -1):
     """For training, we want (X, Y) pairs, where X is a chunk of text and Y is the next token.)
     To construct this, we take the original tokenized dataset, break it into max_seq_len+1 length chunks,
     and then take [:-1] as X and [1:] as Y.
@@ -264,6 +262,13 @@ def load_delphi_training_dataset(
         ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split).select(
             range(limit)
         )
-    token_ds = TokenizedChunksDataset(ds, max_seq_len, device)
-    token_ds.initialize_samples()
-    return token_ds
+    ds.set_format("torch")
+    return ds
+
+
+def get_next_xy(train_batch_iter, device):
+    data = cast(torch.Tensor, next(train_batch_iter)["tokens"].to(device))
+    # X and Y NEED to be contigious. llama2c's implementation involves
+    # calling .view on them, which breaks if they're not contigious
+    X, Y = data[:, :-1].contiguous(), data[:, 1:].contiguous()
+    return X, Y

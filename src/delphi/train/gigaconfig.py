@@ -39,8 +39,7 @@ class GigaConfig:
     batch_size: int = (
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
     )
-    # TODO: delete this, use doc size always
-    max_seq_len: int = 256
+    max_seq_len: int = 512
     vocab_size: int = 32000  # the Llama 2 tokenizer has 32K tokens
     # model
     dim: int = 288
