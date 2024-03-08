@@ -77,12 +77,7 @@ def train_step(
         f"gradient accumulation steps: {config.gradient_accumulation_steps}, "
         f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
     )
-    for micro_step in range(
-        min(
-            config.gradient_accumulation_steps,
-            iteration_params.num_steps - model_training_state.iter_num + 1,
-        )
-    ):
+    for micro_step in range(config.gradient_accumulation_steps):
         logits = model(X, Y)
         loss = model.last_loss / config.gradient_accumulation_steps
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
