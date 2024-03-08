@@ -59,10 +59,13 @@ class GigaConfig:
     min_lr: float = 0.0  # should be ~learning_rate/10 per Chinchill
     # reproducibility
     seed = 1337
+    # debugging
+    train_sample_limit: int = -1  # -1 implies no limit
+    val_sample_limit: int = -1
 
 
 # Jai Overrides TODO: remove these
-jai_config = GigaConfig(
+debug_config = GigaConfig(
     wandb_entity="jaiwithani",
     vocab_size=4096,
     max_seq_len=512,
@@ -73,4 +76,5 @@ jai_config = GigaConfig(
     max_epochs=2,
     eval_interval=500,
     eval_iters=10,
+    train_sample_limit=256,
 )
