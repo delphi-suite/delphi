@@ -30,3 +30,7 @@ class Mamba(MambaLMHeadModel):
         )
 
         return logits
+
+    def estimate_mfu(self, fwdbwd_per_iter, dt):
+        """I don't want to implement this"""
+        return 0

@@ -5,6 +5,8 @@ from llama2c import model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2Model
 
+from delphi.train.mamba import Mamba, MambaArgs
+
 
 class ModelTypes:
     LLAMA2C = "llama2c"
@@ -35,6 +37,12 @@ def initialize_model(**model_args) -> torch.nn.Module:
         llama2_arg_names = {f.name for f in fields(Llama2ModelArgs)}
         llama2_args = {k: v for k, v in model_args.items() if k in llama2_arg_names}
         return Llama2Model(Llama2ModelArgs(**llama2_args))
+    elif model_args["architecture"] == ModelTypes.MAMBA:
+        config = MambaArgs()
+        config.d_model = model_args["model_dim"]
+        config.vocab_size = model_args["vocab_size"]
+        config.n_layer = model_args["n_layers"]
+        return Mamba(config)
     else:
         raise NotImplementedError(
             f"Architecture {model_args['architecture']} not yet implemented"
@@ -59,8 +67,16 @@ def load_model(model_args, checkpoint) -> torch.nn.Module:
                 state_dict[k[len(unwanted_prefix) :]] = state_dict.pop(k)
         model.load_state_dict(state_dict)
         return model
-    else:
-        raise NotImplementedError(f"Architecture {arch} not yet implemented")
+    if arch == ModelTypes.MAMBA:
+        config = MambaArgs()
+        config.d_model = model_args["model_dim"]
+        config.vocab_size = model_args["vocab_size"]
+        config.n_layer = model_args["n_layers"]
+        state_dict = checkpoint["model"]
+        model = MambaArgs(config)
+        model.load_state_dict(state_dict)
+        return model
+    raise NotImplementedError(f"Architecture {arch} not yet implemented")
 
 
 def export_model(model, model_architecture, output_path):
