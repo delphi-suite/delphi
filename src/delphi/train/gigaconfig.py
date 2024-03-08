@@ -14,6 +14,9 @@ class GigaConfig:
     into several smaller configs.
     """
 
+    # device
+    device = "auto"
+
     # model architecture
     architecture = ModelTypes.LLAMA2C
 

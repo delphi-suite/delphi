@@ -23,16 +23,19 @@ def load_config(config_path):
         return json.load(file)
 
 
-# TODO: make this configurable. Set from config if available
-# def get_device() -> torch.device
-def get_device() -> str:
+def get_device(device_str: str = "auto") -> torch.device:
+    """
+    Get torch device specified by device_str. May pass "auto" to set torch device automatically.
+    """
     # cuda if available; else mps if apple silicon; else cpu
-    if torch.cuda.is_available():
-        return "cuda"
-    elif torch.backends.mps.is_available():
-        return "mps"
-    else:
-        return "cpu"
+    if device_str == "auto":
+        if torch.cuda.is_available():
+            device_str = "cuda"
+        elif torch.backends.mps.is_available():
+            device_str = "mps"
+        else:
+            device_str = "cpu"
+    return torch.device(device_str)
 
 
 @dataclass
@@ -44,7 +47,9 @@ class ModelMidTrain:
     checkpoint: Any
 
 
-def resume_model(resume_from_path: Path, device: str, **model_args) -> ModelMidTrain:
+def resume_model(
+    resume_from_path: Path, device: torch.device, **model_args
+) -> ModelMidTrain:
     ckpt_path = resume_from_path / "ckpt.pt"
     checkpoint = torch.load(ckpt_path, map_location=device)
     model = load_model(model_args, checkpoint)
@@ -61,10 +66,10 @@ def resume_model(resume_from_path: Path, device: str, **model_args) -> ModelMidT
 def get_optimizer(
     model: torch.nn.Module,
     config: GigaConfig,
-    device: str,
+    device: torch.device,
     checkpoint=None,
 ) -> AdamW:
-    device_type = "cuda" if "cuda" in device else "cpu"
+    device_type = device.type
     optimizer = model.configure_optimizers(
         config.weight_decay,
         config.learning_rate,
@@ -191,7 +196,9 @@ class ModelTrainingState:
     t0: float
 
 
-def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingState:
+def load_model_training_state(
+    config: GigaConfig, device: torch.device
+) -> ModelTrainingState:
     iter_num = 0
     local_iter_num = 0
     best_val_loss = 1e9
@@ -244,7 +251,9 @@ def load_model_training_state(config: GigaConfig, device: str) -> ModelTrainingS
     )
 
 
-def load_delphi_training_dataset(split: str, max_seq_len: int, device, limit: int = -1):
+def load_delphi_training_dataset(
+    split: str, max_seq_len: int, device: torch.device, limit: int = -1
+):
     """For training, we want (X, Y) pairs, where X is a chunk of text and Y is the next token.)
     To construct this, we take the original tokenized dataset, break it into max_seq_len+1 length chunks,
     and then take [:-1] as X and [1:] as Y.

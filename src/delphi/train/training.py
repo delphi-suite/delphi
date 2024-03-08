@@ -25,7 +25,7 @@ def run_training(config: GigaConfig):
     for field in fields(config):
         print(f"  {field.name}: {getattr(config, field.name)}")
     # system
-    device = get_device()
+    device = get_device(config.device)
 
     # load data
     print("Loading data...")
