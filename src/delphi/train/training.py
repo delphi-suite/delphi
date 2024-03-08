@@ -1,5 +1,6 @@
 import os
 import time
+from dataclasses import fields
 
 import torch
 from torch.utils.data import DataLoader
@@ -18,6 +19,11 @@ from delphi.train.utils import (
 
 
 def run_training(config: GigaConfig):
+    print("Starting training...")
+    print()
+    print("Config:")
+    for field in fields(config):
+        print(f"  {field.name}: {getattr(config, field.name)}")
     # system
     device = get_device()
 
