@@ -17,6 +17,29 @@ from delphi.train.architectures import export_model, initialize_model, load_mode
 from delphi.train.gigaconfig import GigaConfig
 
 
+@dataclass
+class ModelTrainingState:
+    model: torch.nn.Module
+    optimizer: torch.optim.Optimizer
+    model_args: Any
+    iter_num: int
+    local_iter_num: int
+    best_val_loss: float
+    running_mfu: float
+    t0: float
+    lr: float = 1.0e-5
+
+
+@dataclass
+class EvalData:
+    # values we expose to eval callback functions
+    tokens_per_iter: int
+    losses: dict[str, float]
+    new_best_val_loss: bool
+    config: GigaConfig
+    model_training_state: ModelTrainingState
+
+
 def load_config(config_path):
     with open(config_path, "r") as file:
         return json.load(file)
@@ -141,59 +164,32 @@ def set_lr(
     return lr
 
 
-@dataclass
-class EvalData:
-    # values we expose to eval callback functions
-    iter_num: int
-    tokens_per_iter: int
-    running_mfu: float
-    lr: float
-    losses: dict[str, float]
-    best_val_loss: float
-    new_best_val_loss: bool
-    model: torch.nn.Module
-    model_args: Any
-    optimizer: torch.optim.Optimizer
-    config: GigaConfig
-
-
 def save_checkpoint_if_needed(eval_data: EvalData):
+    mts = eval_data.model_training_state
     # we save if it's not the first iter AND at least one of:
     # 1) we have a new best validation loss
     # 2) always_save_checkpoint is set
-    if eval_data.iter_num == 0:
+    if mts.iter_num == 0:
         return
     if (not eval_data.new_best_val_loss) and (
         not eval_data.config.always_save_checkpoint
     ):
         return
     checkpoint = {
-        "model": eval_data.model.state_dict(),
-        "optimizer": eval_data.optimizer.state_dict(),
-        "model_args": eval_data.model_args,
-        "iter_num": eval_data.iter_num,
-        "best_val_loss": eval_data.best_val_loss,
+        "model": mts.model.state_dict(),
+        "optimizer": mts.optimizer.state_dict(),
+        "model_args": mts.model_args,
+        "iter_num": mts.iter_num,
+        "best_val_loss": mts.best_val_loss,
         "config": asdict(eval_data.config),
     }
     print(f"saving checkpoint to {eval_data.config.out_dir}")
     torch.save(checkpoint, os.path.join(eval_data.config.out_dir, "ckpt.pt"))
     export_model(
-        eval_data.model,
-        eval_data.model_args["architecture"],
+        mts.model,
+        mts.model_args["architecture"],
         os.path.join(eval_data.config.out_dir, "model.bin"),
     )
-
-
-@dataclass
-class ModelTrainingState:
-    model: torch.nn.Module
-    optimizer: torch.optim.Optimizer
-    model_args: Any
-    iter_num: int
-    local_iter_num: int
-    best_val_loss: float
-    running_mfu: float
-    t0: float
 
 
 def load_model_training_state(

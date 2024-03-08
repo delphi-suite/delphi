@@ -68,7 +68,6 @@ class GigaConfig:
     val_sample_limit: int = -1
 
 
-# Jai Overrides TODO: remove these
 debug_config = GigaConfig(
     wandb_entity="jaiwithani",
     vocab_size=4096,

@@ -16,17 +16,18 @@ def init_wandb(config: GigaConfig):
 
 
 def log_to_wandb(eval_data: EvalData):
+    mts = eval_data.model_training_state
     try:
         wandb.log(
             {
-                "iter": eval_data.iter_num,
-                "tokens": eval_data.iter_num * eval_data.tokens_per_iter,
+                "iter": mts.iter_num,
+                "tokens": mts.iter_num * eval_data.tokens_per_iter,
                 "loss/train": eval_data.losses["train"],
                 "loss/val": eval_data.losses["val"],
-                "lr": eval_data.lr,
-                "mfu": eval_data.running_mfu * 100,  # convert to percentage
+                "lr": mts.lr,
+                "mfu": mts.running_mfu * 100,  # convert to percentage
             },
-            step=eval_data.iter_num,
+            step=mts.iter_num,
         )
     except Exception as e:
         print(f"logging to wandb failed: {e}")

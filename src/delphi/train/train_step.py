@@ -35,8 +35,7 @@ def train_step(
     # 4. log timing
 
     # 1. determine and set the learning rate for this iteration
-    # TODO: move lr to ModelTrainingState
-    lr = set_lr(
+    model_training_state.lr = set_lr(
         iteration_params.lr_decay_iters,
         config,
         optimizer,
@@ -58,17 +57,11 @@ def train_step(
             new_best_val_loss = True
         # TODO: refactor EvalData to use ModelTrainingState
         eval_data = EvalData(
-            iter_num=model_training_state.iter_num,
             tokens_per_iter=iteration_params.tokens_per_iter,
-            running_mfu=model_training_state.running_mfu,
-            lr=lr,
             losses=losses,
-            best_val_loss=model_training_state.best_val_loss,
             new_best_val_loss=new_best_val_loss,
-            model=model,
-            model_args=model_training_state.model_args,
-            optimizer=optimizer,
             config=config,
+            model_training_state=model_training_state,
         )
         print(
             f"step {model_training_state.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
@@ -124,7 +117,7 @@ def train_step(
             )
         print(
             (
-                f"{model_training_state.iter_num} | loss {lossf:.4f} | lr {lr:e} | "
+                f"{model_training_state.iter_num} | loss {lossf:.4f} | lr {model_training_state.lr:e} | "
                 f"{dt*1000:.2f}ms | mfu {model_training_state.running_mfu*100:.2f}%"
             )
         )
