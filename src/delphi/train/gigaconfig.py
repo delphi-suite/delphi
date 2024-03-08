@@ -61,8 +61,8 @@ class GigaConfig:
     warmup_iters: int = 1000  # how many steps to warm up for
     min_lr: float = 0.0  # should be ~learning_rate/10 per Chinchill
     # reproducibility
-    seed = 1337
-    # TODO: seeds for batch ordering and weight initialization
+    batch_ordering_seed = 1337
+    torch_seed = 42
     # debugging
     train_sample_limit: int = -1  # -1 implies no limit
     val_sample_limit: int = -1

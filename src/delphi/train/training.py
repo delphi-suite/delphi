@@ -42,7 +42,7 @@ def run_training(config: GigaConfig):
     # setup
     print("Setting up...")
     os.makedirs(config.out_dir, exist_ok=True)
-    torch.manual_seed(config.seed)
+    torch.manual_seed(config.torch_seed)
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
@@ -58,7 +58,9 @@ def run_training(config: GigaConfig):
     # training loop
     print("Starting training...")
     for epoch in range(config.max_epochs):
-        sampler = shuffle_list(list(range(len(train_ds))), seed=config.seed + epoch)
+        sampler = shuffle_list(
+            list(range(len(train_ds))), seed=config.batch_ordering_seed + epoch
+        )
         train_batch_iter = iter(DataLoader(train_ds, batch_size=config.batch_size, sampler=sampler))  # type: ignore
         for _ in tqdm(range(iteration_params.num_steps)):
             breaknow = train_step(
