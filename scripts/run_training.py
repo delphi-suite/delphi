@@ -12,7 +12,7 @@ from delphi.train.training import run_training
 
 def main():
     # Setup argparse
-    parser = argparse.ArgumentParser(description="Tokenization and labeling utility.")
+    parser = argparse.ArgumentParser(description="Train a delphi model")
     config_arg_group = parser.add_argument_group("Config arguments")
     for field in fields(GigaConfig):
         config_arg_group.add_argument(
