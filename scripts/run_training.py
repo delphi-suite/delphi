@@ -27,13 +27,16 @@ def main():
         )
     parser.add_argument(
         "--config_file",
-        help="Path to a json file containing config values (see sample_config.json).",
+        help=(
+            "Path to a json file containing config values (see sample_config.json). "
+            "Specific values can be overridden with --arguments."
+        ),
         required=False,
         type=str,
     )
     parser.add_argument(
         "--debug",
-        help="Use debug config values (can still override with other arguments)",
+        help="Use debug config values. Overridden by config file values and --arguments.",
         required=False,
         action="store_true",
     )
@@ -44,11 +47,11 @@ def main():
         config = copy.copy(debug_config)
     else:
         config = GigaConfig()
-    update_config(config, vars(args))
     if args.config_file is not None:
         with open(args.config_file, "r") as f:
             config_dict = json.load(f)
         update_config(config, config_dict)
+    update_config(config, vars(args))
 
     # run training
     run_training(config)
