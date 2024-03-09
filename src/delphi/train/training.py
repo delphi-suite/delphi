@@ -3,7 +3,10 @@ from dataclasses import fields
 from typing import cast
 
 import torch
-from torch.utils.data import DataLoader, Dataset
+from datasets import Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data.dataloader import _BaseDataLoaderIter
 from tqdm import tqdm
 
 from delphi.train import wandb_utils
@@ -61,19 +64,21 @@ def run_training(config: GigaConfig):
     # training loop
     print("Starting training...")
     for epoch in range(config.max_epochs):
-        sampler = shuffle_list(
-            list(range(len(train_ds))), seed=config.batch_ordering_seed + epoch  # type: ignore
+        sampler = list(range(len(train_ds)))  # type: ignore
+        shuffle_list(sampler, seed=config.batch_ordering_seed + epoch)
+        train_batch_iter = cast(
+            _BaseDataLoaderIter,
+            iter(
+                DataLoader(
+                    cast(TorchDataset, train_ds),
+                    batch_size=config.batch_size,
+                    sampler=sampler,
+                    pin_memory=True,
+                    drop_last=True,
+                )
+            ),
         )
-        train_batch_iter = iter(
-            DataLoader(
-                train_ds,
-                batch_size=config.batch_size,
-                sampler=sampler,
-                pin_memory=True,
-                drop_last=True,
-            )
-        )
-        for _ in tqdm(range(iteration_params.num_steps)):
+        for i, _ in enumerate(tqdm(range(iteration_params.num_steps))):
             breaknow = train_step(
                 model_training_state,
                 train_ds,

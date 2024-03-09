@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Any, cast
 
 import torch
+from datasets import Dataset
 from torch import Tensor
 from torch.optim import AdamW
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
@@ -185,6 +186,7 @@ def load_model_training_state(
         multiple_of=config.multiple_of,
         max_seq_len=config.max_seq_len,
         dropout=config.dropout,
+        llama2hf_config=config.llama2hf_config,
     )  # start with model_args from command line
     if config.init_from == "scratch":
         # init a new model from scratch
@@ -236,7 +238,16 @@ def load_delphi_training_dataset(split: str, limit: int = -1):
     return ds
 
 
-def get_next_xy(train_batch_iter, device):
+from typing import Generator
+
+from torch.utils.data.dataloader import _BaseDataLoaderIter
+
+
+def get_next_xy(
+    train_batch_iter: _BaseDataLoaderIter,
+    device: torch.device
+    # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
+):
     data = cast(torch.Tensor, next(train_batch_iter)["tokens"].to(device))
     # X and Y NEED to be contigious. llama2c's implementation involves
     # calling .view on them, which breaks if they're not contigious
