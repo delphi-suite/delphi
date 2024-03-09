@@ -9,6 +9,16 @@ from delphi.train.training import run_training
 
 
 def update_config(config: GigaConfig, new_vals: dict[str, Any]):
+    for key, val in new_vals.items():
+        if val is None:
+            continue
+        # support x.y.z = val
+        keys = key.split(".")
+        cur = config
+        while len(keys) > 1:
+            cur = getattr(cur, keys.pop(0))
+        setattr(cur, keys[0], val)
+
     for field in fields(config):
         if new_vals.get(field.name) is not None:
             setattr(config, field.name, new_vals[field.name])
@@ -40,6 +50,7 @@ def main():
         required=False,
         action="store_true",
     )
+    # TODO: add presets as static json files and make accessible
     args = parser.parse_args()
 
     # setup config
