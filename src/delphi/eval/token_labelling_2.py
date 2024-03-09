@@ -2,6 +2,7 @@
 import pickle
 from typing import Callable, Optional
 
+import pandas as pd
 import spacy
 from datasets import load_dataset
 from spacy.tokens import Doc, Token
@@ -167,3 +168,22 @@ def label_batch_sentences(
             print("\n")
 
     return labelled_sentences
+
+
+# %%
+
+filename = "labelled_token_ids_dict.pkl"
+filepath = STATIC_ASSETS_DIR.joinpath(filename)
+with open(f"{filepath}", "rb") as f:
+    label_dict = pickle.load(f)
+
+df = pd.DataFrame.from_dict(label_dict, orient="index")
+
+# Reset the index to get the ID column
+df.reset_index(inplace=True)
+df.rename(columns={"index": "ID"}, inplace=True)
+
+# Save to CSV
+df.to_csv("token_labels.csv", index=False)
+
+# %%
