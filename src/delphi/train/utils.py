@@ -14,7 +14,13 @@ from torch.utils.data import DataLoader
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.architectures import export_model, initialize_model, load_model
+from delphi.train.architectures import (
+    ModelTypes,
+    export_model,
+    get_loss,
+    initialize_model,
+    load_model,
+)
 from delphi.train.gigaconfig import GigaConfig
 
 
@@ -68,12 +74,20 @@ def get_optimizer(
     checkpoint=None,
 ) -> AdamW:
     device_type = device.type
-    optimizer = model.configure_optimizers(
-        config.weight_decay,
-        config.learning_rate,
-        (config.beta1, config.beta2),
-        device_type,
-    )
+    if config.architecture == ModelTypes.LLAMA2C:
+        optimizer = model.configure_optimizers(
+            config.weight_decay,
+            config.learning_rate,
+            (config.beta1, config.beta2),
+            device_type,
+        )
+    else:
+        optimizer = AdamW(
+            lr=config.learning_rate,
+            params=model.parameters(),
+            weight_decay=config.weight_decay,
+            betas=(config.beta1, config.beta2),
+        )
     if checkpoint is not None:
         optimizer.load_state_dict(checkpoint["optimizer"])
     return optimizer
@@ -86,6 +100,7 @@ def estimate_loss(
     batch_size: int,
     split_to_ds: dict[str, Dataset],
     device: torch.device,
+    model_arch: str,
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
@@ -95,9 +110,7 @@ def estimate_loss(
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
             X, Y = get_next_xy(batch_iter, device)
-            # forward pass, which will also compute the loss
-            _logits = model(X, Y)
-            loss = cast(Tensor, model.last_loss)
+            loss = get_loss(model, model_arch, X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -191,7 +204,7 @@ def load_model_training_state(
     if config.init_from == "scratch":
         # init a new model from scratch
         print("Initializing a new model from scratch")
-        model = initialize_model(**model_args)
+        model = initialize_model(config)
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":

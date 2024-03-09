@@ -1,4 +1,4 @@
-from dataclasses import fields
+from dataclasses import asdict, fields
 from typing import cast
 
 import torch
@@ -6,7 +6,7 @@ from llama2c import model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2cModel
 from transformers import LlamaConfig as LlamaConfigHF
-from transformers import LlamaModel as LlamaModelHF
+from transformers import LlamaForCausalLM as LlamaModelHF
 
 from delphi.train.llama2_config_data import Llama2ConfigData
 
@@ -36,24 +36,23 @@ args_to_load_from_checkpoint = {
 }
 
 
-def initialize_model(**model_args) -> torch.nn.Module:
-    if model_args["architecture"] == ModelTypes.LLAMA2C:
+# TODO: fix this once LLAMA2C is deprecated
+def initialize_model(config) -> torch.nn.Module:
+    arch = config.architecture
+    if arch == ModelTypes.LLAMA2C:
         # filter model_args for fields in Llama2ModelArgs
         llama2_arg_names = {f.name for f in fields(Llama2ModelArgs)}
-        llama2_args = {k: v for k, v in model_args.items() if k in llama2_arg_names}
-        return Llama2cModel(Llama2ModelArgs(**llama2_args))
-    elif model_args["architecture"] == ModelTypes.LLAMA2HF:
-        # initialize huggingface llama2 model
+        llama2_args = {k: v for k, v in asdict(config).items() if k in llama2_arg_names}
+        return Llama2cModel(Llama2ModelArgs(**llama2_args))  # type: ignore
+    elif arch == ModelTypes.LLAMA2HF:
         return LlamaModelHF(
             cast(
                 LlamaConfigHF,
-                LlamaConfigHF.from_dict(model_args["llama2hf_config"].to_dict()),
+                LlamaConfigHF.from_dict(asdict(config.llama2hf_config)),
             )
         )
     else:
-        raise NotImplementedError(
-            f"Architecture {model_args['architecture']} not yet implemented"
-        )
+        raise NotImplementedError(f"Architecture {arch} not yet implemented")
 
 
 def load_model(model_args, checkpoint) -> torch.nn.Module:
@@ -65,17 +64,13 @@ def load_model(model_args, checkpoint) -> torch.nn.Module:
         # create the model
         gptconf = Llama2ModelArgs(**model_args)
         model = Llama2cModel(gptconf)
-        state_dict = checkpoint["model"]
-        # fix the keys of the state dictionary :(
-        # honestly no idea how checkpoints sometimes get this prefix, have to debug more
-        unwanted_prefix = "_orig_mod."
-        for k, v in list(state_dict.items()):
-            if k.startswith(unwanted_prefix):
-                state_dict[k[len(unwanted_prefix) :]] = state_dict.pop(k)
-        model.load_state_dict(state_dict)
-        return model
+    elif arch == ModelTypes.LLAMA2HF:
+        model = initialize_model(**model_args)
     else:
         raise NotImplementedError(f"Architecture {arch} not yet implemented")
+    state_dict = checkpoint["model"]
+    model.load_state_dict(state_dict)
+    return model
 
 
 def export_model(model, model_architecture, output_path):
@@ -86,4 +81,19 @@ def export_model(model, model_architecture, output_path):
             version=0,
         )
     else:
-        raise NotImplementedError("only llama2c model export is supported for now")
+        raise NotImplementedError(
+            f"Architecture {model_architecture} model export not yet implemented"
+        )
+
+
+def get_loss(
+    model: torch.nn.Module, model_arch: str, X: torch.Tensor, Y: torch.Tensor
+) -> torch.Tensor:
+    if model_arch == ModelTypes.LLAMA2C:
+        _logits = model(X, Y)
+        loss = cast(torch.Tensor, model.last_loss)
+    elif model_arch == ModelTypes.LLAMA2HF:
+        loss = model(X, labels=Y, return_dict=True).loss
+    else:
+        raise NotImplementedError(f"Architecture {model_arch} loss not yet implemented")
+    return loss

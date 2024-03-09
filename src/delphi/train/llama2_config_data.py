@@ -7,17 +7,17 @@ from transformers import LlamaConfig
 class Llama2ConfigData:
     attention_bias: bool = False
     attention_dropout: float = 0.0
-    bos_token_id: int = 1
-    eos_token_id: int = 2
+    bos_token_id: int = -1
+    eos_token_id: int = -2
     hidden_act: str = "silu"
-    hidden_size: int = 4096
+    hidden_size: int = 288
     initializer_range: float = 0.02
-    intermediate_size: int = 11008
-    max_position_embeddings: int = 2048
+    intermediate_size: int = 288
+    max_position_embeddings: int = 513
     model_type: str = "llama"
-    num_attention_heads: int = 32
-    num_hidden_layers: int = 32
-    num_key_value_heads: int = 32
+    num_attention_heads: int = 6
+    num_hidden_layers: int = 6
+    num_key_value_heads: int = 6
     pretraining_tp: int = 1
     rms_norm_eps: float = 1e-06
     rope_scaling: None = None
@@ -25,4 +25,13 @@ class Llama2ConfigData:
     tie_word_embeddings: bool = False
     transformers_version: str = "4.36.2"
     use_cache: bool = True
-    vocab_size: int = 32000
+    vocab_size: int = 4096
+
+
+debug_llama2_config_data = Llama2ConfigData(
+    hidden_size=48,
+    intermediate_size=48,
+    num_attention_heads=2,
+    num_hidden_layers=2,
+    num_key_value_heads=2,
+)

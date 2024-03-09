@@ -4,7 +4,7 @@ from datetime import datetime
 from beartype import beartype
 
 from delphi.train.architectures import ModelTypes
-from delphi.train.llama2_config_data import Llama2ConfigData
+from delphi.train.llama2_config_data import Llama2ConfigData, debug_llama2_config_data
 
 
 @beartype
@@ -16,10 +16,10 @@ class GigaConfig:
     """
 
     # device
-    device = "auto"
+    device: str = "auto"
 
     # model architecture
-    architecture = ModelTypes.LLAMA2C
+    architecture: str = ModelTypes.LLAMA2C
 
     # I/O
     out_dir: str = "out"
@@ -50,7 +50,7 @@ class GigaConfig:
     multiple_of: int = 32
     dropout: float = 0.0
     # llama2hf model
-    llama2hf_config = Llama2ConfigData()
+    llama2hf_config: Llama2ConfigData = Llama2ConfigData()
     # adamw optimizer
     gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
     learning_rate: float = 5e-4  # max learning rate
@@ -83,4 +83,5 @@ debug_config = GigaConfig(
     eval_interval=500,
     eval_iters=10,
     train_sample_limit=256,
+    llama2hf_config=debug_llama2_config_data,
 )

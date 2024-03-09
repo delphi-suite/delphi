@@ -5,6 +5,7 @@ import torch
 from datasets import Dataset
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 
+from delphi.train.architectures import get_loss
 from delphi.train.gigaconfig import GigaConfig
 from delphi.train.iteration_params import IterationParams
 from delphi.train.utils import (
@@ -55,6 +56,7 @@ def train_step(
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
             device=device,
+            model_arch=config.architecture,
         )
         new_best_val_loss = False
         if losses["val"] < model_training_state.best_val_loss:
@@ -83,8 +85,10 @@ def train_step(
     )
     for micro_step in range(config.gradient_accumulation_steps):
         X, Y = get_next_xy(train_batch_iter, device)
-        logits = model(X, Y)
-        loss = model.last_loss / config.gradient_accumulation_steps
+        loss = (
+            get_loss(model, config.architecture, X, Y)
+            / config.gradient_accumulation_steps
+        )
         loss.backward()
     # clip the gradient
     if config.grad_clip != 0.0:
