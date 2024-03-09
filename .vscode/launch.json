@@ -12,6 +12,14 @@
             "console": "integratedTerminal",
             "args": "--debug --train_sample_limit=256"
             //"args": "${command:pickArgs}"
+        },
+        {
+            "name": "run training with debug plus custom args",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "--debug ${command:pickArgs}"
         }
     ]
 }
