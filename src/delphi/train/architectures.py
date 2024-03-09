@@ -1,13 +1,19 @@
 from dataclasses import fields
+from typing import cast
 
 import torch
 from llama2c import model_export
 from llama2c.model import ModelArgs as Llama2ModelArgs
-from llama2c.model import Transformer as Llama2Model
+from llama2c.model import Transformer as Llama2cModel
+from transformers import LlamaConfig as LlamaConfigHF
+from transformers import LlamaModel as LlamaModelHF
+
+from delphi.train.llama2_config_data import Llama2ConfigData
 
 
 class ModelTypes:
     LLAMA2C = "llama2c"
+    LLAMA2HF = "llama2-huggingface"
     MAMBA = "mamba"
 
 
@@ -21,6 +27,7 @@ args_to_load_from_checkpoint = {
         "multiple_of",
         "max_seq_len",
     ],
+    ModelTypes.LLAMA2HF: [f.name for f in fields(Llama2ConfigData)],
     ModelTypes.MAMBA: [
         "n_layers",
         "model_dim",
@@ -34,7 +41,15 @@ def initialize_model(**model_args) -> torch.nn.Module:
         # filter model_args for fields in Llama2ModelArgs
         llama2_arg_names = {f.name for f in fields(Llama2ModelArgs)}
         llama2_args = {k: v for k, v in model_args.items() if k in llama2_arg_names}
-        return Llama2Model(Llama2ModelArgs(**llama2_args))
+        return Llama2cModel(Llama2ModelArgs(**llama2_args))
+    elif model_args["architecture"] == ModelTypes.LLAMA2HF:
+        # initialize huggingface llama2 model
+        return LlamaModelHF(
+            cast(
+                LlamaConfigHF,
+                LlamaConfigHF.from_dict(model_args["llama2hf_config"].to_dict()),
+            )
+        )
     else:
         raise NotImplementedError(
             f"Architecture {model_args['architecture']} not yet implemented"
@@ -49,7 +64,7 @@ def load_model(model_args, checkpoint) -> torch.nn.Module:
     if arch == ModelTypes.LLAMA2C:
         # create the model
         gptconf = Llama2ModelArgs(**model_args)
-        model = Llama2Model(gptconf)
+        model = Llama2cModel(gptconf)
         state_dict = checkpoint["model"]
         # fix the keys of the state dictionary :(
         # honestly no idea how checkpoints sometimes get this prefix, have to debug more

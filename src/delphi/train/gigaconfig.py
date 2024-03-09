@@ -4,6 +4,7 @@ from datetime import datetime
 from beartype import beartype
 
 from delphi.train.architectures import ModelTypes
+from delphi.train.llama2_config_data import Llama2ConfigData
 
 
 @beartype
@@ -39,15 +40,17 @@ class GigaConfig:
     batch_size: int = (
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
     )
-    max_seq_len: int = 512
-    vocab_size: int = 32000  # the Llama 2 tokenizer has 32K tokens
     # model
     dim: int = 288
+    max_seq_len: int = 512
+    vocab_size: int = 32000  # the Llama 2 tokenizer has 32K tokens
     n_layers: int = 6
     n_heads: int = 6
     n_kv_heads: int = 6
     multiple_of: int = 32
     dropout: float = 0.0
+    # llama2hf model
+    llama2hf_config = Llama2ConfigData()
     # adamw optimizer
     gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
     learning_rate: float = 5e-4  # max learning rate
