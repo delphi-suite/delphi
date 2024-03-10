@@ -59,8 +59,6 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
                 break
         if hasattr(cur, keys[0]):
             setattr(cur, keys[0], val)
-        else:
-            logging.warning(f"Config field {key} does not exist?")
 
 
 def setup_parser() -> argparse.ArgumentParser:
@@ -69,10 +67,10 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config_file",
         help=(
-            "Path to json file(s) containing config values. "
-            "Specific values can be overridden with --arguments. "
-            "e.g. '--config_file primary_config.json secondary_config.json --log_interval 42'. "
-            f"See preset configs in {CONFIG_PRESETS_DIR}"
+            "Path to json file(s) containing config values. Specific values can be overridden with --arguments. "
+            "e.g. `--config_file primary_config.json secondary_config.json --log_interval 42`. "
+            'If passing multiple configs with overlapping args, use "priority" key to specify precedence, e.g. {"priority": 100} '
+            f'overrides {{"priority": 99}} See preset configs in {CONFIG_PRESETS_DIR}'
         ),
         action="append",
         nargs="*",
@@ -117,10 +115,13 @@ def main():
 
     # config files override default values
     config_files = get_config_files(args)
+    config_dicts = []
     for config_file in config_files:
         logging.info(f"Loading {config_file}")
         with open(config_file, "r") as f:
-            config_dict = json.load(f)
+            config_dicts.append(json.load(f))
+    config_dicts.sort(key=lambda cd: cd.get("priority", 0))
+    for config_dict in config_dicts:
         update_config(config, config_dict)
     # specific arguments override everything else
     update_config(config, vars(args))
