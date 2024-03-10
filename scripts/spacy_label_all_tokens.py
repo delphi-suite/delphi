@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from delphi.constants import STATIC_ASSETS_DIR
-from delphi.eval import token_labelling
+from delphi.eval import spacy_token_labelling
 
 
 def tokenize(
@@ -58,9 +58,10 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     print("Loaded the tokenizer.\nThe vocab size is:", tokenizer.vocab_size)
 
-    tokens_str, labelled_token_ids_dict = token_labelling.label_tokens_from_tokenizer(
-        tokenizer
-    )
+    (
+        tokens_str,
+        labelled_token_ids_dict,
+    ) = spacy_token_labelling.label_tokens_from_tokenizer(tokenizer)
 
     # Save the list of all tokens to a file
     filename = "all_tokens_list.txt"
@@ -75,7 +76,7 @@ def main():
 
     print("\nCreating the CSV ...")
 
-    df = token_labelling.convert_label_dict_to_df(labelled_token_ids_dict)
+    df = spacy_token_labelling.convert_label_dict_to_df(labelled_token_ids_dict)
 
     print("Sanity check pandas csv ...", end="")
     # Perform sanity check, that the table was created correctly
@@ -91,7 +92,7 @@ def main():
     print(" completed.")
 
     # save the dataframe to a csv
-    filename = "labelled_token_ids.csv"
+    filename = "spacy_labelled_token_ids.csv"
     filepath = save_dir / filename
     df.to_csv(filepath, index=False)
     print(f"Saved the labelled tokens as CSV to:\n\t{filepath}\n")
