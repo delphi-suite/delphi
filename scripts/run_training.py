@@ -5,8 +5,6 @@ import logging
 import pathlib as path
 from dataclasses import fields
 from importlib.resources import files
-
-# import stdlib function for flattening nested lists
 from itertools import chain
 from pathlib import Path
 from typing import Any
