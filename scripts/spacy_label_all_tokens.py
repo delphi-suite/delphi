@@ -91,6 +91,9 @@ def main():
         ), f"The dataframes are not equal for row {token_id}\n{label_pandas}\n{label_dict}"
     print(" completed.")
 
+    # TODO: Fix the issue with disappearing spaces when exporting DataFrame to CSV.
+    # There's a known problem where no token is classified as "starting with a space".
+
     # save the dataframe to a csv
     filename = "spacy_labelled_token_ids.csv"
     filepath = save_dir / filename
