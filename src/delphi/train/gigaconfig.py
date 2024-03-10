@@ -4,7 +4,7 @@ from datetime import datetime
 from beartype import beartype
 
 from delphi.train.architectures import ModelTypes
-from delphi.train.llama2_config_data import Llama2ConfigData, debug_llama2_config_data
+from delphi.train.llama2_config_data import Llama2ConfigData
 
 
 @beartype

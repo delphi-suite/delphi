@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from transformers import LlamaConfig
-
 
 @dataclass
 class Llama2ConfigData:
@@ -26,12 +24,3 @@ class Llama2ConfigData:
     transformers_version: str = "4.36.2"
     use_cache: bool = True
     vocab_size: int = 4096
-
-
-debug_llama2_config_data = Llama2ConfigData(
-    hidden_size=48,
-    intermediate_size=48,
-    num_attention_heads=2,
-    num_hidden_layers=2,
-    num_key_value_heads=2,
-)
