@@ -63,14 +63,27 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
             logging.warning(f"Config field {key} does not exist?")
 
 
-def main():
+def setup_parser() -> argparse.ArgumentParser:
     # Setup argparse
     parser = argparse.ArgumentParser(description="Train a delphi model")
+    parser.add_argument(
+        "--config_file",
+        help=(
+            "Path to json file(s) containing config values. "
+            "Specific values can be overridden with --arguments. "
+            "e.g. '--config_file primary_config.json secondary_config.json --log_interval 42'. "
+            f"See preset configs in {CONFIG_PRESETS_DIR}"
+        ),
+        action="append",
+        nargs="*",
+        required=False,
+        type=str,
+    )
     config_arg_group = parser.add_argument_group("Config arguments")
     for field in fields(GigaConfig):
         # test if field is a dataclass
         if hasattr(field.type, "__dataclass_fields__"):
-            sub_arg_group = parser.add_argument_group(field.name)
+            sub_arg_group = parser.add_argument_group(f"Config {field.name} arguments")
             for subfield in fields(field.type):
                 sub_arg_group.add_argument(
                     f"--{field.name}.{subfield.name}",
@@ -85,31 +98,24 @@ def main():
                 required=False,
                 help=f"Default: {field.default}",
             )
-    parser.add_argument(
-        "--config_file",
-        help=(
-            "Path to json file(s) containing config values. "
-            "Specific values can be overridden with --arguments. "
-            "e.g. '--config_file primary_config.json secondary_config.json --log_interval 42'. "
-            f"See preset configs in {CONFIG_PRESETS_DIR}"
-        ),
-        action="append",
-        nargs="*",
-        required=False,
-        type=str,
-    )
-    preset_arg_group = parser.add_argument_group("Config arguments")
+    preset_arg_group = parser.add_argument_group("Presets configs")
     for preset in sorted(get_presets()):
         preset_arg_group.add_argument(
             f"--{preset.stem}",
             help=f"Use {preset.stem} preset config",
             action="store_true",
         )
+    return parser
+
+
+def main():
+    parser = setup_parser()
     args = parser.parse_args()
 
-    # setup config
+    # base config
     config = GigaConfig()
-    # config file overrides default values
+
+    # config files override default values
     config_files = get_config_files(args)
     for config_file in config_files:
         logging.info(f"Loading {config_file}")
