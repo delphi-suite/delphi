@@ -69,31 +69,37 @@ def main():
     parser = argparse.ArgumentParser(description="Train a delphi model")
     config_arg_group = parser.add_argument_group("Config arguments")
     for field in fields(GigaConfig):
-        config_arg_group.add_argument(
-            f"--{field.name}",
-            type=field.type,
-            required=False,
-            help=f"Default: {field.default}",
-        )
+        # test if field is a dataclass
+        if hasattr(field.type, "__dataclass_fields__"):
+            sub_arg_group = parser.add_argument_group(field.name)
+            for subfield in fields(field.type):
+                sub_arg_group.add_argument(
+                    f"--{field.name}.{subfield.name}",
+                    type=subfield.type,
+                    required=False,
+                    help=f"Default: {subfield.default}",
+                )
+        else:
+            config_arg_group.add_argument(
+                f"--{field.name}",
+                type=field.type,
+                required=False,
+                help=f"Default: {field.default}",
+            )
     parser.add_argument(
         "--config_file",
         help=(
-            "Path to json file(s) containing config values (see sample_config.json). "
+            "Path to json file(s) containing config values. "
             "Specific values can be overridden with --arguments. "
-            "e.g. --config_file primary_config.json secondary_config.json"
+            "e.g. '--config_file primary_config.json secondary_config.json --log_interval 42'. "
+            f"See preset configs in {CONFIG_PRESETS_DIR}"
         ),
         action="append",
         nargs="*",
         required=False,
         type=str,
     )
-    parser.add_argument(
-        "--debug",
-        help="Use debug config values. Overridden by config file values and --arguments.",
-        required=False,
-        action="store_true",
-    )
-    for preset in get_presets():
+    for preset in sorted(get_presets()):
         parser.add_argument(
             f"--{preset.stem}",
             help=f"Use {preset.stem} preset config",
