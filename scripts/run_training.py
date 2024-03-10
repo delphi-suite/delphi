@@ -1,10 +1,7 @@
 import argparse
-import copy
 import json
 import logging
-import pathlib as path
 from dataclasses import fields
-from importlib.resources import files
 from itertools import chain
 from pathlib import Path
 from typing import Any
@@ -12,7 +9,7 @@ from typing import Any
 from platformdirs import user_config_dir
 
 from delphi.constants import CONFIG_PRESETS_DIR
-from delphi.train.gigaconfig import GigaConfig, debug_config
+from delphi.train.gigaconfig import GigaConfig
 from delphi.train.training import run_training
 
 
@@ -30,9 +27,13 @@ def get_user_config_path() -> Path:
 def get_config_files(args: argparse.Namespace) -> list[Path]:
     user_config_path = get_user_config_path()
     cands = [user_config_path] if user_config_path.exists() else []
+    # get all preset args
+    for preset in get_presets():
+        if hasattr(args, preset.stem) and getattr(args, preset.stem):
+            cands.append(preset)
     # flatten args.config_file, which is a nested list
-    config_files = list(chain(*args.config_file))
-    cands += map(Path, config_files) if args.config_file else []
+    config_files = list(chain(*args.config_file)) if args.config_file else []
+    cands += map(Path, config_files)
     configs = []
     for candpath in cands:
         if candpath.exists():
@@ -58,10 +59,8 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
                 break
         if hasattr(cur, keys[0]):
             setattr(cur, keys[0], val)
-
-    for field in fields(config):
-        if new_vals.get(field.name) is not None:
-            setattr(config, field.name, new_vals[field.name])
+        else:
+            logging.warning(f"Config field {key} does not exist?")
 
 
 def main():
@@ -99,8 +98,9 @@ def main():
         required=False,
         type=str,
     )
+    preset_arg_group = parser.add_argument_group("Config arguments")
     for preset in sorted(get_presets()):
-        parser.add_argument(
+        preset_arg_group.add_argument(
             f"--{preset.stem}",
             help=f"Use {preset.stem} preset config",
             action="store_true",
@@ -108,10 +108,7 @@ def main():
     args = parser.parse_args()
 
     # setup config
-    if args.debug:
-        config = copy.copy(debug_config)
-    else:
-        config = GigaConfig()
+    config = GigaConfig()
     # config file overrides default values
     config_files = get_config_files(args)
     for config_file in config_files:

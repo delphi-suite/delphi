@@ -69,19 +69,3 @@ class GigaConfig:
     # debugging
     train_sample_limit: int = -1  # -1 implies no limit
     val_sample_limit: int = -1
-
-
-debug_config = GigaConfig(
-    wandb_entity="jaiwithani",
-    vocab_size=4096,
-    max_seq_len=512,
-    dim=48,
-    n_layers=2,
-    n_heads=2,
-    n_kv_heads=2,
-    max_epochs=2,
-    eval_interval=500,
-    eval_iters=10,
-    train_sample_limit=256,
-    llama2hf_config=debug_llama2_config_data,
-)
