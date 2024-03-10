@@ -107,7 +107,7 @@ def tokenize(
 
 
 def load_logprob_dataset(model: str) -> Dataset:
-    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")  # type: ignore
+    return load_dataset(f"dephi-suite/v0-next-logprobs-{model}")  # type: ignore
 
 
 def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
