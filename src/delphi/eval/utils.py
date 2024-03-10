@@ -1,7 +1,7 @@
-from collections.abc import Callable
 from typing import cast
 
 import torch
+from beartype.typing import Callable
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
