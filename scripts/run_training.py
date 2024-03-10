@@ -5,6 +5,9 @@ import logging
 import pathlib as path
 from dataclasses import fields
 from importlib.resources import files
+
+# import stdlib function for flattening nested lists
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +32,10 @@ def get_user_config_path() -> Path:
 def get_config_files(args: argparse.Namespace) -> list[Path]:
     user_config_path = get_user_config_path()
     cands = [user_config_path] if user_config_path.exists() else []
-    cands += map(Path, args.config_file) if args.config_file else []
+    # flatten args.config_file, which is a nested list
+    config_files = list(chain(*args.config_file))
+    print(config_files)
+    cands += map(Path, config_files) if args.config_file else []
     configs = []
     for candpath in cands:
         if candpath.exists():
@@ -48,8 +54,12 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
         keys = key.split(".")
         cur = config
         while len(keys) > 1:
-            cur = getattr(cur, keys.pop(0))
-        setattr(cur, keys[0], val)
+            if hasattr(cur, keys[0]):
+                cur = getattr(cur, keys.pop(0))
+            else:
+                break
+        if hasattr(cur, keys[0]):
+            setattr(cur, keys[0], val)
 
     for field in fields(config):
         if new_vals.get(field.name) is not None:

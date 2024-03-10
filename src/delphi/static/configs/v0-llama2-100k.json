@@ -1,8 +1,5 @@
 {
     "llama2hf_config": {
-        "architectures": [
-            "LlamaForCausalLM"
-        ],
         "attention_bias": false,
         "attention_dropout": 0.0,
         "bos_token_id": 1,
