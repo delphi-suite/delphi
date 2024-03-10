@@ -1,11 +1,43 @@
 import argparse
 import copy
 import json
+import logging
+import pathlib as path
 from dataclasses import fields
+from importlib.resources import files
+from pathlib import Path
 from typing import Any
 
+from platformdirs import user_config_dir
+
+from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.gigaconfig import GigaConfig, debug_config
 from delphi.train.training import run_training
+
+
+def get_presets():
+    return Path(CONFIG_PRESETS_DIR).glob("*.json")  # type: ignore
+
+
+def get_user_config_path() -> Path:
+    _user_config_dir = Path(user_config_dir(appname="delphi"))
+    _user_config_dir.mkdir(parents=True, exist_ok=True)
+    user_config_path = _user_config_dir / "config.json"
+    return user_config_path
+
+
+def get_config_files(args: argparse.Namespace) -> list[Path]:
+    user_config_path = get_user_config_path()
+    cands = [user_config_path] if user_config_path.exists() else []
+    cands += map(Path, args.config_file) if args.config_file else []
+    configs = []
+    for candpath in cands:
+        if candpath.exists():
+            configs.append(candpath)
+        else:
+            logging.error(f"Config file {candpath} does not exist, exiting.")
+            exit(1)
+    return configs
 
 
 def update_config(config: GigaConfig, new_vals: dict[str, Any]):
@@ -41,6 +73,8 @@ def main():
             "Path to a json file containing config values (see sample_config.json). "
             "Specific values can be overridden with --arguments."
         ),
+        action="append",
+        nargs="*",
         required=False,
         type=str,
     )
@@ -50,7 +84,12 @@ def main():
         required=False,
         action="store_true",
     )
-    # TODO: add presets as static json files and make accessible
+    for preset in get_presets():
+        parser.add_argument(
+            f"--{preset.stem}",
+            help=f"Use {preset.stem} preset config",
+            action="store_true",
+        )
     args = parser.parse_args()
 
     # setup config
@@ -59,8 +98,10 @@ def main():
     else:
         config = GigaConfig()
     # config file overrides default values
-    if args.config_file is not None:
-        with open(args.config_file, "r") as f:
+    config_files = get_config_files(args)
+    for config_file in config_files:
+        logging.info(f"Loading {config_file}")
+        with open(config_file, "r") as f:
             config_dict = json.load(f)
         update_config(config, config_dict)
     # specific arguments override everything else

@@ -32,7 +32,7 @@ class GigaConfig:
     )
     init_from: str = "scratch"  # 'scratch' or 'resume'
     # wandb logging
-    wandb_log: bool = True  # disabled by default
+    wandb_log: bool = False  # disabled by default
     wandb_entity: str = "jannik-brinkmann"
     wandb_project: str = "delphi"
     wandb_run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
