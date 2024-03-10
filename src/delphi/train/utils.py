@@ -8,9 +8,9 @@ from typing import Any, cast
 
 import torch
 from datasets import Dataset
-from torch import Tensor
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import _BaseDataLoaderIter
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
@@ -249,11 +249,6 @@ def load_delphi_training_dataset(split: str, limit: int = -1):
         )
     ds.set_format("torch")
     return ds
-
-
-from typing import Generator
-
-from torch.utils.data.dataloader import _BaseDataLoaderIter
 
 
 def get_next_xy(
