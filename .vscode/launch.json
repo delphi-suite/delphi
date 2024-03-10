@@ -14,6 +14,15 @@
             //"args": "${command:pickArgs}"
         },
         {
+            "name": "run_training --help",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "--help"
+            //"args": "${command:pickArgs}"
+        },
+        {
             "name": "run training with debug plus custom args",
             "type": "debugpy",
             "request": "launch",
