@@ -9,12 +9,9 @@ from typing import Any
 from platformdirs import user_config_dir
 
 from delphi.constants import CONFIG_PRESETS_DIR
+from delphi.train.config_utils import get_presets, update_config
 from delphi.train.gigaconfig import GigaConfig
 from delphi.train.training import run_training
-
-
-def get_presets():
-    return Path(CONFIG_PRESETS_DIR).glob("*.json")  # type: ignore
 
 
 def get_user_config_path() -> Path:
@@ -24,14 +21,18 @@ def get_user_config_path() -> Path:
     return user_config_path
 
 
-def get_config_files(args: argparse.Namespace) -> list[Path]:
-    user_config_path = get_user_config_path()
-    cands = [user_config_path] if user_config_path.exists() else []
-    # get all preset args
+def get_preset_args(args: argparse.Namespace) -> list[Path]:
+    cands = []
     for preset in get_presets():
         if hasattr(args, preset.stem) and getattr(args, preset.stem):
             cands.append(preset)
-    # flatten args.config_file, which is a nested list
+    return cands
+
+
+def get_config_files(args: argparse.Namespace) -> list[Path]:
+    user_config_path = get_user_config_path()
+    cands = [user_config_path] if user_config_path.exists() else []
+    cands += get_preset_args(args)
     config_files = list(chain(*args.config_file)) if args.config_file else []
     cands += map(Path, config_files)
     configs = []
@@ -40,25 +41,8 @@ def get_config_files(args: argparse.Namespace) -> list[Path]:
             configs.append(candpath)
             logging.info(f"Found config file {candpath}...")
         else:
-            logging.error(f"Config file {candpath} does not exist, exiting.")
-            exit(1)
+            raise FileNotFoundError(candpath, f"Config file {candpath} does not exist.")
     return configs
-
-
-def update_config(config: GigaConfig, new_vals: dict[str, Any]):
-    for key, val in new_vals.items():
-        if val is None:
-            continue
-        # support x.y.z = val
-        keys = key.split(".")
-        cur = config
-        while len(keys) > 1:
-            if hasattr(cur, keys[0]):
-                cur = getattr(cur, keys.pop(0))
-            else:
-                break
-        if hasattr(cur, keys[0]):
-            setattr(cur, keys[0], val)
 
 
 def setup_parser() -> argparse.ArgumentParser:
@@ -96,7 +80,7 @@ def setup_parser() -> argparse.ArgumentParser:
                 required=False,
                 help=f"Default: {field.default}",
             )
-    preset_arg_group = parser.add_argument_group("Presets configs")
+    preset_arg_group = parser.add_argument_group("Preset configs")
     for preset in sorted(get_presets()):
         preset_arg_group.add_argument(
             f"--{preset.stem}",
