@@ -19,7 +19,7 @@ class GigaConfig:
     device: str = "auto"
 
     # model architecture
-    architecture: str = ModelTypes.LLAMA2C
+    architecture: str = ModelTypes.LLAMA2HF
 
     # I/O
     out_dir: str = "out"
@@ -33,7 +33,7 @@ class GigaConfig:
     init_from: str = "scratch"  # 'scratch' or 'resume'
     # wandb logging
     wandb_log: bool = False  # disabled by default
-    wandb_entity: str = "jannik-brinkmann"
+    wandb_entity: str = "you_need_to_set_wandb_entity_in_config_to_your_wandb_username_for_wandb_logging_to_work"
     wandb_project: str = "delphi"
     wandb_run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     # data
@@ -43,7 +43,7 @@ class GigaConfig:
     # model
     dim: int = 288
     max_seq_len: int = 512
-    vocab_size: int = 32000  # the Llama 2 tokenizer has 32K tokens
+    vocab_size: int = 4096
     n_layers: int = 6
     n_heads: int = 6
     n_kv_heads: int = 6
