@@ -32,12 +32,12 @@ def get_config_files(args: argparse.Namespace) -> list[Path]:
     cands = [user_config_path] if user_config_path.exists() else []
     # flatten args.config_file, which is a nested list
     config_files = list(chain(*args.config_file))
-    print(config_files)
     cands += map(Path, config_files) if args.config_file else []
     configs = []
     for candpath in cands:
         if candpath.exists():
             configs.append(candpath)
+            logging.info(f"Found config file {candpath}...")
         else:
             logging.error(f"Config file {candpath} does not exist, exiting.")
             exit(1)
@@ -78,8 +78,9 @@ def main():
     parser.add_argument(
         "--config_file",
         help=(
-            "Path to a json file containing config values (see sample_config.json). "
-            "Specific values can be overridden with --arguments."
+            "Path to json file(s) containing config values (see sample_config.json). "
+            "Specific values can be overridden with --arguments. "
+            "e.g. --config_file primary_config.json secondary_config.json"
         ),
         action="append",
         nargs="*",
