@@ -5,7 +5,7 @@ from beartype.typing import Callable
 from datasets import Dataset
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 
-from delphi.train.architectures import get_loss
+from delphi.train.architectures import ModelTypes, get_loss
 from delphi.train.gigaconfig import GigaConfig
 from delphi.train.iteration_params import IterationParams
 from delphi.train.utils import (
@@ -108,8 +108,8 @@ def train_step(
         if (
             model_training_state.local_iter_num >= 5
         ):  # let the training loop settle a bit
-            mfu = model.estimate_mfu(
-                config.batch_size * config.gradient_accumulation_steps, dt
+            mfu = estimate_mfu(
+                config=config, model=model_training_state.model, timedelta=dt
             )
             model_training_state.running_mfu = (
                 mfu
@@ -125,3 +125,30 @@ def train_step(
     model_training_state.iter_num += 1
     model_training_state.local_iter_num += 1
     return False
+
+
+def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float):
+    """estimate model flops utilization (MFU) in units of A100 bfloat16 peak FLOPS"""
+    # first estimate the number of flops we do per iteration.
+    # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
+    N = sum(p.numel() for p in model.parameters())
+    if config.architecture == ModelTypes.LLAMA2C:
+        cfg = model.params
+        L, H, Q, T = cfg.n_layers, cfg.n_heads, cfg.dim // cfg.n_heads, cfg.max_seq_len
+    elif config.architecture == ModelTypes.LLAMA2HF:
+        cfg = model.config
+        L, H, Q, T = (
+            cfg.num_hidden_layers,
+            cfg.num_attention_heads,
+            cfg.hidden_size // cfg.num_attention_heads,
+            cfg.max_position_embeddings,
+        )
+    flops_per_token = 6 * N + 12 * L * H * Q * T
+    flops_per_fwdbwd = flops_per_token * T
+    fwdbwd_per_iter = config.batch_size * config.gradient_accumulation_steps
+    flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
+    # express our flops throughput as ratio of A100 bfloat16 peak flops
+    flops_achieved = flops_per_iter * (1.0 / timedelta)  # per second
+    flops_promised = 312e12  # A100 GPU bfloat16 peak flops is 312 TFLOPS
+    mfu = flops_achieved / flops_promised
+    return mfu
