@@ -15,6 +15,7 @@ from delphi.train.iteration_params import set_iteration_params
 from delphi.train.shuffle import shuffle_list
 from delphi.train.train_step import train_step
 from delphi.train.utils import (
+    ModelTrainingState,
     get_device,
     load_delphi_training_dataset,
     load_model_training_state,
@@ -22,7 +23,7 @@ from delphi.train.utils import (
 )
 
 
-def run_training(config: GigaConfig):
+def run_training(config: GigaConfig) -> ModelTrainingState:
     print("Starting training...")
     print()
     print("Config:")
@@ -91,3 +92,4 @@ def run_training(config: GigaConfig):
             )
             if breaknow:
                 break
+    return model_training_state
