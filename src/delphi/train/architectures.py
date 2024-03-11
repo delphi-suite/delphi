@@ -1,3 +1,4 @@
+import logging
 from dataclasses import asdict, fields
 from typing import cast
 
@@ -81,7 +82,7 @@ def export_model(model, model_architecture, output_path):
             version=0,
         )
     else:
-        raise NotImplementedError(
+        logging.warning(
             f"Architecture {model_architecture} model export not yet implemented"
         )
 
