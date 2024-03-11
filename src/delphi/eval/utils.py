@@ -1,8 +1,9 @@
+from collections import defaultdict
 from collections.abc import Callable
 from typing import cast
 
 import torch
-from datasets import Dataset, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 from jaxtyping import Float, Int
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
@@ -91,8 +92,8 @@ def tokenize(
     )
 
 
-def load_logprob_dataset(model: str) -> Dataset:
-    return load_dataset(f"dephi-suite/v0-next-logprobs-{model}")  # type: ignore
+def load_logprob_dataset(model: str) -> DatasetDict:
+    return cast(DatasetDict, load_dataset(f"delphi-suite/v0-next-logprobs-{model}"))
 
 
 def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
@@ -100,3 +101,16 @@ def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[floa
         model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]
         for model in constants.LLAMA2_MODELS
     }
+
+
+def load_token_map() -> defaultdict[int, list[list[int]]]:
+    token_map = cast(
+        Dataset, load_dataset("delphi-suite/v0-token-map", split="validation")
+    )
+    mapping = defaultdict(
+        list
+    )  # for some reason, empty list is not the default value, but None
+    for i in range(len(token_map)):
+        mapping[i] = token_map[i]["prompt_pos_idx"]
+
+    return mapping
