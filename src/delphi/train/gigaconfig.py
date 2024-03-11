@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from beartype import beartype
@@ -50,7 +50,7 @@ class GigaConfig:
     multiple_of: int = 32
     dropout: float = 0.0
     # llama2hf model
-    llama2hf_config: Llama2ConfigData = Llama2ConfigData()
+    llama2hf_config: Llama2ConfigData = field(default_factory=Llama2ConfigData)
     # adamw optimizer
     gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
     learning_rate: float = 5e-4  # max learning rate
