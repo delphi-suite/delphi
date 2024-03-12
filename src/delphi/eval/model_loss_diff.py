@@ -2,8 +2,6 @@ import torch
 from beartype.typing import Mapping
 from jaxtyping import Float
 
-# TODO: write tests
-
 
 def next_logprobs_dict_to_loss_dict(
     next_logprobs_dict: Mapping[str, Float[torch.Tensor, "prompt tok"]]
