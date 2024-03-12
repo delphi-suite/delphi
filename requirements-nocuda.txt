@@ -1,0 +1,28 @@
+# this is a separate requirements.txt file for use in github actions
+# this omits packages that cannot be installed in github actions due
+# to hardware limitations (e.g. no GPU). All packages here are automatically
+# included when installing from requirements.txt
+torch==2.1.2
+datasets==2.16.1
+tqdm==4.66.1
+ipywidgets==8.1.1
+nbformat==5.9.2
+pytest==7.4.4
+black==23.12.1
+jaxtyping==0.2.25
+beartype==0.16.4
+pre-commit==3.6.0
+isort==5.13.2
+chardet==5.2.0
+sentencepiece==0.1.99
+protobuf==4.25.2
+plotly==5.18.0
+wandb==0.16.3
+spacy==3.7.2
+
+# temporarily installing transformers from main until 4.39.0 comes out (for mamba support)
+transformers @ git+https://github.com/huggingface/transformers@main
+# transformers==4.39.0  TODO: use this once 4.39.0 releases
+
+# spacy-transformers requires transformers <= 4.37.0, temporarily disabling
+# spacy-transformers>=1.3.4
