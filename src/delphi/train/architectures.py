@@ -8,6 +8,7 @@ from llama2c.model import ModelArgs as Llama2ModelArgs
 from llama2c.model import Transformer as Llama2cModel
 from transformers import LlamaConfig as LlamaConfigHF
 from transformers import LlamaForCausalLM as LlamaModelHF
+from transformers import MambaConfig, MambaForCausalLM
 
 from delphi.train.config.llama2_config_data import Llama2ConfigData
 
@@ -52,6 +53,13 @@ def initialize_model(config) -> torch.nn.Module:
                 LlamaConfigHF.from_dict(asdict(config.llama2hf_config)),
             )
         )
+    elif arch == ModelTypes.MAMBA:
+        return MambaForCausalLM(
+            cast(
+                MambaConfig,
+                MambaConfig.from_dict(asdict(config.mamba_config)),
+            )
+        )
     else:
         raise NotImplementedError(f"Architecture {arch} not yet implemented")
 
@@ -93,7 +101,7 @@ def get_loss(
     if model_arch == ModelTypes.LLAMA2C:
         _logits = model(X, Y)
         loss = cast(torch.Tensor, model.last_loss)
-    elif model_arch == ModelTypes.LLAMA2HF:
+    elif model_arch in (ModelTypes.LLAMA2HF, ModelTypes.MAMBA):
         loss = model(X, labels=Y, return_dict=True).loss
     else:
         raise NotImplementedError(f"Architecture {model_arch} loss not yet implemented")

@@ -65,3 +65,8 @@ def build_config_from_files(config_files: list[Path]) -> GigaConfig:
     for _config in configs_in_order:
         update_config(config, _config)
     return config
+
+
+def load_preset(preset_name: str) -> GigaConfig:
+    preset_path = Path(CONFIG_PRESETS_DIR) / f"{preset_name}.json"  # type: ignore
+    return build_config_from_files([preset_path])

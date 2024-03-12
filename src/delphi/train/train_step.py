@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Callable
 
@@ -143,6 +144,9 @@ def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float):
             cfg.hidden_size // cfg.num_attention_heads,
             cfg.max_position_embeddings,
         )
+    elif config.architecture == ModelTypes.MAMBA:
+        logging.warn("MAMBA MFU estimate not implemented")
+        return -1.0
     flops_per_token = 6 * N + 12 * L * H * Q * T
     flops_per_fwdbwd = flops_per_token * T
     fwdbwd_per_iter = config.batch_size * config.gradient_accumulation_steps

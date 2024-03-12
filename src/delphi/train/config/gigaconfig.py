@@ -4,6 +4,7 @@ from beartype import beartype
 
 from delphi.train.architectures import ModelTypes
 from delphi.train.config.llama2_config_data import Llama2ConfigData
+from delphi.train.config.mamba_config_data import MambaConfigData
 from delphi.train.config.wandb_config import WandbConfig
 
 
@@ -46,8 +47,9 @@ class GigaConfig:
     n_kv_heads: int = 6
     multiple_of: int = 32
     dropout: float = 0.0
-    # llama2hf model
+    # model config
     llama2hf_config: Llama2ConfigData = field(default_factory=Llama2ConfigData)
+    mamba_config: MambaConfigData = field(default_factory=MambaConfigData)
     # adamw optimizer
     gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
     learning_rate: float = 5e-4  # max learning rate

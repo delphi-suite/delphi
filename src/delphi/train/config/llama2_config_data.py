@@ -21,6 +21,6 @@ class Llama2ConfigData:
     rope_scaling: None = None
     rope_theta: float = 10000.0
     tie_word_embeddings: bool = False
-    transformers_version: str = "4.36.2"
+    transformers_version: str = "4.39.0.dev0"
     use_cache: bool = True
     vocab_size: int = 4096
