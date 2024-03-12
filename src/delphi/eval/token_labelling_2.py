@@ -3,46 +3,67 @@ import pickle
 from typing import Callable, Optional
 
 import pandas as pd
-import spacy
 from datasets import load_dataset
-from spacy.tokens import Doc, Token
-from spacy.util import is_package
-from transformers import AutoTokenizer
+from tqdm.auto import tqdm
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from delphi.constants import STATIC_ASSETS_DIR
 
-SPACY_MODEL = "en_core_web_sm"  # small: "en_core_web_sm", large: "en_core_web_trf"
-NLP = None  # global var to hold the language model
+# %%
+# Load the token map from hf
+token_map = load_dataset("delphi-suite/v0-token-map", split="validation")
 
-# Option A) Load the token map from hf
-# token_map = load_dataset("delphi-suite/v0-token-map", split="validation")
-
-# Option B) Use the downloaded token map (just has)
-with open(STATIC_ASSETS_DIR.joinpath("token_map.pkl"), "rb") as f:
-    token_map = pickle.load(f)
+# list of a token's instances in the dataset (takes 20s to run)
+token_instances = [
+    len(x) if isinstance(x, list) else 0 for x in token_map["prompt_pos_idx"]
+]
+# %%
 
 model = "delphi-suite/delphi-llama2-100k"
 tokenizer = AutoTokenizer.from_pretrained(model)
 
 # %%
-TOKEN_LABELS: dict[str, Callable] = {
-    # --- custom categories ---
-    "Starts with space": (lambda token: token.text.startswith(" ")),  # bool
-    "Capitalized": (
-        lambda token: token.text[0].isupper()
-        if len(token.text) == 1
-        else (token.text[1].isupper() or token.text[0].isupper())
-    ),  # bool (in case the first is a space)
-    "Instances in dataset": (
-        lambda token: len(
-            token_map.get(tokenizer.encode(token.text, add_special_tokens=False)[0], [])
-        )
-    ),
+
+
+def tokenize(token: str, tokenizer: PreTrainedTokenizer = tokenizer) -> int:
+    return int(tokenizer.encode(token, return_tensors="pt")[0][-1])
+
+
+# Decode a sentence
+def decode(token_ids: int, tokenizer: PreTrainedTokenizer = tokenizer) -> str:
+    return tokenizer.decode(token_ids, skip_special_tokens=True)
+
+
+# %%
+def string_id(token: str) -> str:
+    return token
+
+
+def is_capitalized(token: str) -> bool:
+    capitalized = token[0].isupper()
+    space_and_capitalized = token[1].isupper() if len(token) > 1 else False
+    return capitalized or space_and_capitalized
+    # " Hello" -> True
+
+
+def starts_with_space(token: str) -> bool:
+    return token.startswith(" ") if token else False
+
+
+def instances_in_dataset(token: str) -> int:
+    return token_instances[tokenize(token)]
+
+
+TOKEN_LABELS = {
+    "String representation": string_id,
+    "Instances in dataset": instances_in_dataset,
+    "Starts with space": starts_with_space,
+    "Capitalized": is_capitalized,
 }
 
 
 # %%
-def label_single_token(token: Token | None) -> dict[str, bool]:
+def label_single_token(token: str | None) -> dict[str, bool]:
     """
     Labels a single token. A token, that has been analyzed by the spaCy
     library.
@@ -60,9 +81,11 @@ def label_single_token(token: Token | None) -> dict[str, bool]:
     """
     labels = dict()  #  The dict holding labels of a single token
     # if token is None, then it is a '' empty strong token or similar
-    if token is None:
+    if token is None or token == "":
         for label_name, category_check in TOKEN_LABELS.items():
             labels[label_name] = False
+        labels["String representation"] = string_id(token)
+        labels["Instances in dataset"] = instances_in_dataset(token)
         labels["Is Other"] = True
         return labels
     # all other cases / normal tokens
@@ -71,106 +94,76 @@ def label_single_token(token: Token | None) -> dict[str, bool]:
     return labels
 
 
-def label_sentence(tokens: Doc | list[Token]) -> list[dict[str, bool]]:
+# %%
+def label_tokens_from_tokenizer(
+    tokenizer: PreTrainedTokenizer = tokenizer,
+) -> list[dict[str, bool]]:
     """
-    Labels spaCy Tokens in a sentence. Takes the context of the token into account
-    for dependency labels (e.g. subject, object, ...), IF dependency labels are turned on.
+    Labels all tokens in a tokenizer's vocabulary with the corresponding token categories.
+    Returns two things: 1) `tokens_str`, a string where each token comprises 'token_id,token_str\n' and 2) `labelled_token_ids_dict` a dict that contains for each token_id (key) the corresponding token labels, which is in turn a dict, whith the label categories as keys and their boolean values as the dict's values.
 
     Parameters
     ----------
-    tokens : list[Token]
-        A list of tokens.
+    tokenizer : The tokenizer with its tokens to be labelled, defaults to the global tokenizer.
 
     Returns
     -------
-    list[dict[str, bool]]
-        Returns a list of the tokens' labels.
+    tokens_str, labelled_token_ids_dict
+
     """
-    labelled_tokens = list()  # list holding labels for all tokens of sentence
-    # if the list is empty it is because token is '' empty string or similar
-    if len(tokens) == 0:
-        labels = label_single_token(None)
-        labelled_tokens.append(labels)
-        return labelled_tokens
-    # in all other cases
-    for token in tokens:
+    vocab_size = tokenizer.vocab_size
+
+    # 1) Create a list of all tokens in the tokenizer's vocabulary
+    tokens_str = [None] * vocab_size
+    for i in range(vocab_size):
+        tokens_str[i] = decode(i)
+
+    # 2) let's label each token
+    labelled_token_dict = [None] * vocab_size  # token_id: labels
+    # we iterate over each
+    for token_id, token in enumerate(tqdm(tokens_str, desc="Labelling tokens")):
+        # label the batch of sentences
         labels = label_single_token(token)
-        labelled_tokens.append(labels)
-    return labelled_tokens
+        # create a dict with the token_ids and their labels
+        # update the labelled_token_ids_dict with the new dict
+        # first sentence of batch, label of first token
+        labelled_token_dict[token_id] = labels
 
-
-def label_batch_sentences(
-    sentences: list[str] | list[list[str]],
-    tokenized: bool = True,
-    verbose: bool = False,
-) -> list[list[dict[str, bool]]]:
-    """
-    Labels tokens in a sentence batchwise. Takes the context of the token into
-    account for dependency labels (e.g. subject, object, ...).
-
-    Parameters
-    ----------
-    sentences : list
-        A batch/list of sentences, each being a list of tokens.
-    tokenized : bool, optional
-        Whether the sentences are already tokenized, by default True. If the sentences
-        are full strings and not lists of tokens, then set to False. If true then `sentences` must be list[list[str]].
-    verbose : bool, optional
-        Whether to print the tokens and their labels to the console, by default False.
-
-    Returns
-    -------
-    list[list[dict[str, bool]]
-        Returns a list of sentences. Each sentence contains a list of its
-        corresponding token length where each entry provides the labels/categories
-        for the token. Sentence -> Token -> Labels
-    """
-    global NLP, SPACY_MODEL
-
-    if NLP is None:
-        # Load english language model
-        NLP = spacy.load(SPACY_MODEL)
-    # labelled tokens, list holding sentences holding tokens holding corresponding token labels
-    labelled_sentences: list[list[dict[str, bool]]] = list()
-
-    # go through each sentence in the batch
-    for sentence in sentences:
-        if tokenized:
-            # sentence is a list of tokens
-            doc = Doc(NLP.vocab, words=sentence)  # type: ignore
-            # Apply the spaCy pipeline, except for the tokenizer
-            for name, proc in NLP.pipeline:
-                if name != "tokenizer":
-                    doc = proc(doc)
-        else:
-            # sentence is a single string
-            doc = NLP(sentence)  # type: ignore
-
-        labelled_tokens = list()  # list holding labels for all tokens of sentence
-        labelled_tokens = label_sentence(doc)
-
-        # print the token and its labels to console
-        if verbose is True:
-            # go through each token in the sentence
-            for token, labelled_token in zip(doc, labelled_tokens):
-                print(f"Token: {token}")
-                print(" | ".join(list(TOKEN_LABELS.keys())))
-                printable = [
-                    str(l).ljust(len(name)) for name, l in labelled_token.items()
-                ]
-                printable = " | ".join(printable)
-                print(printable)
-                print("---")
-        # add current sentence's tokens' labels to the list
-        labelled_sentences.append(labelled_tokens)
-
-        if verbose is True:
-            print("\n")
-
-    return labelled_sentences
+    return tokens_str, labelled_token_dict
 
 
 # %%
+# convert list of dictionaries into pandas dataframe
+def convert_label_dict_to_df(
+    labelled_token_ids_dict: list[dict[str, bool]]
+) -> pd.DataFrame:
+    df = pd.DataFrame(labelled_token_ids_dict)
+    # Reset the index so it becomes a column, and then rename the column to 'token_id'
+    df.reset_index(inplace=True)
+    df.rename(columns={"index": "token_id"}, inplace=True)
+    return df
+
+
+# %%
+def export_df_to_csv(df: pd.DataFrame, file_path: str, escapechar: str = "\\") -> None:
+    """
+    Exports a pandas DataFrame to a CSV file, with an option to set escape character.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to be exported.
+    file_path : str
+        The path (including file name) where the CSV file will be saved.
+    escapechar : str, optional
+        The escape character to use in the CSV file for escaping, by default '\\'.
+    """
+    df.to_csv(file_path, index=False, escapechar=escapechar)
+    # index=False to avoid exporting the index column
+
+
+# %%
+
 
 filename = "labelled_token_ids_dict.pkl"
 filepath = STATIC_ASSETS_DIR.joinpath(filename)
