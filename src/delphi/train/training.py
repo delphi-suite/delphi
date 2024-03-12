@@ -27,6 +27,7 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
     print("Starting training...")
     print("Setting torch.use_deterministic_algorithms(True)")
     torch.use_deterministic_algorithms(True)
+    torch.manual_seed(config.torch_seed)
     print()
     print("Config:")
     for field in fields(config):
@@ -51,7 +52,6 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
     # setup
     print("Setting up...")
     os.makedirs(config.out_dir, exist_ok=True)
-    torch.manual_seed(config.torch_seed)
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
