@@ -21,7 +21,7 @@ from delphi.train.architectures import (
     initialize_model,
     load_model,
 )
-from delphi.train.gigaconfig import GigaConfig
+from delphi.train.config.gigaconfig import GigaConfig
 
 
 @dataclass

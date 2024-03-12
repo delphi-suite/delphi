@@ -6,7 +6,7 @@ from beartype.typing import Any, Iterable
 from platformdirs import user_config_dir
 
 from delphi.constants import CONFIG_PRESETS_DIR
-from delphi.train.gigaconfig import GigaConfig
+from delphi.train.config.gigaconfig import GigaConfig
 
 
 def get_preset_paths() -> Iterable[Path]:

@@ -10,7 +10,7 @@ from torch.utils.data.dataloader import _BaseDataLoaderIter
 from tqdm import tqdm
 
 from delphi.train import wandb_utils
-from delphi.train.gigaconfig import GigaConfig
+from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.iteration_params import set_iteration_params
 from delphi.train.shuffle import shuffle_list
 from delphi.train.train_step import train_step
@@ -60,7 +60,7 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
 
     # setup eval callbacks
     eval_callbacks = [save_checkpoint_if_needed]
-    if config.wandb_log:
+    if config.wandb_config.log:
         wandb_utils.init_wandb(config)
         eval_callbacks.append(wandb_utils.log_to_wandb)
 

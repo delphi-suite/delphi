@@ -2,15 +2,15 @@ from dataclasses import asdict
 
 import wandb
 
-from delphi.train.gigaconfig import GigaConfig
+from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.utils import EvalData
 
 
 def init_wandb(config: GigaConfig):
     wandb.init(
-        entity=config.wandb_entity,
-        project=config.wandb_project,
-        name=config.wandb_run_name,
+        entity=config.wandb_config.entity,
+        project=config.wandb_config.project,
+        name=config.wandb_config.run_name,
         config=asdict(config),
     )
 

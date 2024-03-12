@@ -9,7 +9,7 @@ from llama2c.model import Transformer as Llama2cModel
 from transformers import LlamaConfig as LlamaConfigHF
 from transformers import LlamaForCausalLM as LlamaModelHF
 
-from delphi.train.llama2_config_data import Llama2ConfigData
+from delphi.train.config.llama2_config_data import Llama2ConfigData
 
 
 class ModelTypes:

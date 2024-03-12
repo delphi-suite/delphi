@@ -4,7 +4,8 @@ from datetime import datetime
 from beartype import beartype
 
 from delphi.train.architectures import ModelTypes
-from delphi.train.llama2_config_data import Llama2ConfigData
+from delphi.train.config.llama2_config_data import Llama2ConfigData
+from delphi.train.config.wandb_config import WandbConfig
 
 
 @beartype
@@ -32,10 +33,7 @@ class GigaConfig:
     )
     init_from: str = "scratch"  # 'scratch' or 'resume'
     # wandb logging
-    wandb_log: bool = False  # disabled by default
-    wandb_entity: str = "you_need_to_set_wandb_entity_in_config_to_your_wandb_username_for_wandb_logging_to_work"
-    wandb_project: str = "delphi"
-    wandb_run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    wandb_config: WandbConfig = field(default_factory=WandbConfig)
     # data
     batch_size: int = (
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
