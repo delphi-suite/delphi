@@ -8,7 +8,7 @@
     "n_heads": 2,
     "n_kv_heads": 2,
     "max_epochs": 2,
-    "eval_interval": 500,
+    "eval_interval": 1,
     "eval_iters": 10,
     "train_sample_limit": 256,
     "llama2hf_config.hidden_size": 48,
