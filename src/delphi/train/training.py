@@ -25,6 +25,8 @@ from delphi.train.utils import (
 
 def run_training(config: GigaConfig) -> ModelTrainingState:
     print("Starting training...")
+    print("Setting torch.use_deterministic_algorithms(True)")
+    torch.use_deterministic_algorithms(True)
     print()
     print("Config:")
     for field in fields(config):
