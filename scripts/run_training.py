@@ -5,13 +5,13 @@ from itertools import chain
 from pathlib import Path
 
 from delphi.constants import CONFIG_PRESETS_DIR
+from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.config.utils import (
     build_config_from_files,
     get_preset_paths,
     get_user_config_path,
     update_config,
 )
-from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.training import run_training
 
 
