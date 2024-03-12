@@ -60,7 +60,7 @@ def get_all_token_positions_in_category(
 def get_all_metrics_from_token_positions(
     token_positions: Mapping[int, list[tuple[int, int]]],
     metrics: Float[torch.Tensor, "prompt tok"],
-) -> defaultdict[int, list[float]]:
+) -> Mapping[int, Float[torch.Tensor, "metric"]]:
     """
     Get all metrics from token positions based on a dictionary of token ids to a list of (prompt, position) pairs and a tensor of metrics.
 
@@ -69,16 +69,17 @@ def get_all_metrics_from_token_positions(
     - metrics: a 2D tensor of metrics (e.g. torch.Tensor([[0.1, 0.2], [0.3, 0.4], ...]))
 
     returns:
-    - a dictionary of token ids to a float of the metric at the token's position
+    - a dictionary of token ids to a 1D tensor of metrics that are in the specified category based on the labels in tlabelled_token_ids_dict
     """
-    # TODO: implement this function
 
-    result = defaultdict(list)
+    result = {}
     for token_id, positions in token_positions.items():
         # ignore if positions is None
         if positions is None:
             continue
-        for position in positions:
-            result[token_id].append(metrics[position[0], position[1]].item())
+        tensor = torch.tensor(
+            [metrics[prompt, position] for prompt, position in positions]
+        )
+        result[token_id] = tensor
 
     return result

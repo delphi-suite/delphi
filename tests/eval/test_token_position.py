@@ -86,12 +86,11 @@ def test_get_all_metrics_from_token_positions(token_mappings):
 
     result = get_all_metrics_from_token_positions(token_positions, metrics)
     expected = {
-        0: [0.0, 0.1],
-        1: [0.2, 0.3],
-        2: [0.4, 0.5],
-        3: [0.6, 0.7],
+        0: torch.tensor([0.0, 0.1]),
+        1: torch.tensor([0.2, 0.3]),
+        2: torch.tensor([0.4, 0.5]),
+        3: torch.tensor([0.6, 0.7]),
     }
 
-    for k, v in expected.items():
-        # close approximation since we're dealing with floats
-        assert torch.allclose(torch.tensor(v), torch.tensor(result[k]), atol=1e-6)
+    for k, v in result.items():
+        assert torch.allclose(v, expected[k])
