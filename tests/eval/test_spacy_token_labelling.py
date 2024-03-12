@@ -6,12 +6,16 @@ from spacy.language import Language
 from spacy.tokens import Doc
 from transformers import AutoTokenizer
 
-import delphi.eval.token_labelling as tl
+import delphi.eval.spacy_token_labelling as tl
+
+# skip all tests in this module
+pytestmark = pytest.mark.skip(
+    "tests are slow and we're not using this module currently"
+)
 
 labelled_token_ids_dict: dict[int, dict[str, bool]] = {}
 
 
-@pytest.skip("These tests are slow")
 @pytest.fixture
 def dummy_doc() -> tuple[str, Doc, dict[str, bool]]:
     """
@@ -63,7 +67,6 @@ def dummy_doc() -> tuple[str, Doc, dict[str, bool]]:
     return text, doc, PETER_TOKEN_LABEL
 
 
-@pytest.skip("These tests are slow")
 def test_explain_token_labels(dummy_doc):
     """
     Test the explain_token_labels function.
@@ -75,7 +78,6 @@ def test_explain_token_labels(dummy_doc):
     tl.explain_token_labels(doc[0])
 
 
-@pytest.skip("These tests are slow")
 def test_label_single_token(dummy_doc):
     """
     Test the label_single_token function.
@@ -89,7 +91,6 @@ def test_label_single_token(dummy_doc):
     assert labels == PETER_TOKEN_LABEL
 
 
-@pytest.skip("These tests are slow")
 def test_label_sentence(dummy_doc):
     """
     Test the label_sentence function.
@@ -104,7 +105,6 @@ def test_label_sentence(dummy_doc):
         assert label == tl.label_single_token(token)
 
 
-@pytest.skip("These tests are slow")
 def test_label_batch_sentences(dummy_doc):
     """
     Test the label_batch_sentences function.
@@ -124,7 +124,6 @@ def test_label_batch_sentences(dummy_doc):
         assert label == tl.label_single_token(token)
 
 
-@pytest.skip("These tests are slow")
 def is_valid_structure(obj: dict[int, dict[str, bool]]) -> bool:
     """
     Checks whether the obj fits the structure of `dict[int, dict[str, bool]]`. Returns True, if it fits, False otherwise.
@@ -147,7 +146,6 @@ def is_valid_structure(obj: dict[int, dict[str, bool]]) -> bool:
     return True
 
 
-@pytest.skip("These tests are slow")
 def test_label_tokens_from_tokenizer():
     """
     Simple test, checking if download of tokinzer and the labelling of all tokens in its vocabulary works.
