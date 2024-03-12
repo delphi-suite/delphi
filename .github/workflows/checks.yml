@@ -33,6 +33,7 @@ jobs:
       - name: dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install wheel  # mamba_ssm fix, see https://github.com/state-spaces/mamba/issues/98
           pip install -r requirements.txt
           pip install -e .
       - name: black
