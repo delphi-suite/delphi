@@ -1,7 +1,7 @@
 import time
+from collections.abc import Callable
 
 import torch
-from beartype.typing import Callable
 from datasets import Dataset
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 
