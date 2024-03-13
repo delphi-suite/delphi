@@ -1,8 +1,13 @@
+import pickle
+from pathlib import Path
 from typing import Callable, Optional
 
+import pandas as pd
 import spacy
 from spacy.tokens import Doc, Token
 from spacy.util import is_package
+from tqdm.auto import tqdm
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 # make sure the english language model capabilities are installed by the equivalent of:
 # python -m spacy download en_core_web_sm
@@ -208,3 +213,103 @@ def label_batch_sentences(
             print("\n")
 
     return labelled_sentences
+
+
+def label_tokens_from_tokenizer(
+    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+) -> tuple[str, dict[int, dict[str, bool]]]:
+    """
+    Labels all tokens in a tokenizer's vocabulary with the corresponding token categories (POS, named entity, etc). Returns two things: 1) `tokens_str`, a string where each token comprises 'token_id,token_str\n' and 2) `labelled_token_ids_dict` a dict that contains for each token_id (key) the corresponding token labels, which is in turn a dict, whith the label categories as keys and their boolean values as the dict's values.
+
+    Parameters
+    ----------
+    tokenizer : The tokenizer with its tokens to be labelled.
+
+    Returns
+    -------
+    tokens_str, labelled_token_ids_dict
+
+    """
+
+    def decode(
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        token_ids: int | list[int],
+    ) -> str:
+        return tokenizer.decode(token_ids, skip_special_tokens=True)
+
+    vocab_size = tokenizer.vocab_size
+
+    # 1) Create a list of all tokens in the tokenizer's vocabulary
+    tokens_str = ""  # will hold all tokens and their ids
+    for i in range(vocab_size):
+        tokens_str += f"{i},{decode(tokenizer, i)}\n"
+
+    # 2) let's label each token
+    labelled_token_ids_dict = {}  # token_id: labels
+    max_token_id = vocab_size  # stop at which token id, vocab size
+    # we iterate over all token_ids individually
+    for token_id in tqdm(range(0, max_token_id), desc="Labelling tokens"):
+        # decode the token_ids to get a list of tokens, a 'sentence'
+        token = decode(tokenizer, token_id)  # list of tokens == sentence
+        # put the sentence into a list, to make it a batch of sentences
+        sentences = [token]
+        # label the batch of sentences
+        labels = label_batch_sentences(sentences, tokenized=True, verbose=False)
+        # create a dict with the token_ids and their labels
+        # update the labelled_token_ids_dict with the new dict
+        label = labels[0][0]  # first sentence of batch, label of first token
+        labelled_token_ids_dict[token_id] = label
+
+    return tokens_str, labelled_token_ids_dict
+
+
+def import_token_labels(path: str | Path):
+    """
+    Imports token labels from a *.csv file.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the file.
+
+    Returns
+    -------
+    dict[int, dict[str, bool]]
+        Returns the labelled tokens dict. Each token_id has its own dict having the labels.
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    # make sure the file_type is compatible
+    file_type = path.suffix
+    assert (
+        file_type == ".csv"
+    ), f"Invalid file type. Allowed: csv, pkl. Got: {file_type}"
+    # make sure file exists
+    if not path.exists():
+        raise FileNotFoundError(f"There is no file under {path}")
+
+    df = pd.read_csv(str(path))
+    categories = list(df.columns[1:])  # excluding first column: token_id
+    loaded_label_dict: dict[int, dict[str, bool]] = {}
+    # go through each row and construct the dict
+    for _, row in df.iterrows():
+        token_id = int(row["token_id"])
+        labels = {cat: bool(row[cat] == 1) for cat in categories}
+        loaded_label_dict[token_id] = labels
+
+    return loaded_label_dict
+
+
+def convert_label_dict_to_df(
+    labelled_token_ids_dict: dict[int, dict[str, bool]]
+) -> pd.DataFrame:
+    """
+    Takes a `labelled_token_ids_dict` and converts it into a Pandas Dataframe.
+    """
+    df = pd.DataFrame(labelled_token_ids_dict.items(), columns=["token_id", "label"])
+    # split the label column into multiple columns
+    df = df.join(pd.DataFrame(df.pop("label").tolist()))
+    # Change datatype of columns to float
+    df = df.astype(int)
+
+    return df
