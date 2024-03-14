@@ -4,7 +4,7 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Tuple, cast
 
 import torch
 from datasets import Dataset
@@ -27,7 +27,6 @@ from delphi.train.config.gigaconfig import GigaConfig
 class ModelTrainingState:
     model: torch.nn.Module
     optimizer: torch.optim.Optimizer
-    model_args: Any
     iter_num: int
     local_iter_num: int
     best_val_loss: float
@@ -69,24 +68,14 @@ def get_device(device_str: str = "auto") -> torch.device:
 def get_optimizer(
     model: torch.nn.Module,
     config: GigaConfig,
-    device: torch.device,
     checkpoint=None,
 ) -> AdamW:
-    device_type = device.type
-    if config.architecture == constants.ModelTypes.LLAMA2C:
-        optimizer = model.configure_optimizers(
-            config.weight_decay,
-            config.learning_rate,
-            (config.beta1, config.beta2),
-            device_type,
-        )
-    else:
-        optimizer = AdamW(
-            lr=config.learning_rate,
-            params=model.parameters(),
-            weight_decay=config.weight_decay,
-            betas=(config.beta1, config.beta2),
-        )
+    optimizer = AdamW(
+        lr=config.learning_rate,
+        params=model.parameters(),
+        weight_decay=config.weight_decay,
+        betas=(config.beta1, config.beta2),
+    )
     if checkpoint is not None:
         optimizer.load_state_dict(checkpoint["optimizer"])
     return optimizer
@@ -109,7 +98,7 @@ def estimate_loss(
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
             X, Y = get_next_xy(batch_iter, device)
-            loss = get_loss(model, model_arch, X, Y)
+            loss = get_loss(model, X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -166,7 +155,6 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     checkpoint = {
         "model": mts.model.state_dict(),
         "optimizer": mts.optimizer.state_dict(),
-        "model_args": mts.model_args,
         "iter_num": mts.iter_num,
         "best_val_loss": mts.best_val_loss,
         "config": asdict(eval_data.config),
@@ -175,7 +163,7 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     torch.save(checkpoint, os.path.join(eval_data.config.out_dir, "ckpt.pt"))
     export_model(
         mts.model,
-        mts.model_args["architecture"],
+        eval_data.config.architecture,
         os.path.join(eval_data.config.out_dir, "model.bin"),
     )
 
@@ -195,21 +183,9 @@ def load_model_training_state(
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
-        model_args = dict(
-            architecture=config.architecture,
-            dim=config.dim,
-            n_layers=config.n_layers,
-            n_heads=config.n_heads,
-            n_kv_heads=config.n_kv_heads,
-            vocab_size=config.vocab_size,
-            multiple_of=config.multiple_of,
-            max_seq_len=config.max_seq_len,
-            dropout=config.dropout,
-            llama2hf_config=config.llama2hf_config,
-        )  # start with model_args from command line
         print(f"Resuming training from {config.out_dir}")
         checkpoint = torch.load(Path(config.out_dir) / "ckpt.pt", map_location=device)
-        model = load_model(model_args, checkpoint)
+        model = load_model(config, checkpoint)
         iter_num = checkpoint["iter_num"]
         best_val_loss = checkpoint["best_val_loss"]
     model.to(device)
@@ -217,16 +193,14 @@ def load_model_training_state(
     optimizer = get_optimizer(
         model=model,
         config=config,
-        device=device,
         checkpoint=checkpoint
-        if checkpoint is not None and "optimizer" in checkpoint
+        if checkpoint is not None and "optimizer" in checkpoint  # type: ignore
         else None,
     )
     checkpoint = None  # free up memory
     return ModelTrainingState(
         model=model,
         optimizer=optimizer,
-        model_args=model_args,
         iter_num=iter_num,
         local_iter_num=local_iter_num,
         best_val_loss=best_val_loss,
@@ -254,7 +228,7 @@ def get_next_xy(
     train_batch_iter: _BaseDataLoaderIter,
     device: torch.device
     # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
-):
+) -> Tuple[torch.Tensor, torch.Tensor]:
     data = cast(torch.Tensor, next(train_batch_iter)["tokens"].to(device))
     # X and Y NEED to be contigious. llama2c's implementation involves
     # calling .view on them, which breaks if they're not contigious

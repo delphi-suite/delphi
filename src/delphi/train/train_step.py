@@ -87,10 +87,7 @@ def train_step(
     )
     for micro_step in range(config.gradient_accumulation_steps):
         X, Y = get_next_xy(train_batch_iter, device)
-        loss = (
-            get_loss(model, config.architecture, X, Y)
-            / config.gradient_accumulation_steps
-        )
+        loss = get_loss(model, X, Y) / config.gradient_accumulation_steps
         loss.backward()
     # clip the gradient
     if config.grad_clip != 0.0:
@@ -134,10 +131,7 @@ def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float):
     # first estimate the number of flops we do per iteration.
     # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
     N = sum(p.numel() for p in model.parameters())
-    if config.architecture == ModelTypes.LLAMA2C:
-        cfg = model.params
-        L, H, Q, T = cfg.n_layers, cfg.n_heads, cfg.dim // cfg.n_heads, cfg.max_seq_len
-    elif config.architecture == ModelTypes.LLAMA2HF:
+    if config.architecture == ModelTypes.LLAMA2HF:
         cfg = model.config
         L, H, Q, T = (
             cfg.num_hidden_layers,
