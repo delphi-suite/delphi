@@ -38,15 +38,6 @@ class GigaConfig:
     batch_size: int = (
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
     )
-    # model
-    dim: int = 288
-    max_seq_len: int = 512
-    vocab_size: int = 4096
-    n_layers: int = 6
-    n_heads: int = 6
-    n_kv_heads: int = 6
-    multiple_of: int = 32
-    dropout: float = 0.0
     # model config
     llama2hf_config: Llama2ConfigData = field(default_factory=Llama2ConfigData)
     mamba_config: MambaConfigData = field(default_factory=MambaConfigData)
