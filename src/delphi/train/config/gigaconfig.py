@@ -39,6 +39,7 @@ class GigaConfig:
         64  # if gradient_accumulation_steps > 1, this is the micro-batch size
     )
     # model config
+    max_seq_len: int = 512
     llama2hf_config: Llama2ConfigData = field(default_factory=Llama2ConfigData)
     mamba_config: MambaConfigData = field(default_factory=MambaConfigData)
     # adamw optimizer

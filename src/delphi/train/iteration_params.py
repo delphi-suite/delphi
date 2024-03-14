@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from delphi.train.config.gigaconfig import GigaConfig
+
 
 @dataclass
 class IterationParams:
@@ -10,7 +12,9 @@ class IterationParams:
     tokens_per_iter: int
 
 
-def set_iteration_params(config, train_ds, validation_ds) -> IterationParams:
+def set_iteration_params(
+    config: GigaConfig, train_ds, validation_ds
+) -> IterationParams:
     num_batches = len(train_ds) // config.batch_size
     num_steps = num_batches // config.gradient_accumulation_steps
     eval_iters = min(12, len(validation_ds) // config.batch_size)
