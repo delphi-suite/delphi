@@ -6,7 +6,8 @@ import torch
 from datasets import Dataset
 from torch.utils.data.dataloader import _BaseDataLoaderIter
 
-from delphi.train.architectures import ModelTypes, get_loss
+from delphi.constants import ModelTypes
+from delphi.train.architectures import get_loss
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.iteration_params import IterationParams
 from delphi.train.utils import (

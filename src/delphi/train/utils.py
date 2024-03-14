@@ -15,7 +15,6 @@ from torch.utils.data.dataloader import _BaseDataLoaderIter
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
 from delphi.train.architectures import (
-    ModelTypes,
     export_model,
     get_loss,
     initialize_model,
@@ -74,7 +73,7 @@ def get_optimizer(
     checkpoint=None,
 ) -> AdamW:
     device_type = device.type
-    if config.architecture == ModelTypes.LLAMA2C:
+    if config.architecture == constants.ModelTypes.LLAMA2C:
         optimizer = model.configure_optimizers(
             config.weight_decay,
             config.learning_rate,
@@ -189,18 +188,6 @@ def load_model_training_state(
     best_val_loss = 1e9
     running_mfu = -1.0
     t0 = time.time()
-    model_args = dict(
-        architecture=config.architecture,
-        dim=config.dim,
-        n_layers=config.n_layers,
-        n_heads=config.n_heads,
-        n_kv_heads=config.n_kv_heads,
-        vocab_size=config.vocab_size,
-        multiple_of=config.multiple_of,
-        max_seq_len=config.max_seq_len,
-        dropout=config.dropout,
-        llama2hf_config=config.llama2hf_config,
-    )  # start with model_args from command line
     if config.init_from == "scratch":
         # init a new model from scratch
         print("Initializing a new model from scratch")
@@ -208,6 +195,18 @@ def load_model_training_state(
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
+        model_args = dict(
+            architecture=config.architecture,
+            dim=config.dim,
+            n_layers=config.n_layers,
+            n_heads=config.n_heads,
+            n_kv_heads=config.n_kv_heads,
+            vocab_size=config.vocab_size,
+            multiple_of=config.multiple_of,
+            max_seq_len=config.max_seq_len,
+            dropout=config.dropout,
+            llama2hf_config=config.llama2hf_config,
+        )  # start with model_args from command line
         print(f"Resuming training from {config.out_dir}")
         checkpoint = torch.load(Path(config.out_dir) / "ckpt.pt", map_location=device)
         model = load_model(model_args, checkpoint)

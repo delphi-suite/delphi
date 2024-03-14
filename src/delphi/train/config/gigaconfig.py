@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from beartype import beartype
 
-from delphi.train.architectures import ModelTypes
+from delphi.constants import ModelTypes
 from delphi.train.config.llama2_config_data import Llama2ConfigData
 from delphi.train.config.mamba_config_data import MambaConfigData
 from delphi.train.config.wandb_config import WandbConfig

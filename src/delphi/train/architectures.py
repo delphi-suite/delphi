@@ -10,14 +10,8 @@ from transformers import LlamaConfig as LlamaConfigHF
 from transformers import LlamaForCausalLM as LlamaModelHF
 from transformers import MambaConfig, MambaForCausalLM
 
+from delphi.constants import ModelTypes
 from delphi.train.config.llama2_config_data import Llama2ConfigData
-
-
-class ModelTypes:
-    LLAMA2C = "llama2c"
-    LLAMA2HF = "llama2-huggingface"
-    MAMBA = "mamba"
-
 
 args_to_load_from_checkpoint = {
     ModelTypes.LLAMA2C: [
@@ -41,12 +35,7 @@ args_to_load_from_checkpoint = {
 # TODO: fix this once LLAMA2C is deprecated
 def initialize_model(config) -> torch.nn.Module:
     arch = config.architecture
-    if arch == ModelTypes.LLAMA2C:
-        # filter model_args for fields in Llama2ModelArgs
-        llama2_arg_names = {f.name for f in fields(Llama2ModelArgs)}
-        llama2_args = {k: v for k, v in asdict(config).items() if k in llama2_arg_names}
-        return Llama2cModel(Llama2ModelArgs(**llama2_args))  # type: ignore
-    elif arch == ModelTypes.LLAMA2HF:
+    if arch == ModelTypes.LLAMA2HF:
         return LlamaModelHF(
             cast(
                 LlamaConfigHF,
@@ -69,11 +58,7 @@ def load_model(model_args, checkpoint) -> torch.nn.Module:
     checkpoint_model_args = checkpoint["model_args"]
     for k in args_to_load_from_checkpoint[arch]:
         model_args[k] = checkpoint_model_args[k]
-    if arch == ModelTypes.LLAMA2C:
-        # create the model
-        gptconf = Llama2ModelArgs(**model_args)
-        model = Llama2cModel(gptconf)
-    elif arch == ModelTypes.LLAMA2HF:
+    if arch == ModelTypes.LLAMA2HF:
         model = initialize_model(**model_args)
     else:
         raise NotImplementedError(f"Architecture {arch} not yet implemented")
@@ -83,16 +68,9 @@ def load_model(model_args, checkpoint) -> torch.nn.Module:
 
 
 def export_model(model, model_architecture, output_path):
-    if model_architecture == ModelTypes.LLAMA2C:
-        model_export(
-            model,
-            output_path,
-            version=0,
-        )
-    else:
-        logging.warning(
-            f"Architecture {model_architecture} model export not yet implemented"
-        )
+    logging.warning(
+        f"Architecture {model_architecture} model export not yet implemented"
+    )
 
 
 def get_loss(
