@@ -71,10 +71,10 @@ def get_optimizer(
     checkpoint=None,
 ) -> AdamW:
     optimizer = AdamW(
-        lr=config.learning_rate,
+        lr=config.optimizer.learning_rate,
         params=model.parameters(),
-        weight_decay=config.weight_decay,
-        betas=(config.beta1, config.beta2),
+        weight_decay=config.optimizer.weight_decay,
+        betas=(config.optimizer.beta1, config.optimizer.beta2),
     )
     if checkpoint is not None:
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -105,15 +105,21 @@ def estimate_loss(
     return out
 
 
-def get_lr(it, warmup_iters, learning_rate, lr_decay_iters, min_lr):
+def get_lr(
+    iter_num: int,
+    warmup_iters: int,
+    learning_rate: float,
+    lr_decay_iters: int,
+    min_lr: float,
+):
     # 1) linear warmup for warmup_iters steps
-    if it < warmup_iters:
-        return learning_rate * it / warmup_iters
+    if iter_num < warmup_iters:
+        return learning_rate * iter_num / warmup_iters
     # 2) if it > lr_decay_iters, return min learning rate
-    if it > lr_decay_iters:
+    if iter_num > lr_decay_iters:
         return min_lr
     # 3) in between, use cosine decay down to min learning rate
-    decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+    decay_ratio = (iter_num - warmup_iters) / (lr_decay_iters - warmup_iters)
     assert 0 <= decay_ratio <= 1
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
     return min_lr + coeff * (learning_rate - min_lr)
@@ -127,14 +133,14 @@ def set_lr(
 ):
     lr = (
         get_lr(
-            iter_num,
-            config.warmup_iters,
-            config.learning_rate,
-            lr_decay_iters,
-            config.min_lr,
+            iter_num=iter_num,
+            warmup_iters=config.optimizer.warmup_iters,
+            learning_rate=config.optimizer.learning_rate,
+            lr_decay_iters=lr_decay_iters,
+            min_lr=config.optimizer.min_lr,
         )
-        if config.decay_lr
-        else config.learning_rate
+        if config.optimizer.decay_lr
+        else config.optimizer.learning_rate
     )
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr

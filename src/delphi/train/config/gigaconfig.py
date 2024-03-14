@@ -5,17 +5,13 @@ from beartype import beartype
 from delphi.constants import ModelTypes
 from delphi.train.config.llama2_config_data import Llama2ConfigData
 from delphi.train.config.mamba_config_data import MambaConfigData
+from delphi.train.config.optimizer_config import OptimizerConfig
 from delphi.train.config.wandb_config import WandbConfig
 
 
 @beartype
 @dataclass
 class GigaConfig:
-    """This is a terrible hack to get usable config objects to pass around
-    It's way too big and ties way too many things together. This should be broken
-    into several smaller configs.
-    """
-
     # device
     device: str = "auto"
 
@@ -42,18 +38,11 @@ class GigaConfig:
     max_seq_len: int = 512
     llama2hf_config: Llama2ConfigData = field(default_factory=Llama2ConfigData)
     mamba_config: MambaConfigData = field(default_factory=MambaConfigData)
-    # adamw optimizer
-    gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
-    learning_rate: float = 5e-4  # max learning rate
+    # training
     max_epochs: int = 10  # total number of training epochs
-    weight_decay: float = 1e-1
-    beta1: float = 0.9
-    beta2: float = 0.95
     grad_clip: float = 1.0  # clip gradients at this value, or disable if == 0.0
-    # learning rate decay settings
-    decay_lr: bool = True  # whether to decay the learning rate
-    warmup_iters: int = 1000  # how many steps to warm up for
-    min_lr: float = 0.0  # should be ~learning_rate/10 per Chinchill
+    # (adamw) optimizer
+    optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     # reproducibility
     batch_ordering_seed = 1337
     torch_seed = 42

@@ -82,12 +82,12 @@ def train_step(
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
     print(
-        f"gradient accumulation steps: {config.gradient_accumulation_steps}, "
+        f"gradient accumulation steps: {config.optimizer.gradient_accumulation_steps}, "
         f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
     )
-    for micro_step in range(config.gradient_accumulation_steps):
+    for micro_step in range(config.optimizer.gradient_accumulation_steps):
         X, Y = get_next_xy(train_batch_iter, device)
-        loss = get_loss(model, X, Y) / config.gradient_accumulation_steps
+        loss = get_loss(model, X, Y) / config.optimizer.gradient_accumulation_steps
         loss.backward()
     # clip the gradient
     if config.grad_clip != 0.0:
@@ -103,7 +103,7 @@ def train_step(
     model_training_state.t0 = t1
     if model_training_state.iter_num % config.log_interval == 0:
         # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
-        lossf = loss.item() * config.gradient_accumulation_steps
+        lossf = loss.item() * config.optimizer.gradient_accumulation_steps
         if (
             model_training_state.local_iter_num >= 5
         ):  # let the training loop settle a bit
@@ -144,7 +144,7 @@ def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float):
         return -1.0
     flops_per_token = 6 * N + 12 * L * H * Q * T
     flops_per_fwdbwd = flops_per_token * T
-    fwdbwd_per_iter = config.batch_size * config.gradient_accumulation_steps
+    fwdbwd_per_iter = config.batch_size * config.optimizer.gradient_accumulation_steps
     flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
     # express our flops throughput as ratio of A100 bfloat16 peak flops
     flops_achieved = flops_per_iter * (1.0 / timedelta)  # per second
