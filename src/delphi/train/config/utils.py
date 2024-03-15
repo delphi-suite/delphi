@@ -49,6 +49,9 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
             continue
         # support x.y.z = val
         keys = key.split(".")
+        if keys[0] == "model_args":
+            config.model_args[".".join(keys[1:])] = val
+            continue
         cur = config
         while len(keys) > 1:
             if hasattr(cur, keys[0]):

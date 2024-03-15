@@ -4,7 +4,7 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Tuple, cast
+from typing import cast
 
 import torch
 from datasets import Dataset
@@ -185,7 +185,7 @@ def load_model_training_state(
     if config.init_from == "scratch":
         # init a new model from scratch
         print("Initializing a new model from scratch")
-        model = initialize_model(config)
+        model = initialize_model(config.architecture, config.model_args)
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
@@ -234,7 +234,7 @@ def get_next_xy(
     train_batch_iter: _BaseDataLoaderIter,
     device: torch.device
     # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     data = cast(torch.Tensor, next(train_batch_iter)["tokens"].to(device))
     # X and Y NEED to be contigious. llama2c's implementation involves
     # calling .view on them, which breaks if they're not contigious

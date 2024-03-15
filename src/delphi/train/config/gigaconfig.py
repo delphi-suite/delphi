@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
+from typing import Any
 
 from beartype import beartype
+from transformers import PretrainedConfig
 
 from delphi.constants import ModelTypes
-from delphi.train.config.llama2_config_data import Llama2ConfigData
-from delphi.train.config.mamba_config_data import MambaConfigData
 from delphi.train.config.optimizer_config import OptimizerConfig
 from delphi.train.config.wandb_config import WandbConfig
 
@@ -36,8 +36,7 @@ class GigaConfig:
     )
     # model config
     max_seq_len: int = 512
-    llama2hf_config: Llama2ConfigData = field(default_factory=Llama2ConfigData)
-    mamba_config: MambaConfigData = field(default_factory=MambaConfigData)
+    model_args: dict[str, Any] = field(default_factory=dict)
     # training
     max_epochs: int = 10  # total number of training epochs
     grad_clip: float = 1.0  # clip gradients at this value, or disable if == 0.0
