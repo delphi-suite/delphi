@@ -1,4 +1,6 @@
 {
+    "priority": -2,
+    "architecture": "llama2-huggingface",
     "model_args.attention_bias": false,
     "model_args.attention_dropout": 0.0,
     "model_args.bos_token_id": 1,
