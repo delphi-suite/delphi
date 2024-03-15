@@ -62,6 +62,15 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
             setattr(cur, keys[0], val)
 
 
+def combine_configs(configs: list[dict[str, Any]]) -> dict[str, Any]:
+    # combine configs dicts, with key "priority" setting precendence (higher priority overrides lower priority)
+    sorted_configs = sorted(configs, key=lambda c: c.get("priority", -999))
+    combined_config = dict()
+    for config in sorted_configs:
+        combined_config.update(config)
+    return combined_config
+
+
 def build_config_from_files(config_files: list[Path]) -> GigaConfig:
     configs_in_order = get_configs_in_priority_order(config_files)
     config = GigaConfig()
