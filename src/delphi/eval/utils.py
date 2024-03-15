@@ -115,3 +115,39 @@ def load_token_map() -> defaultdict[int, list[list[int]]]:
         mapping[i] = token_map[i]["prompt_pos_idx"]
 
     return mapping
+
+
+def contruct_diff_probs_from_pos_dict(
+    pos_dict: dict[tuple[int, int], float],
+    sample_tok_ids: list[Int[torch.Tensor, "pos"]],
+    samples: int = 3,
+) -> tuple[list[Float[torch.Tensor, "pos"]], list[Float[torch.Tensor, "pos"]]]:
+    """
+    iterate through pos_dict {(0, 7): 0.8, (0, 6): 0.7} and construct a list of diff probs
+    with the same dimension as sample_tok_ids, where all elements are 0.0 except for the
+    positions in pos_dict, which are set to the corresponding value in pos_dict.
+
+    also, only iterate through the first `samples` elements of pos_dict
+
+    also construct a new sample_tok_ids but only the first elements until the position in pos_dict
+
+    args:
+    - pos_dict: a dict with the token positions as keys and the token positions as values
+        e.g. {(0, 7): 0.8, (0, 6): 0.7}
+    - sample_tok_ids: a list of tensors of token ids e.g. [torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]), ...]
+    - samples: the number of samples to iterate through
+
+    return:
+    - a list of tensors of diff probs and the corresponding new sample_tok_ids
+        e.g. [torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8]), ...], [torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]), ...]
+    """
+    diff_probs = []
+    new_sample_tok_ids = []
+    for i, pos in enumerate(pos_dict.keys()):
+        if i >= samples:
+            break
+        diff_probs.append(torch.empty_like(sample_tok_ids[pos[0]], dtype=torch.float32))
+        diff_probs[-1][pos[1]] = pos_dict[pos]
+        new_sample_tok_ids.append(sample_tok_ids[pos[0]][: pos[1] + 1].int())
+
+    return diff_probs, new_sample_tok_ids
