@@ -6,7 +6,6 @@ import torch
 from datasets import Dataset
 
 from delphi.constants import ModelTypes
-from delphi.train.architectures import get_loss
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.iteration_params import IterationParams
 from delphi.train.utils import (
@@ -85,7 +84,7 @@ def train_step(
     )
     for micro_step in range(config.optimizer.gradient_accumulation_steps):
         X, Y = get_next_xy(train_batch_iter, device)
-        loss = get_loss(model, X, Y) / config.optimizer.gradient_accumulation_steps
+        loss = model(X, labels=Y, return_dict=True).loss
         loss.backward()
     # clip the gradient
     if config.grad_clip != 0.0:

@@ -12,7 +12,6 @@ from torch.optim import AdamW
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.architectures import get_loss, load_model
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.config.model.model_config import config_to_model
 from delphi.train.run_context import RunContext
@@ -145,6 +144,13 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     torch.save(checkpoint, os.path.join(run_output_dir, "ckpt.pt"))
 
 
+def load_model(config: GigaConfig, checkpoint) -> torch.nn.Module:
+    model = config_to_model(config.model_config)
+    state_dict = checkpoint["model"]
+    model.load_state_dict(state_dict)
+    return model
+
+
 def load_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
@@ -166,7 +172,7 @@ def load_model_training_state(
         model = load_model(config, checkpoint)
         iter_num = checkpoint["iter_num"]
         best_val_loss = checkpoint["best_val_loss"]
-    model.to(device)
+    model.to(device)  # type: ignore
     # optimizer
     optimizer = get_optimizer(
         model=model,
@@ -245,7 +251,7 @@ def estimate_loss(
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
             X, Y = get_next_xy(batch_iter, device)
-            loss = get_loss(model, X, Y)
+            loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
