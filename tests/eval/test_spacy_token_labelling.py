@@ -1,9 +1,19 @@
+import pickle
+from pathlib import Path
+
 import pytest
-import spacy
 from spacy.language import Language
 from spacy.tokens import Doc
+from transformers import AutoTokenizer
 
-import delphi.eval.token_labelling as tl
+import delphi.eval.spacy_token_labelling as tl
+
+# skip all tests in this module
+pytestmark = pytest.mark.skip(
+    "tests are slow and we're not using this module currently"
+)
+
+labelled_token_ids_dict: dict[int, dict[str, bool]] = {}
 
 
 @pytest.fixture
@@ -112,3 +122,68 @@ def test_label_batch_sentences(dummy_doc):
     # iterate through tokens in doc
     for token, label in zip(doc, labels[0]):
         assert label == tl.label_single_token(token)
+
+
+def is_valid_structure(obj: dict[int, dict[str, bool]]) -> bool:
+    """
+    Checks whether the obj fits the structure of `dict[int, dict[str, bool]]`. Returns True, if it fits, False otherwise.
+    """
+    if not isinstance(obj, dict):
+        print(f"Main structure is not dict! Instead is type {type(obj)}")
+        return False
+    for key, value in obj.items():
+        if not isinstance(key, int) or not isinstance(value, dict):
+            print(
+                f"Main structure is dict, but its keys are either not int or its values are not dicts. Instead key is type {type(key)} and value is type {type(value)}"
+            )
+            return False
+        for sub_key, sub_value in value.items():
+            if not isinstance(sub_key, str) or not isinstance(sub_value, bool):
+                print(
+                    f"The structure dict[int, dict[X, Y]] is True, but either X is not str or Y is not bool. Instead X is type {type(sub_key)} and Y is type {type(sub_value)}"
+                )
+                return False
+    return True
+
+
+def test_label_tokens_from_tokenizer():
+    """
+    Simple test, checking if download of tokinzer and the labelling of all tokens in its vocabulary works.
+    """
+    global labelled_token_ids_dict
+    # get a tokinzer
+    model_name = "delphi-suite/delphi-llama2-100k"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    vocab_size = tokenizer.vocab_size
+
+    tokens_str, labelled_token_ids_dict = tl.label_tokens_from_tokenizer(tokenizer)
+    # count the number of lines in the token_str
+    assert tokens_str.count("\n") == (vocab_size + 1)  # + 1, because of token '\n'
+    assert len(labelled_token_ids_dict.keys()) == vocab_size
+    assert is_valid_structure(labelled_token_ids_dict) == True
+
+
+@pytest.mark.parametrize("path", [Path("temp/token_labels.csv")])
+def test_import_token_labels(path: Path):
+    """
+    Simple test, checking if the import of token labels works.
+
+    Note: Because we want to use pure pytest and not install any extra dependencies (e.g. pytest-depencency) we recreate the `labelled_tokens_dict` in this test as we did in `test_label_tokens_from_tokenizer`. This duplication is not ideal, but it is the best quick&dirty solution for now.
+    """
+    # create the labelled_token_ids_dict
+    model_name = "delphi-suite/delphi-llama2-100k"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    _, labelled_token_ids_dict = tl.label_tokens_from_tokenizer(tokenizer)
+
+    # create the path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # save the file
+    df = tl.convert_label_dict_to_df(labelled_token_ids_dict)
+    df.to_csv(path, index=False)
+
+    # load the file with our function to be tested
+    loaded_dict = tl.import_token_labels(path)
+
+    # assure that the structure is correct
+    assert loaded_dict == labelled_token_ids_dict
+    assert is_valid_structure(loaded_dict) == True

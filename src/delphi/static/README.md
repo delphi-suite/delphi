@@ -1,5 +1,5 @@
-# TODO: move this to delphi/static
 # Static Data Files
+
 
 
 ## `token_map.pkl`

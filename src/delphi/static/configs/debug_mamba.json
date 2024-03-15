@@ -1,0 +1,16 @@
+{
+    "priority": -1,
+    "architecture": "mamba",
+    "vocab_size": 4096,
+    "max_seq_len": 512,
+    "max_epochs": 2,
+    "eval_interval": 1,
+    "eval_iters": 10,
+    "train_sample_limit": 256,
+    "model_args.vocab_size": 4096,
+    "model_args.hidden_size": 48,
+    "model_args.num_hidden_layers": 2,
+    "model_args.conv_kernel": 2,
+    "model_args.expand": 2,
+    "model_args.time_step_rank": 2
+}

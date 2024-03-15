@@ -49,3 +49,6 @@ When you save a file vscode should automatically format it. Otherwise, pre-commi
      - comment important sections of the code in _Files changed_ tab
    - when it's ready, add the relevant stakeholders as reviewers
 4. after the comments are resolved and PR is approved, merge it using _Squash and merge_
+
+# Incrementing Versions
+When making a new release, increment the version in `delphi/__init__.py`

@@ -1,19 +1,8 @@
-torch==2.1.2
-datasets==2.16.1
-transformers==4.36.2
-tqdm==4.66.1
-ipywidgets==8.1.1
-nbformat==5.9.2
-pytest==7.4.4
-black==23.12.1
-jaxtyping==0.2.25
-beartype==0.16.4
-pre-commit==3.6.0
-isort==5.13.2
-spacy==3.7.2
-chardet==5.2.0
-sentencepiece==0.1.99
-protobuf==4.25.2
-plotly==5.18.0
-spacy-transformers==1.3.4
+# most packages are specified in requirements-gh.txt, and new packages should be placed
+# there UNLESS they cannot be installed without CUDA support, in which case they should go here.
+-r requirements-nocuda.txt
+
+# these libs support better mamba implementations in transformers, 
+# but require CUDA/nvcc, so they won't work on MacOS.
 mamba_ssm==1.2.0.post1; sys_platform != 'darwin'
+causal-conv1d==1.2.0.post2; sys_platform != 'darwin'
