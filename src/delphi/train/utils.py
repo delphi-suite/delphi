@@ -9,7 +9,6 @@ from pathlib import Path
 import torch
 from datasets import Dataset
 from torch.optim import AdamW
-from torch.utils.data import DataLoader
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
@@ -235,13 +234,12 @@ def estimate_loss(
     batch_size: int,
     split_to_ds: dict[str, Dataset],
     device: torch.device,
-    model_arch: str,
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
     model.eval()
     for split, ds in split_to_ds.items():
-        # batch_iter = iter(DataLoader(ds, batch_size=batch_size))  # type: ignore
+        # TODO: actually sample from val!!!!!
         batch_iter = iter(batch_generator(ds, batch_size, 0, 0))
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
