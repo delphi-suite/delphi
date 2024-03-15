@@ -1,6 +1,6 @@
 {
     "priority": -2,
-    "architecture": "llama2-huggingface",
+    "architecture": "llama",
     "max_epochs": 1,
     "eval_interval": 1,
     "eval_iters": 10,

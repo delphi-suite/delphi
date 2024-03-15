@@ -1,10 +1,9 @@
-import logging
 from typing import Any
 
 import torch
-from transformers import LlamaConfig as LlamaConfigHF
-from transformers import LlamaForCausalLM as LlamaModelHF
 from transformers import (
+    LlamaConfig,
+    LlamaForCausalLM,
     MambaConfig,
     MambaForCausalLM,
     PretrainedConfig,
@@ -18,8 +17,8 @@ from delphi.train.config.gigaconfig import GigaConfig
 def _get_config_and_model_types(
     arch: str,
 ) -> tuple[type[PretrainedConfig], type[PreTrainedModel]]:
-    if arch == ModelTypes.LLAMA2HF:
-        return (LlamaConfigHF, LlamaModelHF)
+    if arch == ModelTypes.LLAMA:
+        return (LlamaConfig, LlamaForCausalLM)
     elif arch == ModelTypes.MAMBA:
         return (MambaConfig, MambaForCausalLM)
     else:

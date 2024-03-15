@@ -62,6 +62,6 @@ mamba_config = MambaConfig(
 )
 
 default_config_dicts = {
-    ModelTypes.LLAMA2HF: llama_config.to_dict(),
+    ModelTypes.LLAMA: llama_config.to_dict(),
     ModelTypes.MAMBA: mamba_config.to_dict(),
 }

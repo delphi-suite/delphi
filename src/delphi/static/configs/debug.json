@@ -1,6 +1,6 @@
 {
     "priority": -1,
-    "architecture": "llama2-huggingface",
+    "architecture": "llama",
     "vocab_size": 4096,
     "max_seq_len": 512,
     "max_epochs": 2,

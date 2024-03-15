@@ -8,5 +8,5 @@ TOKENIZED_CORPUS_DATASET = "delphi-suite/v0-tinystories-v2-clean-tokenized"
 
 
 class ModelTypes:
-    LLAMA2HF = "llama2-huggingface"
+    LLAMA = "llama"
     MAMBA = "mamba"

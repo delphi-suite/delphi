@@ -7,6 +7,7 @@ import platformdirs
 from beartype import beartype
 
 from delphi.constants import ModelTypes
+from delphi.train.config.model.model_config import ModelConfig
 from delphi.train.config.optimizer_config import OptimizerConfig
 from delphi.train.config.wandb_config import WandbConfig
 
@@ -22,7 +23,7 @@ class GigaConfig:
     device: str = "auto"
 
     # model architecture
-    architecture: str = ModelTypes.LLAMA2HF
+    architecture: str = ModelTypes.LLAMA
 
     # I/O
     eval_interval: int = 2000
