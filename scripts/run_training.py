@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from dataclasses import fields
 from itertools import chain
 from pathlib import Path
@@ -15,6 +16,7 @@ from delphi.train.config.utils import (
     update_config,
 )
 from delphi.train.training import run_training
+from delphi.train.utils import get_run_output_dir, save_results
 
 
 def get_preset_args(args: argparse.Namespace) -> list[Path]:
@@ -137,7 +139,10 @@ def main():
     update_config(config, vars(args))
 
     # run training
-    run_training(config)
+    results, run_context = run_training(config)
+    final_out_dir = os.path.join(get_run_output_dir(config), "final")
+    save_results(config, results, run_context, final_out_dir)
+    print(f"Saved results to {final_out_dir}")
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from delphi.train.architectures import (
     load_model,
 )
 from delphi.train.config.gigaconfig import GigaConfig
+from delphi.train.run_context import RunContext
 from delphi.train.shuffle import shuffle_list
 
 
@@ -32,6 +33,8 @@ class ModelTrainingState:
     best_val_loss: float
     running_mfu: float
     t0: float
+    epoch: int
+    step: int
     lr: float = 1.0e-5
 
 
@@ -181,6 +184,8 @@ def load_model_training_state(
         if checkpoint is not None and "optimizer" in checkpoint  # type: ignore
         else None,
     )
+    epoch = checkpoint.get("epoch", 0) if checkpoint is not None else 0
+    step = checkpoint.get("step", 0) if checkpoint is not None else 0
     checkpoint = None  # free up memory
     return ModelTrainingState(
         model=model,
@@ -190,6 +195,8 @@ def load_model_training_state(
         best_val_loss=best_val_loss,
         running_mfu=running_mfu,
         t0=t0,
+        epoch=epoch,
+        step=step,
     )
 
 
@@ -257,3 +264,32 @@ def estimate_loss(
 
 def get_run_output_dir(config: GigaConfig) -> str:
     return os.path.join(config.output_dir, config.run_name)
+
+
+def save_results(
+    config: GigaConfig,
+    train_results: ModelTrainingState,
+    run_context: RunContext,
+    results_path: str,
+):
+    os.makedirs(results_path, exist_ok=True)
+    with open(os.path.join(results_path, "config.json"), "w") as file:
+        json.dump(asdict(config), file)
+    torch.save(train_results.model.state_dict(), os.path.join(results_path, "model.pt"))
+    torch.save(
+        train_results.optimizer.state_dict(), os.path.join(results_path, "opt.pt")
+    )
+    with open(os.path.join(results_path, "training_state.json"), "w") as file:
+        training_state_dict = {
+            "iter_num": train_results.iter_num,
+            "local_iter_num": train_results.local_iter_num,
+            "best_val_loss": train_results.best_val_loss,
+            "running_mfu": train_results.running_mfu,
+            "epoch": train_results.epoch,
+            "lr": train_results.lr,
+        }
+        json.dump(training_state_dict, file, indent=2)
+    with open(os.path.join(results_path, "run_context.json"), "w") as file:
+        run_context_dict = asdict(run_context)
+        run_context_dict["device"] = str(run_context.device)
+        json.dump(run_context_dict, file, indent=2)

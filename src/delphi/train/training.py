@@ -5,10 +5,13 @@ from typing import cast
 import torch
 from datasets import Dataset
 from tqdm import tqdm
+from transformers import __version__ as transformers_version
 
+from delphi import __version__ as delphi_version
 from delphi.train import wandb_utils
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.iteration_params import set_iteration_params
+from delphi.train.run_context import RunContext
 from delphi.train.train_step import train_step
 from delphi.train.utils import (
     ModelTrainingState,
@@ -21,7 +24,7 @@ from delphi.train.utils import (
 )
 
 
-def run_training(config: GigaConfig) -> ModelTrainingState:
+def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     print("Starting training...")
     print("Setting torch.use_deterministic_algorithms(True)")
     torch.use_deterministic_algorithms(True)
@@ -32,8 +35,14 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
     for field in fields(config):
         print(f"  {field.name}: {getattr(config, field.name)}")
     # system
-    device = get_device(config.device)
-    print("Device:", device)
+    run_context = RunContext(
+        device=get_device(config.device),
+        torch_version=torch.__version__,
+        delphi_version=delphi_version,
+        transformers_version=transformers_version,
+        os=os.uname().version,
+    )
+    print(f"Run context: {run_context}")
 
     # load data
     print("Loading data...")
@@ -57,7 +66,7 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
     # model init
-    model_training_state = load_model_training_state(config, device)
+    model_training_state = load_model_training_state(config, run_context.device)
     print(model_training_state.model.config.to_json_string())
 
     # setup eval callbacks
@@ -74,7 +83,9 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
                 train_ds, config.batch_size, epoch, config.batch_ordering_seed
             )
         )
-        for i, _ in enumerate(tqdm(range(iteration_params.num_steps))):
+        model_training_state.epoch = epoch
+        for step in tqdm(range(iteration_params.num_steps)):
+            model_training_state.step = step
             breaknow = train_step(
                 model_training_state,
                 train_ds,
@@ -83,8 +94,8 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
                 eval_callbacks,
                 config,
                 train_batch_iter,
-                device,
+                run_context.device,
             )
             if breaknow:
                 break
-    return model_training_state
+    return model_training_state, run_context

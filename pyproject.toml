@@ -1,3 +1,11 @@
+[project]
+name = "delphi"
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "delphi.__version__"}
+
+
 [tool.black]
 extend-exclude = 'src/llama2c'
 
