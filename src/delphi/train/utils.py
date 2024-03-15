@@ -4,13 +4,12 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import cast
+from typing import Generator
 
 import torch
 from datasets import Dataset
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from torch.utils.data.dataloader import _BaseDataLoaderIter
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
@@ -21,6 +20,7 @@ from delphi.train.architectures import (
     load_model,
 )
 from delphi.train.config.gigaconfig import GigaConfig
+from delphi.train.shuffle import shuffle_list
 
 
 @dataclass
@@ -79,30 +79,6 @@ def get_optimizer(
     if checkpoint is not None:
         optimizer.load_state_dict(checkpoint["optimizer"])
     return optimizer
-
-
-@torch.no_grad()
-def estimate_loss(
-    model: torch.nn.Module,
-    eval_iters: int,
-    batch_size: int,
-    split_to_ds: dict[str, Dataset],
-    device: torch.device,
-    model_arch: str,
-) -> dict[str, float]:
-    """helps estimate an arbitrarily accurate loss over either split using many batches"""
-    out = {}
-    model.eval()
-    for split, ds in split_to_ds.items():
-        batch_iter = iter(DataLoader(ds, batch_size=batch_size))  # type: ignore
-        losses = torch.zeros(eval_iters)  # keep on CPU
-        for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
-            X, Y = get_next_xy(batch_iter, device)
-            loss = get_loss(model, X, Y)
-            losses[k] = loss.item()
-        out[split] = losses.mean()
-    model.train()
-    return out
 
 
 def get_lr(
@@ -231,12 +207,47 @@ def load_delphi_training_dataset(split: str, limit: int = -1):
 
 
 def get_next_xy(
-    train_batch_iter: _BaseDataLoaderIter,
+    train_batch_iter: Generator,
     device: torch.device
     # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    data = cast(torch.Tensor, next(train_batch_iter)["tokens"].to(device))
+    data = next(train_batch_iter).to(device)
     # X and Y NEED to be contigious. llama2c's implementation involves
     # calling .view on them, which breaks if they're not contigious
     X, Y = data[:, :-1].contiguous(), data[:, 1:].contiguous()
     return X, Y
+
+
+def batch_generator(
+    dataset: Dataset, batch_size: int, epoch: int, ordering_seed: int
+) -> Generator[torch.Tensor, None, None]:
+    sampler = list(range(len(dataset)))  # type: ignore
+    shuffle_list(sampler, seed=ordering_seed + epoch)
+    sampler = torch.Tensor(sampler)
+    for samples in sampler.split(batch_size):
+        yield dataset[samples]["tokens"]
+
+
+@torch.no_grad()
+def estimate_loss(
+    model: torch.nn.Module,
+    eval_iters: int,
+    batch_size: int,
+    split_to_ds: dict[str, Dataset],
+    device: torch.device,
+    model_arch: str,
+) -> dict[str, float]:
+    """helps estimate an arbitrarily accurate loss over either split using many batches"""
+    out = {}
+    model.eval()
+    for split, ds in split_to_ds.items():
+        # batch_iter = iter(DataLoader(ds, batch_size=batch_size))  # type: ignore
+        batch_iter = iter(batch_generator(ds, batch_size, 0, 0))
+        losses = torch.zeros(eval_iters)  # keep on CPU
+        for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
+            X, Y = get_next_xy(batch_iter, device)
+            loss = get_loss(model, X, Y)
+            losses[k] = loss.item()
+        out[split] = losses.mean()
+    model.train()
+    return out

@@ -1,10 +1,10 @@
 import logging
 import time
 from collections.abc import Callable
+from typing import Generator
 
 import torch
 from datasets import Dataset
-from torch.utils.data.dataloader import _BaseDataLoaderIter
 
 from delphi.constants import ModelTypes
 from delphi.train.architectures import get_loss
@@ -26,7 +26,7 @@ def train_step(
     iteration_params: IterationParams,
     eval_callbacks: list[Callable],
     config: GigaConfig,
-    train_batch_iter: _BaseDataLoaderIter,
+    train_batch_iter: Generator,
     device: torch.device,
 ) -> bool:
     """

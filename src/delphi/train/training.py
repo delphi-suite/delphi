@@ -4,18 +4,15 @@ from typing import cast
 
 import torch
 from datasets import Dataset
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset as TorchDataset
-from torch.utils.data.dataloader import _BaseDataLoaderIter
 from tqdm import tqdm
 
 from delphi.train import wandb_utils
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.iteration_params import set_iteration_params
-from delphi.train.shuffle import shuffle_list
 from delphi.train.train_step import train_step
 from delphi.train.utils import (
     ModelTrainingState,
+    batch_generator,
     get_device,
     load_delphi_training_dataset,
     load_model_training_state,
@@ -27,6 +24,7 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
     print("Starting training...")
     print("Setting torch.use_deterministic_algorithms(True)")
     torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
     torch.manual_seed(config.torch_seed)
     print()
     print("Config:")
@@ -68,19 +66,10 @@ def run_training(config: GigaConfig) -> ModelTrainingState:
     # training loop
     print("Starting training...")
     for epoch in range(config.max_epochs):
-        sampler = list(range(len(train_ds)))  # type: ignore
-        shuffle_list(sampler, seed=config.batch_ordering_seed + epoch)
-        train_batch_iter = cast(
-            _BaseDataLoaderIter,
-            iter(
-                DataLoader(
-                    cast(TorchDataset, train_ds),
-                    batch_size=config.batch_size,
-                    sampler=sampler,
-                    pin_memory=True,
-                    drop_last=True,
-                )
-            ),
+        train_batch_iter = iter(
+            batch_generator(
+                train_ds, config.batch_size, epoch, config.batch_ordering_seed
+            )
         )
         for i, _ in enumerate(tqdm(range(iteration_params.num_steps))):
             breaknow = train_step(
