@@ -14,11 +14,6 @@ from transformers import (
 from delphi.constants import ModelTypes
 from delphi.train.config.gigaconfig import GigaConfig
 
-try:
-    from delphi.train.mamba import Mamba, MambaArgs
-except Exception as e:
-    print("no mamba for you")
-
 
 def _get_config_and_model_types(
     arch: str,
