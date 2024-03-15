@@ -38,13 +38,6 @@ def load_model(config: GigaConfig, checkpoint) -> torch.nn.Module:
     return model
 
 
-# TODO: delete this?
-def export_model(model, model_architecture, output_path):
-    logging.warning(
-        f"Architecture {model_architecture} model export not yet implemented"
-    )
-
-
 # TODO: do we need this anymore?
 def get_loss(model: torch.nn.Module, X: torch.Tensor, Y: torch.Tensor) -> torch.Tensor:
     """Get loss of a model. Model should be a transformers-style *ForCausaLM model."""

@@ -13,12 +13,7 @@ from torch.utils.data import DataLoader
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.architectures import (
-    export_model,
-    get_loss,
-    initialize_model,
-    load_model,
-)
+from delphi.train.architectures import get_loss, initialize_model, load_model
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.run_context import RunContext
 from delphi.train.shuffle import shuffle_list
@@ -126,6 +121,7 @@ def set_lr(
     return lr
 
 
+# TODO: revamp checkpoint save/loading
 def save_checkpoint_if_needed(eval_data: EvalData):
     mts = eval_data.model_training_state
     # we save if it's not the first iter AND at least one of:
@@ -147,11 +143,6 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     run_output_dir = get_run_output_dir(eval_data.config)
     print(f"saving checkpoint to {run_output_dir}")
     torch.save(checkpoint, os.path.join(run_output_dir, "ckpt.pt"))
-    export_model(
-        mts.model,
-        eval_data.config.architecture,
-        os.path.join(run_output_dir, "model.bin"),
-    )
 
 
 def load_model_training_state(
