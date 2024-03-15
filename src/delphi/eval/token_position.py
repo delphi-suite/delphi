@@ -1,85 +1,68 @@
-from collections import defaultdict
-
 import torch
-from beartype.typing import Mapping
 from jaxtyping import Float
 
-from delphi.eval.constants import CATEGORY_MAP
 
-
-def get_all_tokens_in_category(
-    tlabelled_token_ids_dict: Mapping[int, dict[str, bool]], category: str
-) -> list[int]:
+def all_tok_pos_to_metrics_map(
+    all_tok: list[tuple[int, int]],
+    metrics: list[Float[torch.Tensor, "pos"]],
+    quantile_start: float | None = None,
+    quantile_end: float | None = None,
+) -> dict[tuple[int, int], float]:
     """
-    Get all tokens in a category based on a pre-labelled token dictionary.
+    convert a list of all_tok and a list of metrics to a dict
+    but only for the metrics that are in the quantile range
+    if quantile_start and quantile_end are not None
 
     args:
-    - tlabelled_token_ids_dict: a dictionary of token ids to a dictionary of labels (e.g. {"Is Noun": True, "Is Verb": False, ...})
-    - category: the category to filter by (e.g. "nouns", "verbs", "adjectives", "adverbs", "pronouns", "proper_nouns")
+    - all_tok: a list of token positions e.g. [(0, 0), (0, 1), (0, 2)]
+    - metrics: a list of tensors of metrics e.g. [torch.tensor([0.0, 0.1]), torch.tensor([0.2, 0.3]), torch.tensor([0.4, 0.5])]
+    - quantile_start: the start of the quantile range e.g. 0.25
+    - quantile_end: the end of the quantile range e.g. 0.75
 
-    returns:
-    - a list of token ids that are in the specified category based on the labels in tlabelled_token_ids_dict
+    return:
+    - a dict with the token positions as keys and the metrics as values
     """
-    valid = ["nouns", "verbs", "adjectives", "adverbs", "pronouns", "proper_nouns"]
-    assert category in valid, f"Invalid category: {category}. Must be one of {valid}"
-    return [
-        token_id
-        for token_id, labels in tlabelled_token_ids_dict.items()
-        if labels[CATEGORY_MAP[category]]
-    ]
+    if quantile_start is None or quantile_end is None:
+        return {
+            all_tok[i]: metrics[all_tok[i][0]][all_tok[i][1]].item()
+            for i in range(len(all_tok))
+        }
 
-
-def get_all_token_positions_in_category(
-    tlabelled_token_ids_dict: Mapping[int, dict[str, bool]],
-    token_positions: Mapping[int, list[tuple[int, int]]],
-    category: str,
-) -> Mapping[int, list[tuple[int, int]]]:
-    """
-    Get all token positions in a category based on a pre-labelled token dictionary and a token mapping to (prompt, position) pairs.
-
-    args:
-    - tlabelled_token_ids_dict: a dictionary of token ids to a dictionary of labels (e.g. {"Is Noun": True, "Is Verb": False, ...})
-    - token_positions: a dictionary of token ids to a list of (prompt, position) pairs (e.g. {0: [(0, 0), (0, 1)], 1: [(0, 2), (0, 3)], ...})
-    - category: the category to filter by (e.g. "nouns", "verbs", "adjectives", "adverbs", "pronouns", "proper_nouns")
-
-    returns:
-    - a dictionary of token ids to a list of (prompt, position) pairs that are in the specified category based on the labels in tlabelled_token_ids_dict
-    """
-    valid = ["nouns", "verbs", "adjectives", "adverbs", "pronouns", "proper_nouns"]
-    assert category in valid, f"Invalid category: {category}. Must be one of {valid}"
-    all_tokens_in_category = get_all_tokens_in_category(
-        tlabelled_token_ids_dict, category
-    )
+    # get a flattened list of all metrics from all_tok
+    # TODO: see if you can estimate the quantiles by sampling from the metrics
+    all_metrics = torch.Tensor([metrics[pos[0]][pos[1]].item() for pos in all_tok])
+    # get the quantiles
+    quantile_start_val = all_metrics.quantile(quantile_start)
+    quantile_end_val = all_metrics.quantile(quantile_end)
+    # return a dict with only the metrics that are in the quantile range
     return {
-        token_id: token_positions[token_id]
-        for token_id in all_tokens_in_category
-        if token_id in token_positions
+        all_tok[i]: metrics[all_tok[i][0]][all_tok[i][1]].item()
+        for i in range(len(all_tok))
+        if quantile_start_val <= all_metrics[i] <= quantile_end_val
     }
 
 
-def get_all_metrics_from_token_positions(
-    token_positions: Mapping[int, list[tuple[int, int]]],
-    metrics: Float[torch.Tensor, "prompt tok"],
-) -> Mapping[int, Float[torch.Tensor, "metric"]]:
+def get_all_tok_pos_in_category(
+    labelled_tokens: dict[int, dict[str, bool]],
+    category: str,
+    tok_pos: dict[int, list[tuple[int, int]]],
+) -> list[tuple[int, int]]:
     """
-    Get all metrics from token positions based on a dictionary of token ids to a list of (prompt, position) pairs and a tensor of metrics.
+    get all token positions that are in a category
 
     args:
-    - token_positions: a dictionary of token ids to a list of (prompt, position) pairs (e.g. {0: [(0, 0), (0, 1)], 1: [(0, 2), (0, 3)], ...})
-    - metrics: a 2D tensor of metrics (e.g. torch.Tensor([[0.1, 0.2], [0.3, 0.4], ...]))
+    - labelled_tokens: a dict with the token positions as keys and the token labels as values
+        e.g. {0: {"Is Noun": True, "Is Verb": False, "Is Adjective": False}, ...}
+    - category: the category to filter by e.g. "Is Noun"
+    - tok_pos: a dict with the token positions as keys and the token positions as values
+        e.g. {0: [(0, 0), (0, 1)], ...}
 
-    returns:
-    - a dictionary of token ids to a 1D tensor of metrics that are in the specified category based on the labels in tlabelled_token_ids_dict
+    return:
+    - a list of token positions that are in the category
     """
-
-    result = {}
-    for token_id, positions in token_positions.items():
-        # ignore if positions is None
-        if positions is None:
-            continue
-        tensor = torch.tensor(
-            [metrics[prompt, position] for prompt, position in positions]
-        )
-        result[token_id] = tensor
-
-    return result
+    return [
+        pos
+        for i, token in labelled_tokens.items()
+        if token[category]
+        for pos in tok_pos[i]
+    ]
