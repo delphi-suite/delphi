@@ -285,8 +285,9 @@ def save_results(
             "local_iter_num": train_results.local_iter_num,
             "best_val_loss": train_results.best_val_loss,
             "running_mfu": train_results.running_mfu,
-            "epoch": train_results.epoch,
             "lr": train_results.lr,
+            "epoch": train_results.epoch,
+            "step": train_results.step,
         }
         json.dump(training_state_dict, file, indent=2)
     with open(os.path.join(results_path, "run_context.json"), "w") as file:
