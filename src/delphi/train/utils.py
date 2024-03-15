@@ -2,9 +2,9 @@ import json
 import math
 import os
 import time
+from collections.abc import Generator
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Generator
 
 import torch
 from datasets import Dataset
@@ -141,12 +141,13 @@ def save_checkpoint_if_needed(eval_data: EvalData):
         "best_val_loss": mts.best_val_loss,
         "config": asdict(eval_data.config),
     }
-    print(f"saving checkpoint to {eval_data.config.out_dir}")
-    torch.save(checkpoint, os.path.join(eval_data.config.out_dir, "ckpt.pt"))
+    run_output_dir = get_run_output_dir(eval_data.config)
+    print(f"saving checkpoint to {run_output_dir}")
+    torch.save(checkpoint, os.path.join(run_output_dir, "ckpt.pt"))
     export_model(
         mts.model,
         eval_data.config.architecture,
-        os.path.join(eval_data.config.out_dir, "model.bin"),
+        os.path.join(run_output_dir, "model.bin"),
     )
 
 
@@ -165,8 +166,9 @@ def load_model_training_state(
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
-        print(f"Resuming training from {config.out_dir}")
-        checkpoint = torch.load(Path(config.out_dir) / "ckpt.pt", map_location=device)
+        run_output_dir = get_run_output_dir(config)
+        print(f"Resuming training from {run_output_dir}")
+        checkpoint = torch.load(Path(run_output_dir) / "ckpt.pt", map_location=device)
         model = load_model(config, checkpoint)
         iter_num = checkpoint["iter_num"]
         best_val_loss = checkpoint["best_val_loss"]
@@ -251,3 +253,7 @@ def estimate_loss(
         out[split] = losses.mean()
     model.train()
     return out
+
+
+def get_run_output_dir(config: GigaConfig) -> str:
+    return os.path.join(config.output_dir, config.run_name)

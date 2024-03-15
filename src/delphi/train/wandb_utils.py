@@ -10,7 +10,7 @@ def init_wandb(config: GigaConfig):
     wandb.init(
         entity=config.wandb_config.entity,
         project=config.wandb_config.project,
-        name=config.wandb_config.run_name,
+        name=config.run_name,
         config=asdict(config),
     )
 

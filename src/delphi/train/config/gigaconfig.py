@@ -1,8 +1,10 @@
+import os
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
+import platformdirs
 from beartype import beartype
-from transformers import PretrainedConfig
 
 from delphi.constants import ModelTypes
 from delphi.train.config.optimizer_config import OptimizerConfig
@@ -12,6 +14,10 @@ from delphi.train.config.wandb_config import WandbConfig
 @beartype
 @dataclass
 class GigaConfig:
+    # meta
+    run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    output_dir: str = platformdirs.user_data_dir(appname="delphi")
+
     # device
     device: str = "auto"
 
@@ -19,7 +25,6 @@ class GigaConfig:
     architecture: str = ModelTypes.LLAMA2HF
 
     # I/O
-    out_dir: str = "out"
     eval_interval: int = 2000
     log_interval: int = 1
     eval_iters: int = 100

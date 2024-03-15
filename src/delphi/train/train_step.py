@@ -1,7 +1,6 @@
 import logging
 import time
-from collections.abc import Callable
-from typing import Generator
+from collections.abc import Callable, Generator
 
 import torch
 from datasets import Dataset
