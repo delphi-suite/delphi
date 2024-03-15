@@ -12,12 +12,3 @@ LLAMA2_MODELS = [
     "llama2-12.8m",
     "llama2-25.6m",
 ]
-
-CATEGORY_MAP = {
-    "nouns": "Is Noun",
-    "verbs": "Is Verb",
-    "adjectives": "Is Adjective",
-    "adverbs": "Is Adverb",
-    "pronouns": "Is Pronoun",
-    "proper_nouns": "Is Proper Noun",
-}
