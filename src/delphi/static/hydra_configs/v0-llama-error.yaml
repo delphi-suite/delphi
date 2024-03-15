@@ -1,0 +1,6 @@
+defaults:
+  - config
+
+llama2hf_config:
+  hidden_size: This-Is-A-String
+
