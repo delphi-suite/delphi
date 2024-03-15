@@ -103,20 +103,6 @@ def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[floa
     }
 
 
-# not necessary
-def load_token_map() -> defaultdict[int, list[list[int]]]:
-    token_map = cast(
-        Dataset, load_dataset("delphi-suite/v0-token-map", split="validation")
-    )
-    mapping = defaultdict(
-        list
-    )  # for some reason, empty list is not the default value, but None
-    for i in range(len(token_map)):
-        mapping[i] = token_map[i]["prompt_pos_idx"]
-
-    return mapping
-
-
 def contruct_diff_probs_from_pos_dict(
     pos_dict: dict[tuple[int, int], float],
     sample_tok_ids: list[Int[torch.Tensor, "pos"]],
