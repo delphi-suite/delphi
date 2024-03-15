@@ -49,17 +49,18 @@ def update_config(config: GigaConfig, new_vals: dict[str, Any]):
             continue
         # support x.y.z = val
         keys = key.split(".")
-        if keys[0] == "model_args":
-            config.model_args[".".join(keys[1:])] = val
-            continue
         cur = config
         while len(keys) > 1:
             if hasattr(cur, keys[0]):
                 cur = getattr(cur, keys.pop(0))
             else:
                 break
+
         if hasattr(cur, keys[0]):
             setattr(cur, keys[0], val)
+            print(f"Set {key} = {val}")
+        else:
+            print(f"Could not set {key} = {val}")
 
 
 def combine_configs(configs: list[dict[str, Any]]) -> dict[str, Any]:

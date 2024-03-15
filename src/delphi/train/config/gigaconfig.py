@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -22,9 +21,6 @@ class GigaConfig:
     # device
     device: str = "auto"
 
-    # model architecture
-    architecture: str = ModelTypes.LLAMA
-
     # I/O
     eval_interval: int = 2000
     log_interval: int = 1
@@ -42,7 +38,7 @@ class GigaConfig:
     )
     # model config
     max_seq_len: int = 512
-    model_args: dict[str, Any] = field(default_factory=dict)
+    model_config: ModelConfig = field(default_factory=ModelConfig)
     # training
     max_epochs: int = 10  # total number of training epochs
     grad_clip: float = 1.0  # clip gradients at this value, or disable if == 0.0

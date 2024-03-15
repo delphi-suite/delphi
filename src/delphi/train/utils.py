@@ -12,8 +12,9 @@ from torch.optim import AdamW
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.architectures import get_loss, initialize_model, load_model
+from delphi.train.architectures import get_loss, load_model
 from delphi.train.config.gigaconfig import GigaConfig
+from delphi.train.config.model.model_config import config_to_model
 from delphi.train.run_context import RunContext
 from delphi.train.shuffle import shuffle_list
 
@@ -155,7 +156,7 @@ def load_model_training_state(
     if config.init_from == "scratch":
         # init a new model from scratch
         print("Initializing a new model from scratch")
-        model = initialize_model(config.architecture, config.model_args)
+        model = config_to_model(config.model_config)
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":

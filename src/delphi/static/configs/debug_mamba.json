@@ -7,10 +7,11 @@
     "eval_interval": 1,
     "eval_iters": 10,
     "train_sample_limit": 256,
-    "model_args.vocab_size": 4096,
-    "model_args.hidden_size": 48,
-    "model_args.num_hidden_layers": 2,
-    "model_args.conv_kernel": 2,
-    "model_args.expand": 2,
-    "model_args.time_step_rank": 2
+    "model_config.model_type": "mamba",
+    "model_config.mamba.vocab_size": 4096,
+    "model_config.mamba.hidden_size": 48,
+    "model_config.mamba.num_hidden_layers": 2,
+    "model_config.mamba.conv_kernel": 2,
+    "model_config.mamba.expand": 2,
+    "model_config.mamba.time_step_rank": 2
 }

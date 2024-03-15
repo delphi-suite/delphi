@@ -124,12 +124,12 @@ def train_step(
     return False
 
 
-def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float):
+def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float) -> float:
     """estimate model flops utilization (MFU) in units of A100 bfloat16 peak FLOPS"""
     # first estimate the number of flops we do per iteration.
     # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
     N = sum(p.numel() for p in model.parameters())
-    if config.architecture == ModelTypes.LLAMA:
+    if config.model_config.model_type == ModelTypes.LLAMA:
         cfg = model.config
         L, H, Q, T = (
             cfg.num_hidden_layers,
@@ -137,8 +137,10 @@ def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float):
             cfg.hidden_size // cfg.num_attention_heads,
             cfg.max_position_embeddings,
         )
-    elif config.architecture == ModelTypes.MAMBA:
-        logging.warn("MAMBA MFU estimate not implemented")
+    else:
+        logging.warn(
+            f"estimate_mfu not implemented for {config.model_config.model_type}, setting MFU to -1"
+        )
         return -1.0
     flops_per_token = 6 * N + 12 * L * H * Q * T
     flops_per_fwdbwd = flops_per_token * T
