@@ -138,3 +138,64 @@ def vis_sample_prediction_probs(
     """
     display(HTML(html_str))
     return html_str
+
+
+def vis_sample_diff_probs(
+    sample_tok: list[Int[torch.Tensor, "pos"]],
+    diff_probs: list[Float[torch.Tensor, "pos"]],
+    tokenizer: PreTrainedTokenizerBase,
+) -> str:
+    # I have to use list instead of torch.Tensor because the lengths of the sequences are different
+    # TODO: see if there's a way to do this with torch tensors
+    token_htmls = []
+
+    unique_id = str(uuid.uuid4())
+
+    token_class = f"token_{unique_id}"
+    hover_div_id = f"hover_info_{unique_id}"
+
+    for i in range(len(sample_tok)):
+        colors = probs_to_colors(diff_probs[i])
+        for j in range(len(sample_tok[i])):
+            tok = cast(int, sample_tok[i][j].item())
+            data = {}
+            if j > 0:
+                diff_prob = diff_probs[i][j - 1].item()
+                data["diff_prob"] = to_tok_prob_str(tok, diff_prob, tokenizer)
+
+            token_htmls.append(
+                token_to_html(tok, tokenizer, bg_color=colors[j], data=data).replace(
+                    "class='token'", f"class='{token_class}'"
+                )
+            )
+
+        # add a space between prompts and completions
+        token_htmls.append("<br> <br>")
+
+    html_str = f"""
+    <style>.{token_class} {{ {_token_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
+    {"".join(token_htmls)} <div id='{hover_div_id}'></div>
+    <script>
+        (function() {{
+            var token_divs = document.querySelectorAll('.{token_class}');
+            var hover_info = document.getElementById('{hover_div_id}');
+
+
+            token_divs.forEach(function(token_div) {{
+                token_div.addEventListener('mousemove', function(e) {{
+                    hover_info.innerHTML = ""
+                    for( var d in this.dataset) {{
+                        hover_info.innerHTML += "<b>" + d + "</b> ";
+                        hover_info.innerHTML += this.dataset[d] + "<br>";
+                    }}
+                }});
+
+                token_div.addEventListener('mouseout', function(e) {{
+                    hover_info.innerHTML = ""
+                }});
+            }});
+        }})();
+    </script>
+    """
+    display(HTML(html_str))
+    return html_str
