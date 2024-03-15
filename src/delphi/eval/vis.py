@@ -159,14 +159,16 @@ def vis_sample_diff_probs(
         for j in range(len(sample_tok[i])):
             tok = cast(int, sample_tok[i][j].item())
             data = {}
-            if j > 0:
-                diff_prob = diff_probs[i][j - 1].item()
+            if j == len(sample_tok[i]) - 1:
+                # only annotate the last token
+                diff_prob = diff_probs[i][j].item()
                 data["diff_prob"] = to_tok_prob_str(tok, diff_prob, tokenizer)
 
             token_htmls.append(
-                token_to_html(tok, tokenizer, bg_color=colors[j], data=data).replace(
-                    "class='token'", f"class='{token_class}'"
-                )
+                # color + 1 to compensate for the endoftext token
+                token_to_html(
+                    tok, tokenizer, bg_color=colors[j + 1], data=data
+                ).replace("class='token'", f"class='{token_class}'")
             )
 
         # add a space between prompts and completions
