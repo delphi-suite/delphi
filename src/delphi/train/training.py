@@ -67,7 +67,6 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
 
     # model init
     model_training_state = load_model_training_state(config, run_context.device)
-    print(model_training_state.model.config.to_json_string())
 
     # setup eval callbacks
     eval_callbacks = [save_checkpoint_if_needed]

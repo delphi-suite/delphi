@@ -1,17 +1,23 @@
 {
-    "priority": -1,
-    "architecture": "mamba",
-    "vocab_size": 4096,
-    "max_seq_len": 512,
-    "max_epochs": 2,
-    "eval_interval": 1,
-    "eval_iters": 10,
-    "train_sample_limit": 256,
-    "model_config.model_type": "mamba",
-    "model_config.mamba.vocab_size": 4096,
-    "model_config.mamba.hidden_size": 48,
-    "model_config.mamba.num_hidden_layers": 2,
-    "model_config.mamba.conv_kernel": 2,
-    "model_config.mamba.expand": 2,
-    "model_config.mamba.time_step_rank": 2
+  "priority": -1,
+  "vocab_size": 4096,
+  "max_seq_len": 512,
+  "max_epochs": 2,
+  "eval_interval": 1,
+  "log_interval": 1,
+  "eval_iters": 10,
+  "train_sample_limit": 64,
+  "batch_size": 8,
+  "model_config": {
+    "model_type": "mamba",
+    "mamba": {
+      "vocab_size": 4096,
+      "hidden_size": 48,
+      "state_size": 16,
+      "num_hidden_layers": 2,
+      "conv_kernel": 2,
+      "expand": 2,
+      "time_step_rank": 2
+    }
+  }
 }

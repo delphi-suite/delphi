@@ -84,7 +84,10 @@ def train_step(
     )
     for micro_step in range(config.optimizer.gradient_accumulation_steps):
         X, Y = get_next_xy(train_batch_iter, device)
-        loss = model(X, labels=Y, return_dict=True).loss
+        loss = (
+            model(X, labels=Y, return_dict=True).loss
+            / config.optimizer.gradient_accumulation_steps
+        )
         loss.backward()
     # clip the gradient
     if config.grad_clip != 0.0:

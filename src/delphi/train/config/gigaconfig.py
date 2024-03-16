@@ -12,7 +12,7 @@ from delphi.train.config.wandb_config import WandbConfig
 
 
 @beartype
-@dataclass
+@dataclass(frozen=True)
 class GigaConfig:
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")

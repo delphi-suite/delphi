@@ -1,19 +1,17 @@
 import argparse
 import logging
 import os
-from dataclasses import fields
+from dataclasses import fields, is_dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Union
+from typing import Any, Optional
 
 from delphi.constants import CONFIG_PRESETS_DIR
-from delphi.train.config.default_model_configs import default_config_dicts
 from delphi.train.config.gigaconfig import GigaConfig
 from delphi.train.config.utils import (
-    build_config_from_files,
+    build_config_from_files_and_overrides,
     get_preset_paths,
     get_user_config_path,
-    update_config,
 )
 from delphi.train.training import run_training
 from delphi.train.utils import get_run_output_dir, save_results
@@ -43,6 +41,35 @@ def get_config_files(args: argparse.Namespace) -> list[Path]:
     return configs
 
 
+def add_dataclass_args_recursively(
+    parser: argparse.ArgumentParser,
+    dc: type[object],
+    default_group: argparse._ArgumentGroup,
+    group: Optional[argparse._ArgumentGroup] = None,
+    prefix: str = "",
+):
+    for field in fields(dc):  # type: ignore
+        if is_dataclass(field.type):
+            _group = group or parser.add_argument_group(
+                f"{field.name.capitalize()} arguments"
+            )
+            add_dataclass_args_recursively(
+                parser,
+                field.type,
+                default_group,
+                _group,
+                prefix=f"{prefix}{field.name}.",
+            )
+        else:
+            _group = group or default_group
+            _group.add_argument(
+                f"--{prefix}{field.name}",
+                type=field.type,
+                required=False,
+                help=f"Default: {field.default}",
+            )
+
+
 def setup_parser() -> argparse.ArgumentParser:
     # Setup argparse
     parser = argparse.ArgumentParser(description="Train a delphi model")
@@ -60,24 +87,7 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
     )
     config_arg_group = parser.add_argument_group("Config arguments")
-    for field in fields(GigaConfig):
-        # support for nested attributes
-        if hasattr(field.type, "__dataclass_fields__"):
-            sub_arg_group = parser.add_argument_group(f"Config {field.name} arguments")
-            for subfield in fields(field.type):
-                sub_arg_group.add_argument(
-                    f"--{field.name}.{subfield.name}",
-                    type=subfield.type,
-                    required=False,
-                    help=f"Default: {subfield.default}",
-                )
-        else:
-            config_arg_group.add_argument(
-                f"--{field.name}",
-                type=field.type,
-                required=False,
-                help=f"Default: {field.default}",
-            )
+    add_dataclass_args_recursively(parser, GigaConfig, config_arg_group)
     preset_arg_group = parser.add_argument_group("Preset configs")
     for preset in sorted(get_preset_paths()):
         preset_arg_group.add_argument(
@@ -88,14 +98,37 @@ def setup_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def var_args_to_dict(config_vars: dict[str, Any]) -> dict[str, Any]:
+    # {"a.b.c" = 4} to {"a": {"b": {"c": 4}}}
+    d = {}
+    for k, v in config_vars.items():
+        cur = d
+        subkeys = k.split(".")
+        for subkey in subkeys[:-1]:
+            if subkey not in cur:
+                cur[subkey] = {}
+            cur = cur[subkey]
+        if v is not None:
+            cur[subkeys[-1]] = v
+    return d
+
+
+def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
+    # at the toplevel, filter for args corresponding to field names in GigaConfig
+    field_names = set(field.name for field in fields(GigaConfig))
+    config_vars = {
+        k: v for k, v in vars(args).items() if k.split(".")[0] in field_names
+    }
+    return var_args_to_dict(config_vars)
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
 
     config_files = get_config_files(args)
-    config = build_config_from_files(config_files)
-    # specific arguments override everything else
-    update_config(config, vars(args))
+    args_dict = args_to_dict(args)
+    config = build_config_from_files_and_overrides(config_files, args_dict)
 
     # run training
     results, run_context = run_training(config)

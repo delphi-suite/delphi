@@ -8,11 +8,15 @@
     "eval_iters": 1,
     "train_sample_limit": 256,
     "batch_size": 64,
-    "model_config.model_type": "llama",
-    "model_config.llama.hidden_size": 48,
-    "model_config.llama.intermediate_size": 48,
-    "model_config.llama.num_attention_heads": 2,
-    "model_config.llama.num_hidden_layers": 2,
-    "model_config.llama.num_key_value_heads": 2,
-    "model_config.llama.vocab_size": 4096
+    "model_config": {
+        "model_type": "llama",
+        "llama": {
+            "hidden_size": 48,
+            "intermediate_size": 48,
+            "num_attention_heads": 2,
+            "num_hidden_layers": 2,
+            "num_key_value_heads": 2,
+            "vocab_size": 4096
+        }
+    }
 }

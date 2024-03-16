@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Union
 
 from transformers import __version__ as transformers_version
 
@@ -22,7 +23,7 @@ class DelphiMambaConfig:
     eos_token_id: int = 0
     pad_token_id: int = 0
     # time step
-    time_step_rank: str = "auto"
+    time_step_rank: Union[int, str] = "auto"
     time_step_scale: float = 1.0
     time_step_min: float = 0.001
     time_step_max: float = 0.1
