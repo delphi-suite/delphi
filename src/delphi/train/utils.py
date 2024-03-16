@@ -42,11 +42,6 @@ class EvalData:
     model_training_state: ModelTrainingState
 
 
-def load_config(config_path):
-    with open(config_path, "r") as file:
-        return json.load(file)
-
-
 def get_device(device_str: str = "auto") -> torch.device:
     """
     Get torch device specified by device_str. May pass "auto" to set torch device automatically.
