@@ -146,7 +146,7 @@ def load_model(config: GigaConfig, checkpoint) -> torch.nn.Module:
     return model
 
 
-def load_model_training_state(
+def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
     iter_num = 0

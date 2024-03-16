@@ -18,8 +18,8 @@ from delphi.train.utils import (
     batch_generator,
     get_device,
     get_run_output_dir,
+    initialize_model_training_state,
     load_delphi_training_dataset,
-    load_model_training_state,
     save_checkpoint_if_needed,
 )
 
@@ -66,7 +66,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
     # model init
-    model_training_state = load_model_training_state(config, run_context.device)
+    model_training_state = initialize_model_training_state(config, run_context.device)
 
     # setup eval callbacks
     eval_callbacks = [save_checkpoint_if_needed]
