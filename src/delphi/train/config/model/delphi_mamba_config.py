@@ -1,14 +1,9 @@
 from dataclasses import dataclass
 from typing import Union
 
-from transformers import __version__ as transformers_version
-
 
 @dataclass
 class DelphiMambaConfig:
-    # metadata
-    model_type: str = "mamba"
-    transformers_version: str = transformers_version
     # model shape
     vocab_size: int = 4096
     hidden_size: int = 768

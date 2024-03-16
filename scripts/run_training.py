@@ -4,7 +4,7 @@ import os
 from dataclasses import fields, is_dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Any, Optional, _GenericAlias
+from typing import Any, Optional, _GenericAlias  # type: ignore
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config.gigaconfig import GigaConfig
