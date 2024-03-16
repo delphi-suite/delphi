@@ -17,8 +17,8 @@ from delphi.train.config.model.delphi_mamba_config import DelphiMambaConfig
 @dataclass
 class ModelConfig:
     model_type: str = ModelTypes.LLAMA
-    mamba: DelphiMambaConfig = DelphiMambaConfig()
-    llama: DelphiLlamaConfig = DelphiLlamaConfig()
+    mamba: Optional[DelphiMambaConfig] = None
+    llama: Optional[DelphiLlamaConfig] = None
 
 
 def config_to_model(config: ModelConfig) -> PreTrainedModel:

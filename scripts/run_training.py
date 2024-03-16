@@ -4,7 +4,7 @@ import os
 from dataclasses import fields, is_dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, _GenericAlias
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config.gigaconfig import GigaConfig
@@ -15,6 +15,13 @@ from delphi.train.config.utils import (
 )
 from delphi.train.training import run_training
 from delphi.train.utils import get_run_output_dir, save_results
+
+
+def _unoptionalize(t: type) -> type:
+    if isinstance(t, _GenericAlias):
+        return t.__args__[0]
+    else:
+        return t
 
 
 def get_preset_args(args: argparse.Namespace) -> list[Path]:
@@ -49,13 +56,15 @@ def add_dataclass_args_recursively(
     prefix: str = "",
 ):
     for field in fields(dc):  # type: ignore
-        if is_dataclass(field.type):
+        # if field is an Optional type, strip it to the actual underlying type
+        _type = _unoptionalize(field.type)
+        if is_dataclass(_type):
             _group = group or parser.add_argument_group(
                 f"{field.name.capitalize()} arguments"
             )
             add_dataclass_args_recursively(
                 parser,
-                field.type,
+                _type,
                 default_group,
                 _group,
                 prefix=f"{prefix}{field.name}.",
@@ -64,7 +73,7 @@ def add_dataclass_args_recursively(
             _group = group or default_group
             _group.add_argument(
                 f"--{prefix}{field.name}",
-                type=field.type,
+                type=_type,
                 required=False,
                 help=f"Default: {field.default}",
             )
@@ -102,14 +111,15 @@ def var_args_to_dict(config_vars: dict[str, Any]) -> dict[str, Any]:
     # {"a.b.c" = 4} to {"a": {"b": {"c": 4}}}
     d = {}
     for k, v in config_vars.items():
+        if v is None:
+            continue
         cur = d
         subkeys = k.split(".")
         for subkey in subkeys[:-1]:
             if subkey not in cur:
                 cur[subkey] = {}
             cur = cur[subkey]
-        if v is not None:
-            cur[subkeys[-1]] = v
+        cur[subkeys[-1]] = v
     return d
 
 
