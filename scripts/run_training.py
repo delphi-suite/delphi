@@ -59,9 +59,7 @@ def add_dataclass_args_recursively(
         # if field is an Optional type, strip it to the actual underlying type
         _type = _unoptionalize(field.type)
         if is_dataclass(_type):
-            _group = group or parser.add_argument_group(
-                f"{field.name.capitalize()} arguments"
-            )
+            _group = group or parser.add_argument_group(f"{field.name}")
             add_dataclass_args_recursively(
                 parser,
                 _type,
@@ -75,7 +73,9 @@ def add_dataclass_args_recursively(
                 f"--{prefix}{field.name}",
                 type=_type,
                 required=False,
-                help=f"Default: {field.default}",
+                help=f"Default: {field.default}"
+                if field.default != field.default_factory
+                else f"Must be specified as part of {_group.title}",
             )
 
 
