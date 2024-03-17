@@ -3,18 +3,18 @@ from typing import Optional
 
 from beartype import beartype
 
-from .delphi_llama_config import DelphiLlamaConfig
-from .delphi_mamba_config import DelphiMambaConfig
-from .delphi_model_config import DelphiModelConfig
 from .model_types import ModelTypes
+from .typed_llama_config import TypedLlamaConfig
+from .typed_mamba_config import TypedMambaConfig
+from .typed_model_config import TypedModelConfig
 
 
 @beartype
 @dataclass(frozen=True)
 class ModelConfig:
     model_type: str
-    mamba: Optional[DelphiMambaConfig] = None
-    llama: Optional[DelphiLlamaConfig] = None
+    mamba: Optional[TypedMambaConfig] = None
+    llama: Optional[TypedLlamaConfig] = None
 
     def __post_init__(self):
         if get_delphi_config(self) is None:
@@ -24,7 +24,7 @@ class ModelConfig:
             )
 
 
-def get_delphi_config(config: ModelConfig) -> DelphiModelConfig:
+def get_delphi_config(config: ModelConfig) -> TypedModelConfig:
     # get delphi config corresponding to model_type in model config
     # e.g. {model_type: "llama", llama: my_delphi_llama_config} ->
     #           my_delphi_llama_config

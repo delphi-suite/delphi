@@ -6,7 +6,7 @@ import torch
 from datasets import Dataset
 
 from .config import GigaConfig
-from .config.model import ModelTypes
+from .config.models import ModelTypes
 from .iteration_params import IterationParams
 from .utils import EvalData, ModelTrainingState, estimate_loss, get_next_xy, set_lr
 

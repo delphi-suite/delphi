@@ -15,8 +15,8 @@ from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
 
 from .config.gigaconfig import GigaConfig
-from .config.model import ModelTypes, get_delphi_config
-from .config.model.model_config import ModelConfig
+from .config.models import ModelTypes, get_delphi_config
+from .config.models.model_config import ModelConfig
 from .run_context import RunContext
 from .shuffle import shuffle_list
 

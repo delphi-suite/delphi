@@ -5,7 +5,7 @@ from datetime import datetime
 import platformdirs
 from beartype import beartype
 
-from .model import ModelConfig
+from .models import ModelConfig
 from .optimizer_config import OptimizerConfig
 from .wandb_config import WandbConfig
 

@@ -3,12 +3,12 @@ from typing import Union
 
 from beartype import beartype
 
-from .delphi_model_config import DelphiModelConfig
+from .typed_model_config import TypedModelConfig
 
 
 @beartype
 @dataclass(frozen=True)
-class DelphiMambaConfig(DelphiModelConfig):
+class TypedMambaConfig(TypedModelConfig):
     # model shape
     vocab_size: int = 4096
     hidden_size: int = 768

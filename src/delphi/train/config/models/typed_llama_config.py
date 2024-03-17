@@ -3,12 +3,12 @@ from typing import Any, Optional
 
 from beartype import beartype
 
-from .delphi_model_config import DelphiModelConfig
+from .typed_model_config import TypedModelConfig
 
 
 @beartype
 @dataclass(frozen=True)
-class DelphiLlamaConfig(DelphiModelConfig):
+class TypedLlamaConfig(TypedModelConfig):
     attention_bias: bool = False
     attention_dropout: float = 0.0
     bos_token_id: int = -1
