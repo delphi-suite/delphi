@@ -17,7 +17,6 @@ from delphi.train.utils import (
     ModelTrainingState,
     batch_generator,
     get_device,
-    get_run_output_dir,
     initialize_model_training_state,
     load_delphi_training_dataset,
     save_checkpoint_if_needed,
@@ -59,9 +58,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
 
     # setup
     print("Setting up...")
-    run_dir = get_run_output_dir(config)
-    os.makedirs(run_dir, exist_ok=True)
-    print("  Run dir:", run_dir)
+    os.makedirs(config.output_dir, exist_ok=True)
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 

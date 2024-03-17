@@ -14,7 +14,7 @@ from delphi.train.config.utils import (
     get_user_config_path,
 )
 from delphi.train.training import run_training
-from delphi.train.utils import get_run_output_dir, save_results
+from delphi.train.utils import save_results
 
 
 def _unoptionalize(t: type) -> type:
@@ -142,7 +142,7 @@ def main():
 
     # run training
     results, run_context = run_training(config)
-    final_out_dir = os.path.join(get_run_output_dir(config), "final")
+    final_out_dir = os.path.join(config.output_dir, "final")
     save_results(config, results, run_context, final_out_dir)
     print(f"Saved results to {final_out_dir}")
 

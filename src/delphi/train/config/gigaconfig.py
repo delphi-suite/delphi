@@ -1,12 +1,11 @@
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 
 import platformdirs
 from beartype import beartype
 
-from delphi.constants import ModelTypes
-from delphi.train.config.model.model_config import ModelConfig
+from delphi.train.config.model import ModelConfig
 from delphi.train.config.optimizer_config import OptimizerConfig
 from delphi.train.config.wandb_config import WandbConfig
 
@@ -14,9 +13,12 @@ from delphi.train.config.wandb_config import WandbConfig
 @beartype
 @dataclass(frozen=True)
 class GigaConfig:
+    model_config: ModelConfig
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    output_dir: str = platformdirs.user_data_dir(appname="delphi")
+    output_dir: str = os.path.join(
+        platformdirs.user_data_dir(appname="delphi"), run_name
+    )
 
     # device
     device: str = "auto"
@@ -38,7 +40,6 @@ class GigaConfig:
     )
     # model config
     max_seq_len: int = 512
-    model_config: ModelConfig = field(default_factory=ModelConfig)
     # training
     max_epochs: int = 10  # total number of training epochs
     grad_clip: float = 1.0  # clip gradients at this value, or disable if == 0.0
