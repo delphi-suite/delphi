@@ -1,30 +1,24 @@
-from dataclasses import asdict, dataclass
-from typing import Any, Optional, Union
+from dataclasses import dataclass
+from typing import Optional
 
-from transformers import (
-    LlamaConfig,
-    LlamaForCausalLM,
-    MambaConfig,
-    MambaForCausalLM,
-    PreTrainedModel,
-)
+from beartype import beartype
 
-from delphi.constants import ModelTypes
-from delphi.train.config.model.delphi_llama_config import DelphiLlamaConfig
-from delphi.train.config.model.delphi_mamba_config import DelphiMambaConfig
+from .delphi_llama_config import DelphiLlamaConfig
+from .delphi_mamba_config import DelphiMambaConfig
+from .delphi_model_config import DelphiModelConfig
+from .model_types import ModelTypes
 
 
-@dataclass
+@beartype
+@dataclass(frozen=True)
 class ModelConfig:
-    model_type: str = ModelTypes.LLAMA
+    model_type: str
     mamba: Optional[DelphiMambaConfig] = None
     llama: Optional[DelphiLlamaConfig] = None
 
 
-def config_to_model(config: ModelConfig) -> PreTrainedModel:
-    if config.model_type == ModelTypes.LLAMA and config.llama is not None:
-        return LlamaForCausalLM(LlamaConfig(**asdict(config.llama)))
-    elif config.model_type == ModelTypes.MAMBA and config.mamba is not None:
-        return MambaForCausalLM(MambaConfig(**asdict(config.mamba)))
-    else:
-        raise ValueError(f"Unknown config type: {config.model_type}")
+def get_delphi_config(config: ModelConfig) -> DelphiModelConfig:
+    # get delphi config corresponding to model_type in model config
+    # e.g. {model_type: "llama", llama: my_delphi_llama_config} -> my_delphi_llama_config
+    delphi_config = getattr(config, config.model_type)
+    return delphi_config

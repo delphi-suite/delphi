@@ -1,9 +1,14 @@
 from dataclasses import dataclass
 from typing import Union
 
+from beartype import beartype
 
-@dataclass
-class DelphiMambaConfig:
+from .delphi_model_config import DelphiModelConfig
+
+
+@beartype
+@dataclass(frozen=True)
+class DelphiMambaConfig(DelphiModelConfig):
     # model shape
     vocab_size: int = 4096
     hidden_size: int = 768

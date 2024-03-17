@@ -9,13 +9,16 @@ from pathlib import Path
 import torch
 from datasets import Dataset
 from torch.optim import AdamW
+from transformers import PreTrainedModel
 
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
-from delphi.train.config.gigaconfig import GigaConfig
-from delphi.train.config.model.model_config import config_to_model
-from delphi.train.run_context import RunContext
-from delphi.train.shuffle import shuffle_list
+
+from .config.gigaconfig import GigaConfig
+from .config.model import ModelTypes, get_delphi_config
+from .config.model.model_config import ModelConfig
+from .run_context import RunContext
+from .shuffle import shuffle_list
 
 
 @dataclass
@@ -144,6 +147,13 @@ def load_model(config: GigaConfig, checkpoint) -> torch.nn.Module:
     state_dict = checkpoint["model"]
     model.load_state_dict(state_dict)
     return model
+
+
+def config_to_model(config: ModelConfig) -> PreTrainedModel:
+    # get ModelType object from name ('llama' -> ModelType(...))
+    delphi_config = get_delphi_config(config)
+    model_type = ModelTypes.get(config.model_type)
+    return model_type.model(model_type.config(**asdict(delphi_config)))
 
 
 def initialize_model_training_state(

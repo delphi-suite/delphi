@@ -1,9 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from beartype import beartype
 
-@dataclass
-class DelphiLlamaConfig:
+from .delphi_model_config import DelphiModelConfig
+
+
+@beartype
+@dataclass(frozen=True)
+class DelphiLlamaConfig(DelphiModelConfig):
     attention_bias: bool = False
     attention_dropout: float = 0.0
     bos_token_id: int = -1

@@ -5,8 +5,3 @@ CONFIG_PRESETS_DIR = STATIC_ASSETS_DIR / "configs"
 
 CORPUS_DATASET = "delphi-suite/tinystories-v2-clean"
 TOKENIZED_CORPUS_DATASET = "delphi-suite/v0-tinystories-v2-clean-tokenized"
-
-
-class ModelTypes:
-    LLAMA = "llama"
-    MAMBA = "mamba"

@@ -5,8 +5,8 @@ from collections.abc import Callable, Generator
 import torch
 from datasets import Dataset
 
-from delphi.constants import ModelTypes
 from delphi.train.config.gigaconfig import GigaConfig
+from delphi.train.config.model import ModelTypes
 from delphi.train.iteration_params import IterationParams
 from delphi.train.utils import (
     EvalData,
