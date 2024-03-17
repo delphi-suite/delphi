@@ -2,8 +2,8 @@ from dataclasses import asdict
 
 import wandb
 
-from delphi.train.config.gigaconfig import GigaConfig
-from delphi.train.utils import EvalData
+from .config import GigaConfig
+from .utils import EvalData
 
 
 def init_wandb(config: GigaConfig):

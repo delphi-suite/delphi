@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from datasets import Dataset
 
-from delphi.train.config.gigaconfig import GigaConfig
+from .config import GigaConfig
 
 
 @dataclass

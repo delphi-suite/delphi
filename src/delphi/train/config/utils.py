@@ -7,7 +7,8 @@ from dacite import from_dict
 from platformdirs import user_config_dir
 
 from delphi.constants import CONFIG_PRESETS_DIR
-from delphi.train.config.gigaconfig import GigaConfig
+
+from .gigaconfig import GigaConfig
 
 
 def _merge_dicts(merge_into: dict[str, Any], merge_from: dict[str, Any]):

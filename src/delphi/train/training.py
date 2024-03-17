@@ -8,12 +8,13 @@ from tqdm import tqdm
 from transformers import __version__ as transformers_version
 
 from delphi import __version__ as delphi_version
-from delphi.train import wandb_utils
-from delphi.train.config.gigaconfig import GigaConfig
-from delphi.train.iteration_params import set_iteration_params
-from delphi.train.run_context import RunContext
-from delphi.train.train_step import train_step
-from delphi.train.utils import (
+
+from . import wandb_utils
+from .config import GigaConfig
+from .iteration_params import set_iteration_params
+from .run_context import RunContext
+from .train_step import train_step
+from .utils import (
     ModelTrainingState,
     batch_generator,
     get_device,

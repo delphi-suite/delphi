@@ -5,9 +5,9 @@ from datetime import datetime
 import platformdirs
 from beartype import beartype
 
-from delphi.train.config.model import ModelConfig
-from delphi.train.config.optimizer_config import OptimizerConfig
-from delphi.train.config.wandb_config import WandbConfig
+from .model import ModelConfig
+from .optimizer_config import OptimizerConfig
+from .wandb_config import WandbConfig
 
 
 @beartype

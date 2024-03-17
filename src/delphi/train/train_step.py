@@ -5,16 +5,10 @@ from collections.abc import Callable, Generator
 import torch
 from datasets import Dataset
 
-from delphi.train.config.gigaconfig import GigaConfig
-from delphi.train.config.model import ModelTypes
-from delphi.train.iteration_params import IterationParams
-from delphi.train.utils import (
-    EvalData,
-    ModelTrainingState,
-    estimate_loss,
-    get_next_xy,
-    set_lr,
-)
+from .config import GigaConfig
+from .config.model import ModelTypes
+from .iteration_params import IterationParams
+from .utils import EvalData, ModelTrainingState, estimate_loss, get_next_xy, set_lr
 
 
 def train_step(

@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any, Optional, _GenericAlias  # type: ignore
 
 from delphi.constants import CONFIG_PRESETS_DIR
-from delphi.train.config.gigaconfig import GigaConfig
-from delphi.train.config.utils import (
+from delphi.train.config import (
+    GigaConfig,
     build_config_from_files_and_overrides,
     get_preset_paths,
     get_user_config_path,
