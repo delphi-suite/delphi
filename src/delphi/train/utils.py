@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 import os
 import time
@@ -138,7 +139,7 @@ def save_checkpoint_if_needed(eval_data: EvalData):
         "config": asdict(eval_data.config),
     }
     output_dir = eval_data.config.output_dir
-    print(f"saving checkpoint to {output_dir}")
+    logging.info(f"saving checkpoint to {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
     torch.save(checkpoint, os.path.join(output_dir, "ckpt.pt"))
 
@@ -167,12 +168,12 @@ def initialize_model_training_state(
     t0 = time.time()
     if config.init_from == "scratch":
         # init a new model from scratch
-        print("Initializing a new model from scratch")
+        logging.debug("Initializing a new model from scratch")
         model = config_to_model(config.model_config)
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
-        print(f"Resuming training from {config.output_dir}")
+        logging.info(f"Resuming training from {config.output_dir}")
         checkpoint = torch.load(
             Path(config.output_dir) / "ckpt.pt", map_location=device
         )

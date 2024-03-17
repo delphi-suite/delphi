@@ -62,7 +62,7 @@ def train_step(
             config=config,
             model_training_state=model_training_state,
         )
-        print(
+        logging.info(
             f"step {model_training_state.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
         )
         for callback in eval_callbacks:
@@ -72,7 +72,7 @@ def train_step(
         return True
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
-    print(
+    logging.info(
         f"gradient accumulation steps: {config.optimizer.gradient_accumulation_steps}, "
         f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
     )
@@ -109,7 +109,7 @@ def train_step(
                 if model_training_state.running_mfu == -1.0
                 else 0.9 * model_training_state.running_mfu + 0.1 * mfu
             )
-        print(
+        logging.debug(
             (
                 f"{model_training_state.iter_num} | loss {lossf:.4f} | lr {model_training_state.lr:e} | "
                 f"{dt*1000:.2f}ms | mfu {model_training_state.running_mfu*100:.2f}%"

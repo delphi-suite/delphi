@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import fields
 from typing import cast
@@ -25,15 +26,14 @@ from .utils import (
 
 
 def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
-    print("Starting training...")
-    print("Setting torch.use_deterministic_algorithms(True)")
+    logging.info("Starting training...")
+    logging.debug("Setting torch.use_deterministic_algorithms(True)")
     torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(config.torch_seed)
-    print()
-    print("Config:")
+    logging.info("Config:")
     for field in fields(config):
-        print(f"  {field.name}: {getattr(config, field.name)}")
+        logging.info(f"  {field.name}: {getattr(config, field.name)}")
     # system
     run_context = RunContext(
         device=get_device(config.device),
@@ -42,10 +42,10 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         transformers_version=transformers_version,
         os=os.uname().version,
     )
-    print(f"Run context: {run_context}")
+    logging.debug(f"Run context: {run_context}")
 
     # load data
-    print("Loading data...")
+    logging.debug("Loading data...")
     train_ds = cast(
         Dataset, load_delphi_training_dataset("train", limit=config.train_sample_limit)
     )
@@ -58,7 +58,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     iteration_params = set_iteration_params(config, train_ds, validation_ds)
 
     # setup
-    print("Setting up...")
+    logging.info("Setting up...")
     os.makedirs(config.output_dir, exist_ok=True)
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
@@ -73,7 +73,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         eval_callbacks.append(wandb_utils.log_to_wandb)
 
     # training loop
-    print("Starting training...")
+    logging.info("Starting training...")
     for epoch in range(config.max_epochs):
         train_batch_iter = iter(
             batch_generator(

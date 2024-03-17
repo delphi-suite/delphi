@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from datasets import Dataset
@@ -29,8 +30,8 @@ def set_iteration_params(
         * config.batch_size
         * config.max_seq_len
     )
-    print(f"tokens per iteration will be: {tokens_per_iter:,}")
-    print(
+    logging.debug(f"tokens per iteration will be: {tokens_per_iter:,}")
+    logging.debug(
         f"breaks down as: {config.optimizer.gradient_accumulation_steps} grad accum steps * {config.batch_size} batch size * {config.max_seq_len} max seq len"
     )
     return IterationParams(

@@ -1,3 +1,5 @@
+import logging
+import os
 from dataclasses import asdict
 
 import wandb
@@ -6,7 +8,15 @@ from .config import GigaConfig
 from .utils import EvalData
 
 
+def silence_wandb():
+    # set env var WANDB_SILENT=true
+    os.environ["WANDB_SILENT"] = "true"
+
+
 def init_wandb(config: GigaConfig):
+    # if log level < debug, silence wandb
+    if logging.getLogger().level > logging.INFO:
+        silence_wandb()
     wandb.init(
         entity=config.wandb_config.entity,
         project=config.wandb_config.project,
@@ -30,4 +40,4 @@ def log_to_wandb(eval_data: EvalData):
             step=mts.iter_num,
         )
     except Exception as e:
-        print(f"logging to wandb failed: {e}")
+        logging.error(f"logging to wandb failed: {e}")

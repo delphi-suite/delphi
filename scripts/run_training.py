@@ -48,6 +48,16 @@ def get_config_files(args: argparse.Namespace) -> list[Path]:
     return configs
 
 
+def add_preset_args(parser: argparse.ArgumentParser):
+    preset_arg_group = parser.add_argument_group("Preset configs")
+    for preset in sorted(get_preset_paths()):
+        preset_arg_group.add_argument(
+            f"--{preset.stem}",
+            help=f"Use {preset.stem} preset config {'***and set log level to DEBUG***' if preset.stem == 'debug' else ''}",
+            action="store_true",
+        )
+
+
 def add_dataclass_args_recursively(
     parser: argparse.ArgumentParser,
     dc: type[object],
@@ -79,6 +89,53 @@ def add_dataclass_args_recursively(
             )
 
 
+def add_logging_args(parser: argparse.ArgumentParser):
+    logging_group = parser.add_mutually_exclusive_group()
+    logging_group.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=None,
+        help="Increase verbosity level, repeatable (e.g. -vvv). Mutually exclusive with --silent, --loglevel",
+    )
+    logging_group.add_argument(
+        "-s",
+        "--silent",
+        action="store_true",
+        help="Silence all logging. Mutually exclusive with --verbose, --loglevel",
+        default=False,
+    )
+    logging_group.add_argument(
+        "--loglevel",
+        type=int,
+        help="Logging level. 10=DEBUG, 50=CRITICAL. Mutually exclusive with --verbose, --silent",
+        default=None,
+    )
+
+
+def set_logging(args: argparse.Namespace):
+    logging.basicConfig(format="%(message)s")
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    if args.verbose is not None:
+        if args.verbose == 1:
+            loglevel = logging.INFO
+        elif args.verbose == 2:
+            loglevel = logging.DEBUG
+        else:
+            loglevel = logging.DEBUG - 10 * (args.verbose - 2)
+        logging.getLogger().setLevel(loglevel)
+    if args.loglevel is not None:
+        logging.getLogger().setLevel(args.loglevel)
+    if args.silent:
+        logging.getLogger().setLevel(logging.CRITICAL)
+    else:
+        logging_level_str = logging.getLevelName(
+            logging.getLogger().getEffectiveLevel()
+        )
+        print(f"set logging level to {logging_level_str}")
+
+
 def setup_parser() -> argparse.ArgumentParser:
     # Setup argparse
     parser = argparse.ArgumentParser(description="Train a delphi model")
@@ -97,13 +154,8 @@ def setup_parser() -> argparse.ArgumentParser:
     )
     config_arg_group = parser.add_argument_group("Config arguments")
     add_dataclass_args_recursively(parser, GigaConfig, config_arg_group)
-    preset_arg_group = parser.add_argument_group("Preset configs")
-    for preset in sorted(get_preset_paths()):
-        preset_arg_group.add_argument(
-            f"--{preset.stem}",
-            help=f"Use {preset.stem} preset config",
-            action="store_true",
-        )
+    add_preset_args(parser)
+    add_logging_args(parser)
     return parser
 
 
@@ -135,11 +187,11 @@ def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
 def main():
     parser = setup_parser()
     args = parser.parse_args()
+    set_logging(args)
 
     config_files = get_config_files(args)
     args_dict = args_to_dict(args)
     config = build_config_from_files_and_overrides(config_files, args_dict)
-
     # run training
     results, run_context = run_training(config)
     final_out_dir = os.path.join(config.output_dir, "final")
