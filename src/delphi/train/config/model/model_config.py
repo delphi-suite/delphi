@@ -16,9 +16,17 @@ class ModelConfig:
     mamba: Optional[DelphiMambaConfig] = None
     llama: Optional[DelphiLlamaConfig] = None
 
+    def __post_init__(self):
+        if get_delphi_config(self) is None:
+            raise ValueError(
+                f"Model config specifies model_type = {self.model_type} "
+                "but doesn't provide a corresponding config."
+            )
+
 
 def get_delphi_config(config: ModelConfig) -> DelphiModelConfig:
     # get delphi config corresponding to model_type in model config
-    # e.g. {model_type: "llama", llama: my_delphi_llama_config} -> my_delphi_llama_config
+    # e.g. {model_type: "llama", llama: my_delphi_llama_config} ->
+    #           my_delphi_llama_config
     delphi_config = getattr(config, config.model_type)
     return delphi_config
