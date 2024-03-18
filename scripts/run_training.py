@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+import sys
 from dataclasses import fields, is_dataclass
 from itertools import chain
 from pathlib import Path
@@ -194,6 +195,10 @@ def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
 def main():
     parser = setup_parser()
     args = parser.parse_args()
+    # if called w/o args, print --help
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
     set_logging(args)
 
     config_files = get_config_files(args)
