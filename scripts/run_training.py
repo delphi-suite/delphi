@@ -5,7 +5,7 @@ import os
 from dataclasses import fields, is_dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Any, Optional, _GenericAlias  # type: ignore
+from typing import Any, Optional, Type, Union
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config import (
@@ -18,11 +18,17 @@ from delphi.train.training import run_training
 from delphi.train.utils import save_results
 
 
-def _unoptionalize(t: type) -> type:
-    if isinstance(t, _GenericAlias):
-        return t.__args__[0]
-    else:
-        return t
+def _unoptionalize(t: Type) -> Type:
+    """unwrap `Optional[T]` to T"""
+    # Under the hood, `Optional` is really `Union[T, None]`. So we
+    # just check if this is a Union over two types including None, and
+    # return the other
+    if hasattr(t, "__origin__") and t.__origin__ is Union:
+        args = t.__args__
+        # Check if one of the Union arguments is type None
+        if len(args) == 2 and type(None) in args:
+            return args[0] if args[1] is type(None) else args[1]
+    return t
 
 
 def get_preset_args(args: argparse.Namespace) -> list[Path]:
@@ -36,7 +42,7 @@ def get_preset_args(args: argparse.Namespace) -> list[Path]:
 def get_config_files(args: argparse.Namespace) -> list[Path]:
     user_config_path = get_user_config_path()
     cands = [user_config_path] if user_config_path.exists() else []
-    cands += get_preset_args(args)
+    cands += get_preset_paths()
     config_files = list(chain(*args.config_file)) if args.config_file else []
     cands += map(Path, config_files)
     configs = []
