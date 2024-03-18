@@ -226,9 +226,7 @@ def get_next_xy(
     # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
 ) -> tuple[torch.Tensor, torch.Tensor]:
     data = next(train_batch_iter).to(device)
-    # X and Y NEED to be contigious. llama2c's implementation involves
-    # calling .view on them, which breaks if they're not contigious
-    X, Y = data[:, :-1].contiguous(), data[:, 1:].contiguous()
+    X, Y = data[:, :-1], data[:, 1:]
     return X, Y
 
 
