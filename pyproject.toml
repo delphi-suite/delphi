@@ -5,14 +5,9 @@ dynamic = ["version"]
 [tool.setuptools.dynamic]
 version = {attr = "delphi.__version__"}
 
-
-[tool.black]
-extend-exclude = 'src/llama2c'
-
 [tool.isort]
 profile = 'black'
-known_third_party = ['llama2c', 'wandb']
-extend_skip = ['src/llama2c']
+known_third_party = ['wandb']
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
