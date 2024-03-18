@@ -15,14 +15,21 @@ tokenizer = AutoTokenizer.from_pretrained("delphi-suite/stories-tokenizer")
 
 def test_extend_deque():
     CTX_SIZE = 10
-    dataset = load_validation_dataset("delphi-suite/tinystories-v2-clean")
-    text_stories = dataset["story"][:100]
+    # generate 100 random stories
+    text_stories = [
+        [
+            random.randint(3, tokenizer.vocab_size)
+            for _ in range(random.randint(100, 800))
+        ]
+        for _ in range(100)
+    ]
     prompt_idx = 0
     dq = collections.deque()
 
     while prompt_idx < len(text_stories):
         prompt_idx = extend_deque(dq, CTX_SIZE, text_stories, prompt_idx, tokenizer)
         if prompt_idx < len(text_stories) - 1:
+            # assert that the deque has grown large enough in each round
             assert len(dq) >= CTX_SIZE
         while len(dq) >= CTX_SIZE:
             for _ in range(CTX_SIZE - 1):
@@ -39,6 +46,8 @@ def test_make_new_sample():
         for i, sample in enumerate(samples):
             assert sample[0] == tokenizer.bos_token_id
             if i > 0:
+                # assert that there is an overlap of the last token in the previous sample
+                # and the first token in its following sample
                 assert sample[1] == samples[i - 1][-1]
             tokens_cnt += len(sample)
 
