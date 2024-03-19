@@ -2,11 +2,10 @@
 import argparse
 import logging
 import os
-import sys
 from dataclasses import fields, is_dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Any, Optional, Type, Union
+from typing import Any, Type, Union
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config import (
