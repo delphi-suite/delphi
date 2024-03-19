@@ -5,6 +5,7 @@ from datetime import datetime
 import platformdirs
 from beartype import beartype
 
+from .huggingface_config import HuggingfaceConfig
 from .models import ModelConfig
 from .optimizer_config import OptimizerConfig
 from .wandb_config import WandbConfig
@@ -19,6 +20,7 @@ class GigaConfig:
     output_dir: str = os.path.join(
         platformdirs.user_data_dir(appname="delphi"), run_name
     )
+    huggingface: HuggingfaceConfig = field(default_factory=HuggingfaceConfig)
 
     # device
     device: str = "auto"
