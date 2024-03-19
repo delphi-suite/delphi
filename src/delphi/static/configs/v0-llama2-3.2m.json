@@ -3,7 +3,7 @@
     "model_type": "llama2",
     "llama2": {
       "attention_bias": false,
-      "attention_dropout": 0,
+      "attention_dropout": 0.0,
       "bos_token_id": 1,
       "eos_token_id": 2,
       "hidden_act": "silu",
@@ -17,7 +17,7 @@
       "pretraining_tp": 1,
       "rms_norm_eps": 0.00001,
       "rope_scaling": null,
-      "rope_theta": 10000,
+      "rope_theta": 10000.0,
       "tie_word_embeddings": true,
       "use_cache": true,
       "vocab_size": 4096
