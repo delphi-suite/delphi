@@ -6,14 +6,11 @@ import pytest
 import torch
 from dacite import from_dict
 
+import delphi
 from delphi.train.config import GigaConfig
 from delphi.train.config.models import TypedLlamaConfig
-from delphi.train.utils import (
-    EvalData,
-    ModelTrainingState,
-    config_to_model,
-    initialize_model_training_state,
-)
+from delphi.train.run_context import RunContext
+from delphi.train.utils import EvalData, initialize_model_training_state
 from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 
 
@@ -25,8 +22,8 @@ def mock_giga_config():
             "run_name": "test_run",
             "device": "cpu",
             "model_config": {
-                "model_type": "llama",
-                "llama": asdict(TypedLlamaConfig()),
+                "model_type": "llama2",
+                "llama2": asdict(TypedLlamaConfig()),
             },
             "wandb_config": {
                 "log": True,
@@ -59,6 +56,13 @@ def mock_eval_data(mock_giga_config, mock_model_training_state):
         losses={"train": 0.5, "val": 0.4},
         new_best_val_loss=False,
         config=mock_giga_config,
+        run_context=RunContext(
+            device=torch.device("cpu"),
+            torch_version="-1",
+            delphi_version="-1",
+            os="test",
+            transformers_version="-1",
+        ),
     )
     return eval_data
 
