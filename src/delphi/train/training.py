@@ -83,7 +83,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         model_training_state.epoch = epoch
         for step in tqdm(range(iteration_params.num_steps)):
             model_training_state.step = step
-            breaknow = train_step(
+            train_step(
                 model_training_state,
                 train_ds,
                 validation_ds,
@@ -93,6 +93,4 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                 train_batch_iter,
                 run_context,
             )
-            if breaknow:
-                break
     return model_training_state, run_context

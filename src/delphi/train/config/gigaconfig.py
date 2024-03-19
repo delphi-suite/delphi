@@ -29,7 +29,6 @@ class GigaConfig:
     eval_interval: int = 2000
     log_interval: int = 1
     eval_iters: int = 100
-    eval_only: bool = False  # if True, script exits right after the first eval
     always_save_checkpoint: bool = (
         False  # if True, always save a checkpoint after each eval
     )

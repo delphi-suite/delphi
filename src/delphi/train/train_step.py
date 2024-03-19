@@ -21,7 +21,7 @@ def train_step(
     config: GigaConfig,
     train_batch_iter: Generator,
     run_context: RunContext,
-) -> bool:
+):
     """
     Runs a training step, updating (mutating in place) model_training_state
     returns true if training should break, false otherwise
@@ -71,9 +71,6 @@ def train_step(
         for callback in eval_callbacks:
             callback(eval_data)
 
-    if model_training_state.iter_num == 0 and config.eval_only:
-        return True
-
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
     logging.info(
         f"gradient accumulation steps: {config.optimizer.gradient_accumulation_steps}, "
@@ -120,7 +117,6 @@ def train_step(
         )
     model_training_state.iter_num += 1
     model_training_state.local_iter_num += 1
-    return False
 
 
 def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float) -> float:
