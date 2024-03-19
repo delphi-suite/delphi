@@ -43,7 +43,7 @@ def get_preset_args(args: argparse.Namespace) -> list[Path]:
 def get_config_files(args: argparse.Namespace) -> list[Path]:
     user_config_path = get_user_config_path()
     cands = [user_config_path] if user_config_path.exists() else []
-    cands += get_preset_paths()
+    cands += get_preset_args(args)
     config_files = list(chain(*args.config_file)) if args.config_file else []
     cands += map(Path, config_files)
     configs = []
@@ -69,31 +69,66 @@ def add_preset_args(parser: argparse.ArgumentParser):
 def add_dataclass_args_recursively(
     parser: argparse.ArgumentParser,
     dc: type[object],
-    default_group: argparse._ArgumentGroup,
-    group: Optional[argparse._ArgumentGroup] = None,
+    group: argparse._ArgumentGroup,
+    help_parsers: dict[str, argparse.ArgumentParser],
     prefix: str = "",
+    depth: int = 0,
+    max_help_depth=1,
 ):
+    """Recursively add arguments to an argparse parser from a dataclass
+
+
+    To keep --help sane, once we reach max_help_depth we start hiding options
+    from --help and instead add a --<name>_help option to see config options
+    below that level (e.g. model_config.llama config)
+    """
     for field in fields(dc):  # type: ignore
         # if field is an Optional type, strip it to the actual underlying type
         _type = _unoptionalize(field.type)
+        name = f"{prefix}{field.name}"
         if is_dataclass(_type):
-            _group = group or parser.add_argument_group(f"{field.name}")
+            # at max-depth,
+            if depth == max_help_depth:
+                help_name = f"{name}_help"
+                group.add_argument(
+                    f"--{help_name}",
+                    help=f"***Print help for {name} options***",
+                    default=False,
+                    action="store_true",
+                )
+                help_parser = argparse.ArgumentParser(help_name)
+                help_group = help_parser.add_argument_group(name)
+                help_parsers[help_name] = help_parser
+                add_dataclass_args_recursively(
+                    help_parser,
+                    _type,
+                    help_group,
+                    help_parsers,
+                    prefix=f"{name}.",
+                    depth=depth + 1,
+                    max_help_depth=999,
+                )
+            _group = parser.add_argument_group(f"{name}")
             add_dataclass_args_recursively(
                 parser,
                 _type,
-                default_group,
                 _group,
-                prefix=f"{prefix}{field.name}.",
+                help_parsers,
+                prefix=f"{name}.",
+                depth=depth + 1,
             )
         else:
-            _group = group or default_group
-            _group.add_argument(
-                f"--{prefix}{field.name}",
+            if depth > max_help_depth:
+                help_str = argparse.SUPPRESS
+            elif field.default != field.default_factory:
+                help_str = f"Default: {field.default}"
+            else:
+                help_str = f"Must be specified as part of {group.title}"
+            group.add_argument(
+                f"--{name}",
                 type=_type,
                 required=False,
-                help=f"Default: {field.default}"
-                if field.default != field.default_factory
-                else f"Must be specified as part of {_group.title}",
+                help=help_str,
             )
 
 
@@ -123,15 +158,14 @@ def add_logging_args(parser: argparse.ArgumentParser):
 
 def set_logging(args: argparse.Namespace):
     logging.basicConfig(format="%(message)s")
+    logging.getLogger().setLevel(logging.INFO)
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
     if args.verbose is not None:
         if args.verbose == 1:
-            loglevel = logging.INFO
-        elif args.verbose == 2:
             loglevel = logging.DEBUG
-        else:
-            loglevel = logging.DEBUG - 10 * (args.verbose - 2)
+        elif args.verbose >= 2:
+            loglevel = 0
         logging.getLogger().setLevel(loglevel)
     if args.loglevel is not None:
         logging.getLogger().setLevel(args.loglevel)
@@ -144,7 +178,9 @@ def set_logging(args: argparse.Namespace):
         print(f"set logging level to {logging_level_str}")
 
 
-def setup_parser() -> argparse.ArgumentParser:
+def setup_parser() -> (
+    tuple[argparse.ArgumentParser, dict[str, argparse.ArgumentParser]]
+):
     # Setup argparse
     parser = argparse.ArgumentParser(description="Train a delphi model")
     parser.add_argument(
@@ -161,10 +197,11 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
     )
     config_arg_group = parser.add_argument_group("Config arguments")
-    add_dataclass_args_recursively(parser, GigaConfig, config_arg_group)
+    help_parsers = dict()
+    add_dataclass_args_recursively(parser, GigaConfig, config_arg_group, help_parsers)
     add_preset_args(parser)
     add_logging_args(parser)
-    return parser
+    return parser, help_parsers
 
 
 def var_args_to_dict(config_vars: dict[str, Any]) -> dict[str, Any]:
@@ -192,13 +229,17 @@ def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
     return var_args_to_dict(config_vars)
 
 
+def print_help(args: argparse.Namespace, help_parsers: dict[str, Any]):
+    for name, parser in help_parsers.items():
+        if hasattr(args, name) and getattr(args, name):
+            parser.print_help()
+            exit(0)
+
+
 def main():
-    parser = setup_parser()
+    parser, help_parsers = setup_parser()
     args = parser.parse_args()
-    # if called w/o args, print --help
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
+    print_help(args, help_parsers)
     set_logging(args)
 
     config_files = get_config_files(args)
