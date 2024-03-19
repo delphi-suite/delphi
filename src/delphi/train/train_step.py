@@ -51,6 +51,7 @@ def train_step(
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
             device=run_context.device,
+            epoch=model_training_state.epoch,
         )
         new_best_val_loss = False
         if losses["val"] < model_training_state.best_val_loss:

@@ -249,13 +249,13 @@ def estimate_loss(
     batch_size: int,
     split_to_ds: dict[str, Dataset],
     device: torch.device,
+    epoch: int,
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
     model.eval()
     for split, ds in split_to_ds.items():
-        # TODO: actually sample from val!!!!!
-        batch_iter = iter(batch_generator(ds, batch_size, 0, 0))
+        batch_iter = iter(batch_generator(ds, batch_size, epoch, 1234))
         losses = torch.zeros(eval_iters)  # keep on CPU
         for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
             X, Y = get_next_xy(batch_iter, device)
