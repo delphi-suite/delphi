@@ -125,7 +125,7 @@ def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float) -
     # first estimate the number of flops we do per iteration.
     # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
     N = sum(p.numel() for p in model.parameters())
-    if config.model_config.model_type == ModelTypes.LLAMA:
+    if config.model_config.model_type == ModelTypes.LLAMA2:
         cfg = model.config
         L, H, Q, T = (
             cfg.num_hidden_layers,

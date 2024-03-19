@@ -37,7 +37,7 @@ class ModelType:
     config: type[PretrainedConfig]
     model: type[PreTrainedModel]
 
-    # Allow for ModelType == 'llama'
+    # Allow for ModelType == 'llama2'
     def __eq__(self, other):
         if isinstance(other, str):
             return self.name == other
@@ -60,8 +60,8 @@ class ModelTypes:
         config=MambaConfig,
         model=MambaForCausalLM,
     )
-    LLAMA = ModelType(
-        name="llama",
+    LLAMA2 = ModelType(
+        name="llama2",
         delphi_config=TypedLlamaConfig,
         config=LlamaConfig,
         model=LlamaForCausalLM,

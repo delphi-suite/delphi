@@ -14,7 +14,7 @@ from .typed_model_config import TypedModelConfig
 class ModelConfig:
     model_type: str
     mamba: Optional[TypedMambaConfig] = None
-    llama: Optional[TypedLlamaConfig] = None
+    llama2: Optional[TypedLlamaConfig] = None
 
     def __post_init__(self):
         if get_delphi_config(self) is None:
@@ -26,7 +26,7 @@ class ModelConfig:
 
 def get_delphi_config(config: ModelConfig) -> TypedModelConfig:
     # get delphi config corresponding to model_type in model config
-    # e.g. {model_type: "llama", llama: my_delphi_llama_config} ->
+    # e.g. {model_type: "llama2", llama2: my_delphi_llama_config} ->
     #           my_delphi_llama_config
     delphi_config = getattr(config, config.model_type)
     return delphi_config

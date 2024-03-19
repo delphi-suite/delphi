@@ -152,7 +152,7 @@ def load_model(config: GigaConfig, checkpoint) -> torch.nn.Module:
 
 
 def config_to_model(config: ModelConfig) -> PreTrainedModel:
-    # get ModelType object from name ('llama' -> ModelType(...))
+    # get ModelType object from name ('llama2' -> ModelType(...))
     delphi_config = get_delphi_config(config)
     model_type = ModelTypes.get(config.model_type)
     return model_type.model(model_type.config(**asdict(delphi_config)))
