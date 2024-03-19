@@ -8,6 +8,8 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Type, Union
 
+import platformdirs
+
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config import (
     GigaConfig,
@@ -245,6 +247,14 @@ def set_name_from_config_file(args: argparse.Namespace, config_files: list[Path]
             args.run_name = f"{configs[0].stem}__{run_time}"
 
 
+def set_output_dir(args: argparse.Namespace):
+    """if output_dir not set, set based on run name"""
+    if args.output_dir is None:
+        args.output_dir = os.path.join(
+            platformdirs.user_data_dir(appname="delphi"), args.run_name
+        )
+
+
 def main():
     parser, help_parsers = setup_parser()
     args = parser.parse_args()
@@ -253,6 +263,7 @@ def main():
 
     config_files = get_config_files(args)
     set_name_from_config_file(args, config_files)
+    set_output_dir(args)
     args_dict = args_to_dict(args)
     config = build_config_from_files_and_overrides(config_files, args_dict)
     # run training
