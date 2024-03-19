@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 from dataclasses import fields, is_dataclass
+from datetime import datetime
 from itertools import chain
 from pathlib import Path
 from typing import Any, Type, Union
@@ -228,20 +229,30 @@ def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
     return var_args_to_dict(config_vars)
 
 
-def print_help(args: argparse.Namespace, help_parsers: dict[str, Any]):
+def print_subhelp_if_invoked(args: argparse.Namespace, help_parsers: dict[str, Any]):
     for name, parser in help_parsers.items():
         if hasattr(args, name) and getattr(args, name):
             parser.print_help()
             exit(0)
 
 
+def set_name_from_config_file(args: argparse.Namespace, config_files: list[Path]):
+    """if no run_name is specified + exactly one config file is, use the name of the config file"""
+    if args.run_name is None:
+        configs = [c for c in config_files if c != get_user_config_path()]
+        if len(configs) == 1:
+            run_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            args.run_name = f"{configs[0].stem}__{run_time}"
+
+
 def main():
     parser, help_parsers = setup_parser()
     args = parser.parse_args()
-    print_help(args, help_parsers)
+    print_subhelp_if_invoked(args, help_parsers)
     set_logging(args)
 
     config_files = get_config_files(args)
+    set_name_from_config_file(args, config_files)
     args_dict = args_to_dict(args)
     config = build_config_from_files_and_overrides(config_files, args_dict)
     # run training
