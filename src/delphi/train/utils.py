@@ -6,9 +6,12 @@ import time
 from collections.abc import Generator
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import cast
 
+import safetensors.torch as st
 import torch
 from datasets import Dataset
+from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
 
@@ -44,6 +47,7 @@ class EvalData:
     new_best_val_loss: bool
     config: GigaConfig
     model_training_state: ModelTrainingState
+    run_context: RunContext
 
 
 def get_device(device_str: str = "auto") -> torch.device:
@@ -64,7 +68,8 @@ def get_device(device_str: str = "auto") -> torch.device:
 def get_optimizer(
     model: torch.nn.Module,
     config: GigaConfig,
-    checkpoint=None,
+    output_dir=None,
+    device: torch.device = torch.device("cpu"),
 ) -> AdamW:
     optimizer = AdamW(
         lr=config.optimizer.learning_rate,
@@ -72,8 +77,10 @@ def get_optimizer(
         weight_decay=config.optimizer.weight_decay,
         betas=(config.optimizer.beta1, config.optimizer.beta2),
     )
-    if checkpoint is not None:
-        optimizer.load_state_dict(checkpoint["optimizer"])
+    if output_dir is not None:
+        opt_path = os.path.join(output_dir, "opt.pt")
+        with open(opt_path, "rb") as f:
+            optimizer.load_state_dict(torch.load(f))
     return optimizer
 
 
@@ -119,7 +126,6 @@ def set_lr(
     return lr
 
 
-# TODO: revamp checkpoint save/loading
 def save_checkpoint_if_needed(eval_data: EvalData):
     mts = eval_data.model_training_state
     # we save if it's not the first iter AND at least one of:
@@ -131,23 +137,19 @@ def save_checkpoint_if_needed(eval_data: EvalData):
         not eval_data.config.always_save_checkpoint
     ):
         return
-    checkpoint = {
-        "model": mts.model.state_dict(),
-        "optimizer": mts.optimizer.state_dict(),
-        "iter_num": mts.iter_num,
-        "best_val_loss": mts.best_val_loss,
-        "config": asdict(eval_data.config),
-    }
-    output_dir = eval_data.config.output_dir
-    logging.info(f"saving checkpoint to {output_dir}")
-    os.makedirs(output_dir, exist_ok=True)
-    torch.save(checkpoint, os.path.join(output_dir, "ckpt.pt"))
+    results_path = os.path.join(eval_data.config.output_dir, f"iter_{mts.iter_num:06d}")
+    logging.info(f"saving checkpoint to {results_path}")
+    save_results(
+        config=eval_data.config,
+        train_results=mts,
+        run_context=eval_data.run_context,
+        results_path=results_path,
+    )
 
 
-def load_model(config: GigaConfig, checkpoint) -> torch.nn.Module:
+def load_model_from_checkpoint(config: GigaConfig, output_dir: str) -> torch.nn.Module:
     model = config_to_model(config.model_config)
-    state_dict = checkpoint["model"]
-    model.load_state_dict(state_dict)
+    st.load_model(model, os.path.join(output_dir, "model", "model.safetensors"))
     return model
 
 
@@ -161,11 +163,8 @@ def config_to_model(config: ModelConfig) -> PreTrainedModel:
 def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
-    iter_num = 0
-    local_iter_num = 0
-    best_val_loss = 1e9
-    running_mfu = -1.0
     t0 = time.time()
+    training_state = None
     if config.init_from == "scratch":
         # init a new model from scratch
         logging.debug("Initializing a new model from scratch")
@@ -174,23 +173,26 @@ def initialize_model_training_state(
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
         logging.info(f"Resuming training from {config.output_dir}")
-        checkpoint = torch.load(
-            Path(config.output_dir) / "ckpt.pt", map_location=device
-        )
-        model = load_model(config, checkpoint)
-        iter_num = checkpoint["iter_num"]
-        best_val_loss = checkpoint["best_val_loss"]
+        checkpoint = config.output_dir
+        model = load_model_from_checkpoint(config, checkpoint)
+        with open(os.path.join(checkpoint, "training_state.json"), "r") as f:
+            training_state = json.load(f)
     model.to(device)  # type: ignore
     # optimizer
     optimizer = get_optimizer(
         model=model,
         config=config,
-        checkpoint=checkpoint
-        if checkpoint is not None and "optimizer" in checkpoint  # type: ignore
+        output_dir=config.output_dir
+        if (Path(config.output_dir) / "opt.safetensors").exists()
         else None,
+        device=device,
     )
-    epoch = checkpoint.get("epoch", 0) if checkpoint is not None else 0
-    step = checkpoint.get("step", 0) if checkpoint is not None else 0
+    epoch = training_state.get("epoch", 0) if training_state is not None else 0
+    step = training_state.get("step", 0) if training_state is not None else 0
+    best_val_loss = training_state.get("best_val_loss", 1e9) if training_state else 1e9
+    iter_num = training_state.get("iter_num", 0) if training_state else 0
+    local_iter_num = training_state.get("local_iter_num", 0) if training_state else 0
+    running_mfu = training_state.get("running_mfu", 0.0) if training_state else -1.0
     checkpoint = None  # free up memory
     return ModelTrainingState(
         model=model,
@@ -264,6 +266,13 @@ def estimate_loss(
     return out
 
 
+def upload_to_huggingface(eval_data: EvalData):
+    model = eval_data.model_training_state.model
+    if isinstance(model, PreTrainedModel):
+        model = cast(PreTrainedModel, model)
+        model.save_pretrained(eval_data.config.output_dir)
+
+
 def save_results(
     config: GigaConfig,
     train_results: ModelTrainingState,
@@ -272,11 +281,20 @@ def save_results(
 ):
     os.makedirs(results_path, exist_ok=True)
     with open(os.path.join(results_path, "config.json"), "w") as file:
-        json.dump(asdict(config), file)
-    torch.save(train_results.model.state_dict(), os.path.join(results_path, "model.pt"))
-    torch.save(
-        train_results.optimizer.state_dict(), os.path.join(results_path, "opt.pt")
-    )
+        json.dump(asdict(config), file, indent=2)
+    model = train_results.model
+    if isinstance(model, PreTrainedModel):
+        model = cast(PreTrainedModel, model)
+        model.save_pretrained(
+            save_directory=os.path.join(results_path, "model"),
+        )
+    else:
+        st.save_model(
+            train_results.model,
+            os.path.join(results_path, "model", "model.safetensors"),
+        )
+    with open(os.path.join(results_path, "opt.pt"), "wb") as f:
+        torch.save(train_results.optimizer.state_dict(), f)
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
@@ -292,3 +310,10 @@ def save_results(
         run_context_dict = asdict(run_context)
         run_context_dict["device"] = str(run_context.device)
         json.dump(run_context_dict, file, indent=2)
+    if config.huggingface.push_checkpoints_to_hub:
+        api = HfApi()
+        api.upload_folder(
+            folder_path=results_path,
+            repo_id=str(config.huggingface.repo_id),
+            path_in_repo=f"iter_{train_results.iter_num}/",
+        )

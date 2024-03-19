@@ -8,6 +8,7 @@ from datasets import Dataset
 from .config import GigaConfig
 from .config.models import ModelTypes
 from .iteration_params import IterationParams
+from .run_context import RunContext
 from .utils import EvalData, ModelTrainingState, estimate_loss, get_next_xy, set_lr
 
 
@@ -19,7 +20,7 @@ def train_step(
     eval_callbacks: list[Callable],
     config: GigaConfig,
     train_batch_iter: Generator,
-    device: torch.device,
+    run_context: RunContext,
 ) -> bool:
     """
     Runs a training step, updating (mutating in place) model_training_state
@@ -49,7 +50,7 @@ def train_step(
             eval_iters=iteration_params.eval_iters,
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
-            device=device,
+            device=run_context.device,
         )
         new_best_val_loss = False
         if losses["val"] < model_training_state.best_val_loss:
@@ -61,6 +62,7 @@ def train_step(
             new_best_val_loss=new_best_val_loss,
             config=config,
             model_training_state=model_training_state,
+            run_context=run_context,
         )
         logging.info(
             f"step {model_training_state.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
@@ -77,7 +79,7 @@ def train_step(
         f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
     )
     for micro_step in range(config.optimizer.gradient_accumulation_steps):
-        X, Y = get_next_xy(train_batch_iter, device)
+        X, Y = get_next_xy(train_batch_iter, run_context.device)
         loss = (
             model(X, labels=Y, return_dict=True).loss
             / config.optimizer.gradient_accumulation_steps

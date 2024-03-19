@@ -91,7 +91,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                 eval_callbacks,
                 config,
                 train_batch_iter,
-                run_context.device,
+                run_context,
             )
             if breaknow:
                 break

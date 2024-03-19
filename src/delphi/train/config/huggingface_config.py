@@ -8,4 +8,4 @@ from beartype import beartype
 @dataclass(frozen=True)
 class HuggingfaceConfig:
     repo_id: Optional[str] = None
-    save_checkpoints: bool = False
+    push_checkpoints_to_hub: bool = False
