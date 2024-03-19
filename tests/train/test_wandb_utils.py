@@ -6,7 +6,6 @@ import pytest
 import torch
 from dacite import from_dict
 
-import delphi
 from delphi.train.config import GigaConfig
 from delphi.train.config.models import TypedLlamaConfig
 from delphi.train.run_context import RunContext
