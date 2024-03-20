@@ -3,7 +3,7 @@
 Interpreting Small Language Models Across Time and Scale
 
 # Training Models
-Training is a model [`scripts/run_training.py`](scripts/run_training.py):
+See [`scripts/run_training.py`](scripts/run_training.py):
 ```bash
    ./scripts/run_training.py --config_file /path/to/my/training/config.json
 ```
