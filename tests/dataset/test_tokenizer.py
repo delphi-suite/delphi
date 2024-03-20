@@ -1,6 +1,7 @@
 import collections
 import random
 
+import pytest
 from transformers import AutoTokenizer
 
 from delphi.dataset.tokenization import (
@@ -10,11 +11,15 @@ from delphi.dataset.tokenization import (
 )
 from delphi.eval.utils import load_validation_dataset
 
-tokenizer = AutoTokenizer.from_pretrained("delphi-suite/stories-tokenizer")
+
+@pytest.fixture
+def tokenizer():
+    return AutoTokenizer.from_pretrained("delphi-suite/stories-tokenizer")
 
 
 def test_extend_deque():
     CTX_SIZE = 10
+    BATCH_SIZE = 2
     # generate 100 random stories
     text_stories = [
         " ".join(
@@ -29,7 +34,9 @@ def test_extend_deque():
     dq = collections.deque()
 
     while prompt_idx < len(text_stories):
-        prompt_idx = extend_deque(dq, CTX_SIZE, text_stories, prompt_idx, tokenizer)
+        prompt_idx = extend_deque(
+            dq, CTX_SIZE, text_stories, prompt_idx, tokenizer, BATCH_SIZE
+        )
         if prompt_idx < len(text_stories) - 1:
             # assert that the deque has grown large enough in each round
             assert len(dq) >= CTX_SIZE
@@ -63,7 +70,7 @@ def test_make_new_sample():
 
 def test_get_tokenized_batches():
     CTX_SIZE = 10
-    tokenizer = AutoTokenizer.from_pretrained("delphi-suite/stories-tokenizer")
+    BATCH_SIZE = 2
 
     text_stories = [
         "Once upon a",
@@ -80,4 +87,7 @@ def test_get_tokenized_batches():
         [1, 406, 286, 261, 2, 787, 269, 396, 484, 415, 4037],
         [1, 4037, 311, 519, 268, 326, 317, 264, 525, 4037, 2],
     ]
-    assert get_tokenized_batches(text_stories, tokenizer, CTX_SIZE) == correct_batches
+    assert (
+        get_tokenized_batches(text_stories, tokenizer, CTX_SIZE, BATCH_SIZE)
+        == correct_batches
+    )

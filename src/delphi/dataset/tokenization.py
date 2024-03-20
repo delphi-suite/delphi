@@ -10,6 +10,7 @@ def extend_deque(
     text_documents: list[str],
     doc_idx: int,
     tokenizer: PreTrainedTokenizerBase,
+    batch_size: int,
 ) -> int:
     """
     Extends the deque with tokenized text documents until the deque grows large
@@ -28,17 +29,18 @@ def extend_deque(
         int: Updated index in the text documents dataset.
     """
     while len(dq) < context_size and doc_idx < len(text_documents):
-        text_story = text_documents[doc_idx]
-        dq.extend(
-            tokenizer.encode(text_story, add_special_tokens=False)
-            + [tokenizer.eos_token_id]
-        )
-        doc_idx += 1
+        text_doc = text_documents[doc_idx : doc_idx + batch_size]
+        batch_input_ids = tokenizer(
+            text_doc, return_attention_mask=False, add_special_tokens=False
+        )["input_ids"]
+        for input_ids in batch_input_ids:
+            dq.extend(input_ids + [tokenizer.eos_token_id])
+        doc_idx += batch_size
     return doc_idx
 
 
 def make_new_samples(
-    dq: deque[int], context_size: int, bos_token_id: Optional[int]
+    dq: deque[int], context_size: int, bos_token_id: int
 ) -> list[list[int]]:
     """
     Generates new samples for training by creating sequences of tokens
@@ -76,6 +78,7 @@ def get_tokenized_batches(
     text_documents: list[str],
     tokenizer: PreTrainedTokenizerBase,
     context_size: int,
+    batch_size: int,
 ) -> list[list[int]]:
     """
     Tokenizes the input text documents using the provided tokenizer and
@@ -95,7 +98,9 @@ def get_tokenized_batches(
     samples = []
 
     while doc_idx < len(text_documents):
-        doc_idx = extend_deque(dq, context_size, text_documents, doc_idx, tokenizer)
+        doc_idx = extend_deque(
+            dq, context_size, text_documents, doc_idx, tokenizer, batch_size
+        )
         samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
 
     # We discard the last chunk, so no processing on the remainder of the deque here
