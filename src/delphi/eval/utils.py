@@ -1,6 +1,7 @@
 from collections.abc import Callable
-from typing import cast
+from typing import Any, cast
 
+import numpy as np
 import torch
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
@@ -114,4 +115,16 @@ def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[floa
     return {
         model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]
         for model in constants.LLAMA2_MODELS
+    }
+
+
+def dict_filter_quantile(
+    d: dict[Any, float], q_start: float, q_end: float
+) -> dict[Any, float]:
+    if not (0 <= q_start < q_end <= 1):
+        raise ValueError("Invalid quantile range")
+    q_start_val = np.nanquantile(list(d.values()), q_start)
+    q_end_val = np.nanquantile(list(d.values()), q_end)
+    return {
+        k: v for k, v in d.items() if q_start_val <= v <= q_end_val and not np.isnan(v)
     }
