@@ -35,7 +35,7 @@ class GigaConfig:
     log_interval: int = field(default=1, metadata={"help": "log every N iters"})
     eval_iters: int = field(default=100, metadata={"help": "use N iters for each eval"})
     always_save_checkpoint: bool = field(
-        default=False,  # if True, always save a checkpoint after each eval
+        default=False,
         metadata={"help": "if True, always save a checkpoint after each eval"},
     )
     init_from: str = field(
