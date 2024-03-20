@@ -17,7 +17,7 @@ class ModelConfig:
         metadata={
             "help": (
                 "The model type to train. May be either a predefined "
-                "type (delphi, mamba) or any model from the transformers "
+                "type (delphi, mamba) or any CausalLM Model from the transformers "
                 "library (e.g. BartForCausalLM). Predefined types should "
                 "specify their respective configs in this model config; "
                 "transformer library models should specify their model "
