@@ -38,9 +38,10 @@ def test_get_all_tok_metrics_in_label(mock_data):
     for k in result:
         assert isclose(cast(float, result[k]), expected[k], rel_tol=1e-6)  # type: ignore
 
+    # test with quantile filtering
     result_q = get_all_tok_metrics_in_label(
-        token_ids, token_labels, metrics, "Is Noun", q_start=0.6, q_end=0.8
+        token_ids, token_labels, metrics, "Is Noun", q_start=0.3, q_end=1.0
     )
-    expected_q = {(1, 2): 0.6, (2, 1): 0.8}
+    expected_q = {(1, 2): 0.6, (2, 1): 0.8, (1, 0): 0.4}
     for k in result_q:
         assert isclose(cast(float, result_q[k]), expected_q[k], rel_tol=1e-6)  # type: ignore
