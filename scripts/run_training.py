@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+import sys
 from dataclasses import fields, is_dataclass
 from datetime import datetime
 from itertools import chain
@@ -120,12 +121,17 @@ def add_dataclass_args_recursively(
                 depth=depth + 1,
             )
         else:
+            help_str: str = (
+                str(field.metadata.get("help")) + ". "
+                if field.metadata and "help" in field.metadata
+                else ""
+            )
             if depth > max_help_depth:
                 help_str = argparse.SUPPRESS
             elif field.default != field.default_factory:
-                help_str = f"Default: {field.default}"
+                help_str += f"Default: {field.default}"
             else:
-                help_str = f"Must be specified as part of {group.title}"
+                help_str += f"Must be specified as part of {group.title}"
             group.add_argument(
                 f"--{name}",
                 type=_type,
@@ -231,7 +237,7 @@ def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
     return var_args_to_dict(config_vars)
 
 
-def print_subhelp_if_invoked(args: argparse.Namespace, help_parsers: dict[str, Any]):
+def special_help_if_invoked(args: argparse.Namespace, help_parsers: dict[str, Any]):
     for name, parser in help_parsers.items():
         if hasattr(args, name) and getattr(args, name):
             parser.print_help()
@@ -258,7 +264,10 @@ def set_output_dir(args: argparse.Namespace):
 def main():
     parser, help_parsers = setup_parser()
     args = parser.parse_args()
-    print_subhelp_if_invoked(args, help_parsers)
+    if len(sys.argv) == 1:
+        parser.print_help()
+        exit(0)
+    special_help_if_invoked(args, help_parsers)
     set_logging(args)
 
     config_files = get_config_files(args)
