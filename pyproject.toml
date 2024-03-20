@@ -1,0 +1,13 @@
+[project]
+name = "delphi"
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "delphi.__version__"}
+
+[tool.isort]
+profile = 'black'
+known_third_party = ['wandb']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

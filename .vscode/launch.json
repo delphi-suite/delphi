@@ -1,0 +1,34 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "run_training 256",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "--debug --train_sample_limit=256"
+            //"args": "${command:pickArgs}"
+        },
+        {
+            "name": "run_training --help",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "--help"
+            //"args": "${command:pickArgs}"
+        },
+        {
+            "name": "run training with debug plus custom args",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "--debug ${command:pickArgs}"
+        }
+    ]
+}
