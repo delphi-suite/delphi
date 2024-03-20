@@ -17,7 +17,7 @@ With `huggingface.push_checkpoints_to_hub` set to `True`, the model and all asso
 training run data will be uploaded to HuggingFace repo specified by `huggingface.repo_id`
 every checkpoint. Every upload will be in a new folder named by the current iteration (e.g. `iter_1`).
 ### Resuming model training
-With `init_from` set to `True`, training will resume from `output_dir`.
+With `init_from` set to `'resume'`, training will resume from `output_dir`.
 ### Deterministic, Reproducible* Training
 Delphi aims to be deterministic and as reproducible as possible. However, there is one major caveat: hardware. CUDA algorithms are not always 100% isomorphic to CPU algorithms. We do record the hardware device type each training run uses,
 to enable reproduction *given the same class of hardware*.
