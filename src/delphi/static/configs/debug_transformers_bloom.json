@@ -21,7 +21,6 @@
             "model_type": "bloom",
             "n_head": 2,
             "n_layer": 2,
-            "num_heads": 2,
             "pretraining_tp": 1,
             "slow_but_exact": false,
             "use_cache": true,
