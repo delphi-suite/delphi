@@ -17,7 +17,7 @@ def tokenizer():
     return AutoTokenizer.from_pretrained("delphi-suite/stories-tokenizer")
 
 
-def test_extend_deque():
+def test_extend_deque(tokenizer):
     CTX_SIZE = 10
     BATCH_SIZE = 2
     # generate 100 random stories
@@ -45,7 +45,7 @@ def test_extend_deque():
                 dq.popleft()
 
 
-def test_make_new_sample():
+def test_make_new_sample(tokenizer):
     for _ in range(100):
         total_tokens = random.randint(100, 1000)
         context_size = random.randint(5, total_tokens // 2)
@@ -68,7 +68,7 @@ def test_make_new_sample():
         assert len(dq) > 0  # always leaving at least one element in the deque
 
 
-def test_get_tokenized_batches():
+def test_get_tokenized_batches(tokenizer):
     CTX_SIZE = 10
     BATCH_SIZE = 2
 
