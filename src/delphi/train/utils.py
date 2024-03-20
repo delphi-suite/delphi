@@ -18,9 +18,8 @@ from transformers import PreTrainedModel
 from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
 
-from .config.gigaconfig import GigaConfig
-from .config.models import ModelTypes, get_delphi_config
-from .config.models.model_config import ModelConfig
+from .config import GigaConfig
+from .config.models import config_to_model
 from .run_context import RunContext
 from .shuffle import shuffle_list
 
@@ -151,13 +150,6 @@ def load_model_from_checkpoint(config: GigaConfig, output_dir: str) -> torch.nn.
     model = config_to_model(config.model_config)
     st.load_model(model, os.path.join(output_dir, "model", "model.safetensors"))
     return model
-
-
-def config_to_model(config: ModelConfig) -> PreTrainedModel:
-    # get ModelType object from name ('llama2' -> ModelType(...))
-    delphi_config = get_delphi_config(config)
-    model_type = ModelTypes.get(config.model_type)
-    return model_type.model(model_type.config(**asdict(delphi_config)))
 
 
 def initialize_model_training_state(
