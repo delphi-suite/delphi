@@ -17,7 +17,7 @@ class TypedLlamaConfig(TypedModelConfig):
     hidden_size: int = 288
     initializer_range: float = 0.02
     intermediate_size: int = 288
-    max_position_embeddings: int = 513
+    max_position_embeddings: int = 512
     num_attention_heads: int = 6
     num_hidden_layers: int = 6
     num_key_value_heads: int = 6
