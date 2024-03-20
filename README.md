@@ -2,7 +2,38 @@
 
 Interpreting Small Language Models Across Time and Scale
 
-# Setup
+# Training Models
+See [`scripts/run_training.py`](scripts/run_training.py):
+```bash
+   ./scripts/run_training.py --config_file /path/to/my/training/config.json
+```
+
+See [`scripts/sample_config.json`](scripts/sample_config.json) for an example of a training run json.
+
+
+## Features
+### Uploading to HuggingFace
+With `huggingface.push_checkpoints_to_hub` set to `True`, the model and all associated
+training run data will be uploaded to HuggingFace repo specified by `huggingface.repo_id`
+every checkpoint. Every upload will be in a new folder named by the current iteration (e.g. `iter_1`).
+### Resuming model training
+With `init_from` set to `'resume'`, training will resume from `output_dir`.
+### Deterministic, Reproducible* Training
+Delphi aims to be deterministic and as reproducible as possible. However, there is one major caveat: hardware. CUDA algorithms are not always 100% isomorphic to CPU algorithms. We do record the hardware device type each training run uses,
+to enable reproduction *given the same class of hardware*.
+### Different Model Architectures
+`model_config.model_type` can specify currently supported architectures. At time of writing, these are `'llama2'` and `'mamaba`'. Config for the selected model type should
+be in `model_config.<model_type>` (e.g. `model_config.llama2`) and correspond to the
+arguments for that model type. See [`model_types.py`](src/delphi/train/config/models/model_types.py)
+### Weights and Biases Integration
+
+
+# Analyzing Models
+TODO
+
+# Development
+
+## Setup
 
 1. Clone this repo and submodules: `git clone https://github.com/delphi-suite/delphi.git --recurse-submodules`
 2. make python 3.10 virtual env in `.venv`
@@ -10,14 +41,14 @@ Interpreting Small Language Models Across Time and Scale
 4. install the project in editable state `pip install -e .`
 5. run tests `pytest`
 
-## Submodule Setup
+### Submodule Setup
 If you cloned without `--recurse-submodules`, you can still install the submodules later with:
 ```bash
 git submodule init
 git submodule update
 ```
 
-# Formatting
+## Formatting
 
 We're using black & isort to format the code. To make sure your changes adhere to the rules:
 
@@ -27,7 +58,7 @@ We're using black & isort to format the code. To make sure your changes adhere t
 
 When you save a file vscode should automatically format it. Otherwise, pre-commit will do that, but you will need to add the changes and commit again.
 
-# Pull Requests
+## Pull Requests
 
 1. make a branch
    - if it relates to an existing issue
@@ -50,5 +81,5 @@ When you save a file vscode should automatically format it. Otherwise, pre-commi
    - when it's ready, add the relevant stakeholders as reviewers
 4. after the comments are resolved and PR is approved, merge it using _Squash and merge_
 
-# Incrementing Versions
+## Incrementing Versions
 When making a new release, increment the version in `delphi/__init__.py`
