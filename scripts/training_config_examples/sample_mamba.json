@@ -42,8 +42,7 @@
       "rescale_prenorm_residual": false,
       "use_cache": true,
       "tie_word_embeddings": true
-    },
-    "llama": null
+    }
   },
   "max_epochs": 10,
   "grad_clip": 1.0,

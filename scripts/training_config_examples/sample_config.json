@@ -16,9 +16,9 @@
   "batch_size": 64,
   "max_seq_len": 512,
   "model_config": {
-    "model_type": "llama",
+    "model_type": "llama2",
     "mamba": null,
-    "llama": {
+    "llama2": {
       "attention_bias": false,
       "attention_dropout": 0.0,
       "bos_token_id": -1,
