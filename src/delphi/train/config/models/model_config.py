@@ -13,10 +13,30 @@ from .typed_mamba_config import TypedMambaConfig
 @beartype
 @dataclass(frozen=True)
 class ModelConfig:
-    model_type: str
-    huggingface_config: dict[str, Any] = field(default_factory=dict)
-    mamba: Optional[TypedMambaConfig] = None
-    llama2: Optional[TypedLlamaConfig] = None
+    model_type: str = field(
+        metadata={
+            "help": (
+                "The model type to train. May be either a predefined "
+                "type (delphi, mamba) or any model from the transformers "
+                "library (e.g. BartForCausalLM). Predefined types should "
+                "specify their respective configs in this model config; "
+                "transformer library models should specify their model "
+                "config arguments in transformers_config."
+            )
+        }
+    )
+    transformers_config: dict[str, Any] = field(
+        default_factory=dict,
+        metadata={"help": "config for the transformers model specified by model_type"},
+    )
+    mamba: Optional[TypedMambaConfig] = field(
+        default=None,
+        metadata={"help": "config for Delphi mamba model. See TypedMambaConfig"},
+    )
+    llama2: Optional[TypedLlamaConfig] = field(
+        default=None,
+        metadata={"help": "config for Delphi llama2 model. See TypedLlamaConfig"},
+    )
 
     def is_predefined_type(self):
         return hasattr(self, self.model_type)
@@ -38,7 +58,7 @@ def config_to_model(config: ModelConfig) -> PreTrainedModel:
     # otherwise, we're dealing with a generic huggingface model config
     else:
         model_class = getattr(transformers, config.model_type)
-        delphi_config = config.huggingface_config
+        delphi_config = config.transformers_config
     # force cast class and config types
     model_class = cast(Type[transformers.PreTrainedModel], model_class)
     config_class = cast(Type[transformers.PretrainedConfig], model_class.config_class)
