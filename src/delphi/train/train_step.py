@@ -92,6 +92,8 @@ def train_step(
             )
             loss.backward()
     if config.debug_config.no_training:
+        logging.debug("debug no_training is set, skipping optimizer step")
+    else:
         # clip the gradient
         if config.grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
