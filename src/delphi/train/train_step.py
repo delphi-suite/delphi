@@ -45,14 +45,18 @@ def train_step(
 
     # 2. evaluate the loss on train/val sets and write checkpoints
     if model_training_state.iter_num % config.eval_interval == 0:
-        losses = estimate_loss(
-            model=model,
-            eval_iters=iteration_params.eval_iters,
-            batch_size=config.batch_size,
-            split_to_ds={"train": train_ds, "val": validation_ds},
-            device=run_context.device,
-            epoch=model_training_state.epoch,
-        )
+        if config.debug_config.no_eval:
+            logging.debug("no_eval=True, skipping evaluation and using dummy losses")
+            losses = {"train": 42.0, "val": 43.0}
+        else:
+            losses = estimate_loss(
+                model=model,
+                eval_iters=iteration_params.eval_iters,
+                batch_size=config.batch_size,
+                split_to_ds={"train": train_ds, "val": validation_ds},
+                device=run_context.device,
+                epoch=model_training_state.epoch,
+            )
         new_best_val_loss = False
         if losses["val"] < model_training_state.best_val_loss:
             model_training_state.best_val_loss = float(losses["val"])
@@ -72,21 +76,26 @@ def train_step(
             callback(eval_data)
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
-    logging.info(
+    logging.debug(
         f"gradient accumulation steps: {config.optimizer.gradient_accumulation_steps}, "
         f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
     )
     for micro_step in range(config.optimizer.gradient_accumulation_steps):
         X, Y = get_next_xy(train_batch_iter, run_context.device)
-        loss = (
-            model(X, labels=Y, return_dict=True).loss
-            / config.optimizer.gradient_accumulation_steps
-        )
-        loss.backward()
-    # clip the gradient
-    if config.grad_clip != 0.0:
-        torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
-    optimizer.step()
+        if config.debug_config.no_training:
+            logging.debug("no_training set, skipping forward backward update")
+            loss = torch.Tensor([42.1]).to(run_context.device)
+        else:
+            loss = (
+                model(X, labels=Y, return_dict=True).loss
+                / config.optimizer.gradient_accumulation_steps
+            )
+            loss.backward()
+    if config.debug_config.no_training:
+        # clip the gradient
+        if config.grad_clip != 0.0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
+        optimizer.step()
 
     # flush the gradients as soon as we can, no need for this memory anymore
     optimizer.zero_grad(set_to_none=True)
@@ -133,7 +142,7 @@ def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float) -
             cfg.max_position_embeddings,
         )
     else:
-        logging.warn(
+        logging.debug(
             f"estimate_mfu not implemented for {config.model_config.model_type}, setting MFU to -1"
         )
         return -1.0
