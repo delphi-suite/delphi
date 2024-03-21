@@ -19,7 +19,6 @@ from delphi import constants
 from delphi.eval.utils import load_delphi_dataset
 
 from .config import GigaConfig
-from .config.models import config_to_model
 from .run_context import RunContext
 from .shuffle import shuffle_list
 
@@ -147,7 +146,7 @@ def save_checkpoint_if_needed(eval_data: EvalData):
 
 
 def load_model_from_checkpoint(config: GigaConfig, output_dir: str) -> torch.nn.Module:
-    model = config_to_model(config.model_config)
+    model = config.model_config.get_model()
     st.load_model(model, os.path.join(output_dir, "model", "model.safetensors"))
     return model
 
@@ -160,7 +159,7 @@ def initialize_model_training_state(
     if config.init_from == "scratch":
         # init a new model from scratch
         logging.debug("Initializing a new model from scratch")
-        model = config_to_model(config.model_config)
+        config.model_config.get_model()
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":

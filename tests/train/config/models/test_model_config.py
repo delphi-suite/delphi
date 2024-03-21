@@ -3,7 +3,7 @@ from dacite import from_dict
 from transformers import BloomConfig, BloomForCausalLM, LlamaConfig, LlamaForCausalLM
 
 from delphi.train.config.models import ModelConfig, TypedLlamaConfig
-from delphi.train.config.models.model_config import ModelConfig, config_to_model
+from delphi.train.config.models.model_config import ModelConfig
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def test_model_config_is_not_predefined_type(bloom_config):
 
 
 def test_config_to_model_predefined(llama_config):
-    model = config_to_model(llama_config)
+    model = llama_config.get_model()
 
     assert isinstance(model, LlamaForCausalLM)
     assert isinstance(model.config, LlamaConfig)
@@ -53,7 +53,7 @@ def test_config_to_model_predefined(llama_config):
 
 
 def test_config_to_model_generic_type(bloom_config):
-    model = config_to_model(bloom_config)
+    model = bloom_config.get_model()
 
     assert isinstance(model, BloomForCausalLM)
     assert isinstance(model.config, BloomConfig)
