@@ -159,7 +159,7 @@ def initialize_model_training_state(
     if config.init_from == "scratch":
         # init a new model from scratch
         logging.debug("Initializing a new model from scratch")
-        config.model_config.get_model()
+        model = config.model_config.get_model()
         checkpoint = None
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
