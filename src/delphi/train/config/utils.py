@@ -1,10 +1,12 @@
 import json
 import logging
+import os
+from datetime import datetime
 from pathlib import Path
 
+import platformdirs
 from beartype.typing import Any, Iterable
 from dacite import from_dict
-from platformdirs import user_config_dir
 
 from delphi.constants import CONFIG_PRESETS_DIR
 
@@ -29,7 +31,7 @@ def get_preset_paths() -> Iterable[Path]:
 
 
 def get_user_config_path() -> Path:
-    _user_config_dir = Path(user_config_dir(appname="delphi"))
+    _user_config_dir = Path(platformdirs.user_config_dir(appname="delphi"))
     _user_config_dir.mkdir(parents=True, exist_ok=True)
     user_config_path = _user_config_dir / "config.json"
     return user_config_path
@@ -66,11 +68,27 @@ def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
     return combined_config
 
 
+def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
+    if len(config_files) == 1:
+        prefix = f"{config_files[0].stem}__"
+    else:
+        prefix = ""
+    if "run_name" not in config:
+        run_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        config["run_name"] = f"{prefix}{run_time}"
+    if "output_dir" not in config:
+        config["output_dir"] = os.path.join(
+            platformdirs.user_data_dir(appname="delphi"), config["run_name"]
+        )
+
+
 def build_config_from_files_and_overrides(
-    config_files: list[Path], overrides: dict[str, Any]
+    config_files: list[Path],
+    overrides: dict[str, Any],
 ) -> GigaConfig:
     combined_config = build_config_dict_from_files(config_files)
     _merge_dicts(merge_into=combined_config, merge_from=overrides)
+    set_backup_vals(combined_config, config_files)
     return from_dict(GigaConfig, combined_config)
 
 
