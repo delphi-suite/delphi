@@ -246,23 +246,6 @@ def special_help_if_invoked(args: argparse.Namespace, help_parsers: dict[str, An
             exit(0)
 
 
-def set_name_from_config_file(args: argparse.Namespace, config_files: list[Path]):
-    """if no run_name is specified + exactly one config file is, use the name of the config file"""
-    if args.run_name is None:
-        configs = [c for c in config_files if c != get_user_config_path()]
-        if len(configs) == 1:
-            run_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            args.run_name = f"{configs[0].stem}__{run_time}"
-
-
-def set_output_dir(args: argparse.Namespace):
-    """if output_dir not set, set based on run name"""
-    if args.output_dir is None:
-        args.output_dir = os.path.join(
-            platformdirs.user_data_dir(appname="delphi"), args.run_name
-        )
-
-
 def main():
     parser, help_parsers = setup_parser()
     args = parser.parse_args()
@@ -273,8 +256,6 @@ def main():
     set_logging(args)
 
     config_files = get_config_files(args)
-    set_name_from_config_file(args, config_files)
-    set_output_dir(args)
     args_dict = args_to_dict(args)
     config = build_config_from_files_and_overrides(config_files, args_dict)
     # run training
