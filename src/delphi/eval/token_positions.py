@@ -3,12 +3,13 @@ from typing import Optional, cast
 
 import torch
 from datasets import Dataset
+from jaxtyping import Int
 
 from delphi.eval.utils import dict_filter_quantile
 
 
 def get_all_tok_metrics_in_label(
-    token_ids: Dataset,
+    token_ids: Int[torch.Tensor, "prompt pos"],
     token_labels: dict[int, dict[str, bool]],
     metrics: torch.Tensor,
     label: str,
@@ -33,15 +34,13 @@ def get_all_tok_metrics_in_label(
     """
 
     # check if metrics have the same dimensions as token_ids
-    if metrics.shape[0] != len(token_ids["tokens"]) or metrics.shape[1] != len(
-        token_ids["tokens"][0]
-    ):
+    if metrics.shape != token_ids.shape:
         raise ValueError(
-            "The number of dimensions of the metrics tensor should be the same as the number of prompts in the token_ids dataset."
+            f"Expected metrics to have the same shape as token_ids, but got {metrics.shape} and {token_ids.shape} instead."
         )
 
     tok_positions = {}
-    for prompt_pos, prompt in enumerate(token_ids["tokens"]):
+    for prompt_pos, prompt in enumerate(token_ids.numpy()):
         for tok_pos, tok in enumerate(prompt):
             if token_labels[tok][label]:
                 tok_positions[(prompt_pos, tok_pos)] = metrics[
