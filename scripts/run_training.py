@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 import sys
-from dataclasses import fields, is_dataclass
+from dataclasses import _MISSING_TYPE, fields, is_dataclass
 from datetime import datetime
 from itertools import chain
 from pathlib import Path
@@ -128,8 +128,10 @@ def add_dataclass_args_recursively(
             )
             if depth > max_help_depth:
                 help_str = argparse.SUPPRESS
-            elif field.default != field.default_factory:
+            elif not isinstance(field.default, _MISSING_TYPE):
                 help_str += f"Default: {field.default}"
+            elif not isinstance(field.default_factory, _MISSING_TYPE):
+                help_str += f"Default: {field.default_factory()}"
             else:
                 help_str += f"Must be specified as part of {group.title}"
             group.add_argument(

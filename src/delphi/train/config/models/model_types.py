@@ -12,17 +12,11 @@ For any given model we use, there are three associated types:
     helpful ModelTypes.get() method for getting ModelType from a string.
 """
 from dataclasses import dataclass
+from typing import Optional
 
 from beartype import beartype
 from beartype.typing import Type
-from transformers import (
-    LlamaConfig,
-    LlamaForCausalLM,
-    MambaConfig,
-    MambaForCausalLM,
-    PretrainedConfig,
-    PreTrainedModel,
-)
+from transformers import LlamaForCausalLM, MambaForCausalLM, PreTrainedModel
 
 from .typed_llama_config import TypedLlamaConfig
 from .typed_mamba_config import TypedMambaConfig
@@ -34,7 +28,6 @@ from .typed_model_config import TypedModelConfig
 class ModelType:
     name: str
     delphi_config: type[TypedModelConfig]
-    config: type[PretrainedConfig]
     model: type[PreTrainedModel]
 
     # Allow for ModelType == 'llama2'
@@ -57,13 +50,11 @@ class ModelTypes:
     MAMBA = ModelType(
         name="mamba",
         delphi_config=TypedMambaConfig,
-        config=MambaConfig,
         model=MambaForCausalLM,
     )
     LLAMA2 = ModelType(
         name="llama2",
         delphi_config=TypedLlamaConfig,
-        config=LlamaConfig,
         model=LlamaForCausalLM,
     )
 
@@ -75,5 +66,5 @@ class ModelTypes:
     # )
 
     @classmethod
-    def get(cls: Type["ModelTypes"], name: str) -> ModelType:
-        return _model_name_to_model_type[name.lower()]
+    def get(cls: Type["ModelTypes"], name: str) -> Optional[ModelType]:
+        return _model_name_to_model_type.get(name.lower())
