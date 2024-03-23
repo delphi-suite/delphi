@@ -10,6 +10,7 @@ from .utils import EvalData
 
 def silence_wandb():
     # set env var WANDB_SILENT=true
+    logging.info("silencing wandb output")
     os.environ["WANDB_SILENT"] = "true"
 
 
