@@ -5,7 +5,7 @@ import argparse
 from datasets import Dataset
 from transformers import AutoTokenizer
 
-from delphi.dataset.tokenization import get_tokenized_batches
+from delphi.dataset.tokenization import tokenize_dataset
 from delphi.eval.utils import load_validation_dataset
 
 if __name__ == "__main__":
@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     output_dataset = Dataset.from_dict(
         {
-            "tokens": get_tokenized_batches(
+            "tokens": tokenize_dataset(
                 text_docs,
                 tokenizer,
                 context_size=args.context_size,

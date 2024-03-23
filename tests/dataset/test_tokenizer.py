@@ -4,12 +4,7 @@ import random
 import pytest
 from transformers import AutoTokenizer
 
-from delphi.dataset.tokenization import (
-    extend_deque,
-    get_tokenized_batches,
-    make_new_samples,
-)
-from delphi.eval.utils import load_validation_dataset
+from delphi.dataset.tokenization import extend_deque, make_new_samples, tokenize_dataset
 
 
 @pytest.fixture
@@ -68,7 +63,7 @@ def test_make_new_sample(tokenizer):
         assert len(dq) > 0  # always leaving at least one element in the deque
 
 
-def test_get_tokenized_batches(tokenizer):
+def test_tokenize_dataset(tokenizer):
     CTX_SIZE = 10
     BATCH_SIZE = 2
 
@@ -88,6 +83,6 @@ def test_get_tokenized_batches(tokenizer):
         [1, 4037, 311, 519, 268, 326, 317, 264, 525, 4037, 2],
     ]
     assert (
-        get_tokenized_batches(text_stories, tokenizer, CTX_SIZE, BATCH_SIZE)
+        tokenize_dataset(text_stories, tokenizer, CTX_SIZE, BATCH_SIZE)
         == correct_batches
     )
