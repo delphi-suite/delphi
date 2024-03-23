@@ -5,6 +5,7 @@ from datetime import datetime
 import platformdirs
 from beartype import beartype
 
+from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
 from .models import ModelConfig
 from .optimizer_config import OptimizerConfig
@@ -84,3 +85,4 @@ class GigaConfig:
             "help": "for debugging: limit size of the validation set. -1 implies no limit"
         },
     )
+    debug_config: DebugConfig = field(default_factory=DebugConfig)
