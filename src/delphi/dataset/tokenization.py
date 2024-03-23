@@ -74,7 +74,7 @@ def make_new_samples(
     return samples
 
 
-def get_tokenized_batches(
+def tokenize_dataset(
     text_documents: list[str],
     tokenizer: PreTrainedTokenizerBase,
     context_size: int,
