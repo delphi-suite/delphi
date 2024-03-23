@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from typing import cast
 
@@ -85,7 +86,9 @@ def load_delphi_dataset(dataset_name: str, split: str, slice: str = "") -> Datas
         # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
         split=f"train{slice}",
     )
-    return cast(Dataset, dataset)
+    dataset = cast(Dataset, dataset)
+    logging.info(f" Loaded {data_files_str} ({len(dataset)} entries)")
+    return dataset
 
 
 def load_validation_dataset(dataset_name: str, slice: str = "") -> Dataset:

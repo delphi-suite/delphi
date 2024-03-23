@@ -76,10 +76,12 @@ def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
     if "run_name" not in config:
         run_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         config["run_name"] = f"{prefix}{run_time}"
+        logging.info(f"Setting run_name to {config['run_name']}")
     if "output_dir" not in config:
         config["output_dir"] = os.path.join(
             platformdirs.user_data_dir(appname="delphi"), config["run_name"]
         )
+        logging.info(f"Setting output_dir to {config['output_dir']}")
 
 
 def build_config_from_files_and_overrides(

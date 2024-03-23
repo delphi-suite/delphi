@@ -45,7 +45,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     logging.debug(f"Run context: {run_context}")
 
     # load data
-    logging.debug("Loading data...")
+    logging.info("Loading data...")
     train_ds = cast(
         Dataset, load_delphi_training_dataset("train", limit=config.train_sample_limit)
     )
