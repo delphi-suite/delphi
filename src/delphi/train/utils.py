@@ -65,25 +65,6 @@ def get_device(device_str: str = "auto") -> torch.device:
     return torch.device(device_str)
 
 
-def get_optimizer(
-    model: torch.nn.Module,
-    config: GigaConfig,
-    output_dir=None,
-    device: torch.device = torch.device("cpu"),
-) -> AdamW:
-    optimizer = AdamW(
-        lr=config.optimizer.learning_rate,
-        params=model.parameters(),
-        weight_decay=config.optimizer.weight_decay,
-        betas=(config.optimizer.beta1, config.optimizer.beta2),
-    )
-    if output_dir is not None:
-        opt_path = os.path.join(output_dir, "opt.pt")
-        with open(opt_path, "rb") as f:
-            optimizer.load_state_dict(torch.load(f))
-    return optimizer
-
-
 def get_lr(
     iter_num: int,
     warmup_iters: int,
@@ -164,46 +145,44 @@ def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
-    training_state = None
+    model = config_to_model(config.model_config)
+    model.to(device)  # type: ignore
+    optimizer = AdamW(
+        lr=config.optimizer.learning_rate,
+        params=model.parameters(),
+        weight_decay=config.optimizer.weight_decay,
+        betas=(config.optimizer.beta1, config.optimizer.beta2),
+    )
+    training_state_vals = dict()
     if config.init_from == "scratch":
-        # init a new model from scratch
-        logging.debug("Initializing a new model from scratch")
-        model = config_to_model(config.model_config)
-        checkpoint = None
-    # TODO: resume from huggingface model
+        logging.info(f"  initialized model and optimizer from scratch")
     elif config.init_from == "resume":
         logging.info(f"Resuming training from {config.output_dir}")
         checkpoint = config.output_dir
-        model = load_model_from_checkpoint(config, checkpoint)
+        st.load_model(
+            model, os.path.join(config.output_dir, "model", "model.safetensors")
+        )
         with open(os.path.join(checkpoint, "training_state.json"), "r") as f:
-            training_state = json.load(f)
-    model.to(device)  # type: ignore
-    # optimizer
-    optimizer = get_optimizer(
-        model=model,
-        config=config,
-        output_dir=config.output_dir
-        if (Path(config.output_dir) / "opt.safetensors").exists()
-        else None,
-        device=device,
-    )
-    epoch = training_state.get("epoch", 0) if training_state is not None else 0
-    step = training_state.get("step", 0) if training_state is not None else 0
-    best_val_loss = training_state.get("best_val_loss", 1e9) if training_state else 1e9
-    iter_num = training_state.get("iter_num", 0) if training_state else 0
-    local_iter_num = training_state.get("local_iter_num", 0) if training_state else 0
-    running_mfu = training_state.get("running_mfu", 0.0) if training_state else -1.0
-    checkpoint = None  # free up memory
+            training_state_vals = json.load(f)
+        opt_state_dict_path = Path(os.path.join(config.output_dir, "opt.pt"))
+        if opt_state_dict_path.exists():
+            with open(opt_state_dict_path, "rb") as f:
+                logging.info("  Loading optimizer state from {state_dict_path}")
+                optimizer.load_state_dict(torch.load(f))
+    else:
+        raise ValueError(
+            f"{config.init_from} is not one of (scratch, resume), which are the two valid initialization methods. Unable to initialize model."
+        )
     return ModelTrainingState(
         model=model,
         optimizer=optimizer,
-        iter_num=iter_num,
-        local_iter_num=local_iter_num,
-        best_val_loss=best_val_loss,
-        running_mfu=running_mfu,
         t0=t0,
-        epoch=epoch,
-        step=step,
+        iter_num=training_state_vals.get("iter_num", 0),
+        local_iter_num=training_state_vals.get("local_iter_num", 0),
+        best_val_loss=training_state_vals.get("best_val_loss", 1e9),
+        running_mfu=training_state_vals.get("running_mfu", -1.0),
+        epoch=training_state_vals.get("epoch", 0),
+        step=training_state_vals.get("step", 0),
     )
 
 
