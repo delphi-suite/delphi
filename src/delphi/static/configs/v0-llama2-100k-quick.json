@@ -1,7 +1,7 @@
 {
   "model_config": {
-    "model_type": "llama2",
-    "llama2": {
+    "model_type": "LlamaForCausalLM",
+    "model_params": {
       "attention_bias": false,
       "attention_dropout": 0.0,
       "bos_token_id": 1,

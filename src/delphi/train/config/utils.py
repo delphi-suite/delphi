@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from dataclasses import fields
+from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Type
@@ -75,14 +75,19 @@ def filter_config_to_actual_config_values(target_dataclass: Type, config: dict):
 
     This can happen if e.g. being lazy and passing in all args from a script
     """
-    datafields = fields(target_dataclass)
+    try:
+        datafields = fields(target_dataclass)
+    except Exception as e:
+        print(target_dataclass)
+        print(config)
+        raise e
     name_to_field = {f.name: f for f in datafields}
     to_remove = []
     for k, v in config.items():
         if k not in name_to_field.keys():
             logging.debug(f"removing non-config-value {k}={v} from config dict")
             to_remove.append(k)
-        elif isinstance(v, dict) and isinstance(name_to_field[k].type, type):
+        elif isinstance(v, dict) and is_dataclass(name_to_field.get(k)):
             filter_config_to_actual_config_values(name_to_field[k].type, v)
     for k in to_remove:
         config.pop(k)

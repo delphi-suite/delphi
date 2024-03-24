@@ -8,7 +8,7 @@
     "batch_size": 64,
     "model_config": {
         "model_type": "BloomForCausalLM",
-        "transformers_config": {
+        "model_params": {
             "apply_residual_connection_post_layernorm": false,
             "attention_dropout": 0.0,
             "bos_token_id": 1,
