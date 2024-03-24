@@ -133,12 +133,6 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     )
 
 
-def load_model_from_checkpoint(config: GigaConfig, output_dir: str) -> torch.nn.Module:
-    model = config.model_config.get_model()
-    st.load_model(model, os.path.join(output_dir, "model", "model.safetensors"))
-    return model
-
-
 def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
@@ -200,10 +194,9 @@ def load_delphi_training_dataset(split: str, limit: int = -1):
 
 
 def get_next_xy(
-    train_batch_iter: Generator,
-    device: torch.device
-    # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
+    train_batch_iter: Generator, device: torch.device
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """break a (max_seq_len +1) sequence of tokens into sample [:-1] and label [1:] pairs"""
     data = next(train_batch_iter).to(device)
     X, Y = data[:, :-1], data[:, 1:]
     return X, Y
@@ -212,6 +205,9 @@ def get_next_xy(
 def batch_generator(
     dataset: Dataset, batch_size: int, epoch: int, ordering_seed: int
 ) -> Generator[torch.Tensor, None, None]:
+    """
+    Generate batches of training data for a given epoch with pseudorandom determinism
+    """
     sampler = list(range(len(dataset)))  # type: ignore
     shuffle_list(sampler, seed=ordering_seed + epoch)
     sampler = torch.Tensor(sampler)
@@ -243,19 +239,18 @@ def estimate_loss(
     return out
 
 
-def upload_to_huggingface(eval_data: EvalData):
-    model = eval_data.model_training_state.model
-    if isinstance(model, PreTrainedModel):
-        model = cast(PreTrainedModel, model)
-        model.save_pretrained(eval_data.config.output_dir)
-
-
 def save_results(
     config: GigaConfig,
     train_results: ModelTrainingState,
     run_context: RunContext,
     results_path: str,
 ):
+    """
+    save results to disk, and to huggingface if configured to do so.
+
+    Saves everything required to replicate the current state of training, including optimizer state,
+    config, context (e.g. hardware), training step, etc
+    """
     os.makedirs(results_path, exist_ok=True)
     with open(os.path.join(results_path, "config.json"), "w") as file:
         json.dump(asdict(config), file, indent=2)
