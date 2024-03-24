@@ -76,24 +76,17 @@ def train_step(
             callback(eval_data)
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
-    logging.debug(
-        f"gradient accumulation steps: {config.optimizer.gradient_accumulation_steps}, "
-        f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
-    )
-    for micro_step in range(config.optimizer.gradient_accumulation_steps):
-        X, Y = get_next_xy(train_batch_iter, run_context.device)
-        if config.debug_config.no_training:
-            logging.debug("no_training set, skipping forward backward update")
-            loss = torch.Tensor([42.1]).to(run_context.device)
-        else:
+    if config.debug_config.no_training:
+        logging.debug("no_training set, skipping forward backward pass")
+        loss = torch.Tensor([42.1]).to(run_context.device)
+    else:
+        for micro_step in range(config.optimizer.gradient_accumulation_steps):
+            X, Y = get_next_xy(train_batch_iter, run_context.device)
             loss = (
                 model(X, labels=Y, return_dict=True).loss
                 / config.optimizer.gradient_accumulation_steps
             )
             loss.backward()
-    if config.debug_config.no_training:
-        logging.debug("debug no_training is set, skipping optimizer step")
-    else:
         # clip the gradient
         if config.grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
@@ -104,8 +97,8 @@ def train_step(
 
     # 4. log timing
     t1 = time.time()
-    dt = t1 - model_training_state.t0
-    model_training_state.t0 = t1
+    dt = t1 - model_training_state.last_training_step_time
+    model_training_state.last_training_step_time = t1
     if model_training_state.iter_num % config.log_interval == 0:
         # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
         lossf = loss.item() * config.optimizer.gradient_accumulation_steps

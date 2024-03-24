@@ -37,7 +37,9 @@ class ModelTrainingState:
     )
     best_val_loss: float = field(metadata={"help": "best validation loss so far"})
     running_mfu: float = field(metadata={"help": "estimation of compute efficency"})
-    t0: float = field(metadata={"help": "time last iteration ended"})
+    last_training_step_time: float = field(
+        metadata={"help": "time last iteration ended"}
+    )
     epoch: int = field(metadata={"help": "current epoch"})
     step: int = field(metadata={"help": "step within current epoch"})
     lr: float = field(default=1.0e-5, metadata={"help": "learning rate"})
@@ -174,7 +176,7 @@ def initialize_model_training_state(
     return ModelTrainingState(
         model=model,
         optimizer=optimizer,
-        t0=t0,
+        last_training_step_time=t0,
         iter_num=training_state_vals.get("iter_num", 0),
         local_iter_num=training_state_vals.get("local_iter_num", 0),
         best_val_loss=training_state_vals.get("best_val_loss", 1e9),
