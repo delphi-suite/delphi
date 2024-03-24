@@ -17,7 +17,6 @@
   "max_seq_len": 512,
   "model_config": {
     "model_type": "LlamaForCausalLM",
-    "mamba": null,
     "model_params": {
       "attention_bias": false,
       "attention_dropout": 0.0,
