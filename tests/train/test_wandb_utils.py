@@ -43,7 +43,6 @@ def mock_model_training_state(mock_giga_config):
     mts.epoch = 1
     mts.iter_num = 1
     mts.lr = 0.001
-    mts.running_mfu = 3.0
     return mts
 
 
@@ -93,7 +92,6 @@ def test_log_to_wandb(mock_wandb_log, mock_eval_data):
             "loss/train": 0.5,
             "loss/val": 0.4,
             "lr": 0.001,
-            "mfu": 300.0,
         },
         step=1,
     )
