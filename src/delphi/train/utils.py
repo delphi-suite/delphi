@@ -25,6 +25,8 @@ from .shuffle import shuffle_list
 
 @dataclass
 class ModelTrainingState:
+    """mutable training state - stuff that changes over the course of training"""
+
     model: torch.nn.Module
     optimizer: torch.optim.Optimizer
     iter_num: int = field(
