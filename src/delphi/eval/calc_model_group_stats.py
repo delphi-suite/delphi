@@ -12,7 +12,7 @@ def calc_model_group_stats(
 
     args:
     - tokenized_corpus_dataset: the tokenized corpus dataset, e.g. load_dataset(constants.tokenized_corpus_dataset))["validation"]
-    - logprob_datasets: a dict of lists of logprobs, e.g. {"model_params": load_dataset("transcendingvictor/llama2-validation-logprobs")["validation"]["logprobs"]}
+    - logprob_datasets: a dict of lists of logprobs, e.g. {"llama2": load_dataset("transcendingvictor/llama2-validation-logprobs")["validation"]["logprobs"]}
     - token_groups: a dict of token groups, e.g. {0: {"Is Noun": True, "Is Verb": False, ...}, 1: {...}, ...}
     - models: a list of model names, e.g. constants.LLAMA2_MODELS
     - token_labels: a list of token group descriptions, e.g. ["Is Noun", "Is Verb", ...]

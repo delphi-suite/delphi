@@ -75,12 +75,7 @@ def filter_config_to_actual_config_values(target_dataclass: Type, config: dict):
 
     This can happen if e.g. being lazy and passing in all args from a script
     """
-    try:
-        datafields = fields(target_dataclass)
-    except Exception as e:
-        print(target_dataclass)
-        print(config)
-        raise e
+    datafields = fields(target_dataclass)
     name_to_field = {f.name: f for f in datafields}
     to_remove = []
     for k, v in config.items():
