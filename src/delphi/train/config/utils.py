@@ -123,7 +123,7 @@ def build_config_from_files_and_overrides(
     _merge_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
     filter_config_to_actual_config_values(GigaConfig, combined_config)
-    logging.info("Non-default config values:")
+    logging.info("User-set config values:")
     log_config_recursively(
         combined_config, logging_fn=logging.info, prefix="  ", indent="  "
     )
