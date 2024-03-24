@@ -4,7 +4,7 @@ import math
 import os
 import time
 from collections.abc import Generator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import cast
 
@@ -27,14 +27,18 @@ from .shuffle import shuffle_list
 class ModelTrainingState:
     model: torch.nn.Module
     optimizer: torch.optim.Optimizer
-    iter_num: int
-    local_iter_num: int
-    best_val_loss: float
-    running_mfu: float
-    t0: float
-    epoch: int
-    step: int
-    lr: float = 1.0e-5
+    iter_num: int = field(
+        metadata={"help": "total iterations so far across all epochs"}
+    )
+    local_iter_num: int = field(
+        metadata={"help": "total iterations on this instance so far"}
+    )
+    best_val_loss: float = field(metadata={"help": "best validation loss so far"})
+    running_mfu: float = field(metadata={"help": "estimation of compute efficency"})
+    t0: float = field(metadata={"help": "time last iteration ended"})
+    epoch: int = field(metadata={"help": "current epoch"})
+    step: int = field(metadata={"help": "step within current epoch"})
+    lr: float = field(default=1.0e-5, metadata={"help": "learning rate"})
 
 
 @dataclass
