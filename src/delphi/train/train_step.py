@@ -91,9 +91,8 @@ def train_step(
         if config.grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
         optimizer.step()
-
-    # flush the gradients as soon as we can, no need for this memory anymore
-    optimizer.zero_grad(set_to_none=True)
+        # flush the gradients as soon as we can, no need for this memory anymore
+        optimizer.zero_grad(set_to_none=True)
 
     # 4. log timing
     t1 = time.time()
