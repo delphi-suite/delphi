@@ -12,18 +12,20 @@ class ModelConfig:
     model_type: str = field(
         metadata={
             "help": (
-                "The model type to train. May be either a predefined "
-                "type (delphi, mamba) or any CausalLM Model from the transformers "
-                "library (e.g. BartForCausalLM). Predefined types should "
-                "specify their respective configs in this model config; "
-                "transformer library models should specify their model "
-                "config arguments in model_params."
+                "Name of any CausalLM Model from the transformers "
+                "library (e.g. 'BartForCausalLM'). Model configuration arguments, "
+                "e.g. hidden size, should be specified in model_params"
             )
         }
     )
     model_params: dict[str, Any] = field(
         default_factory=dict,
-        metadata={"help": "config for the transformers model specified by model_type"},
+        metadata={
+            "help": (
+                "config for the transformers model specified by model_type. "
+                "e.g. {'hidden_size': 128, ...}"
+            )
+        },
     )
 
     def get_model(self):
