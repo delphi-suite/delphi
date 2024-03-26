@@ -14,7 +14,7 @@ from . import wandb_utils
 from .config import GigaConfig
 from .iteration_params import set_iteration_params
 from .run_context import RunContext
-from .train_step import train_step
+from .iteration_step import iteration_step
 from .utils import (
     ModelTrainingState,
     batch_generator,
@@ -83,7 +83,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         model_training_state.epoch = epoch
         for step in tqdm(range(iteration_params.num_steps)):
             model_training_state.step = step
-            train_step(
+            iteration_step(
                 model_training_state,
                 train_ds,
                 validation_ds,

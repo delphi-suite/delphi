@@ -12,7 +12,7 @@ from .run_context import RunContext
 from .utils import EvalData, ModelTrainingState, estimate_loss, get_next_xy, set_lr
 
 
-def train_step(
+def iteration_step(
     model_training_state: ModelTrainingState,
     train_ds: Dataset,
     validation_ds: Dataset,
