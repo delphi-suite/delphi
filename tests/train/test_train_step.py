@@ -59,10 +59,9 @@ def test_accumulate_gradients_accumulates():
         )
         for microstep in range(len(indices_set_b))
     ]
-    num_batches = len(batches_a)
 
     # accumulate
-    total_loss = accumulate_gradients(model, batches_a, num_batches)
+    total_loss = accumulate_gradients(model, batches_a, len(batches_a))
 
     grad_a = sum(
         [param.grad.norm() for param in model.parameters() if param.grad is not None]
@@ -74,7 +73,7 @@ def test_accumulate_gradients_accumulates():
             param.grad.zero_()
             param.grad = None
 
-    total_loss = accumulate_gradients(model, batches_b, num_batches)
+    total_loss = accumulate_gradients(model, batches_b, len(batches_b))
     grad_b = sum(
         [param.grad.norm() for param in model.parameters() if param.grad is not None]
     )
