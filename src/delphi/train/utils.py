@@ -26,13 +26,10 @@ from .shuffle import shuffle_list
 class ModelTrainingState:
     """mutable training state - stuff that changes over the course of training"""
 
-    model: torch.nn.Module
+    model: PreTrainedModel
     optimizer: torch.optim.Optimizer
     iter_num: int = field(
         metadata={"help": "total iterations so far across all epochs"}
-    )
-    local_iter_num: int = field(
-        metadata={"help": "total iterations on this instance so far"}
     )
     best_val_loss: float = field(metadata={"help": "best validation loss so far"})
     last_training_step_time: float = field(
@@ -177,7 +174,6 @@ def initialize_model_training_state(
         optimizer=optimizer,
         last_training_step_time=t0,
         iter_num=training_state_vals.get("iter_num", 0),
-        local_iter_num=training_state_vals.get("local_iter_num", 0),
         best_val_loss=training_state_vals.get("best_val_loss", 1e9),
         epoch=training_state_vals.get("epoch", 0),
         step=training_state_vals.get("step", 0),
@@ -305,7 +301,6 @@ def save_results(
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
-            "local_iter_num": train_results.local_iter_num,
             "best_val_loss": train_results.best_val_loss,
             "lr": train_results.lr,
             "epoch": train_results.epoch,
