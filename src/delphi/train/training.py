@@ -24,6 +24,7 @@ from .utils import (
     load_delphi_training_dataset,
     set_lr,
 )
+from .wandb_utils import init_wandb
 
 
 def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
@@ -63,6 +64,9 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     os.makedirs(config.output_dir, exist_ok=True)
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+
+    if config.wandb_config.log:
+        init_wandb(config=config)
 
     # model init
     model_training_state = initialize_model_training_state(config, run_context.device)
