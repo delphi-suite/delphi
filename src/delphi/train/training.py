@@ -26,12 +26,28 @@ from .utils import (
 from .wandb_utils import init_wandb
 
 
-def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
-    logging.info("Starting training...")
+def setup_training(config: GigaConfig):
+    logging.info("Setting up training...")
+    os.makedirs(config.output_dir, exist_ok=True)
+
+    # torch misc - TODO: check if this is actually needed
+    torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
+    torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+
+    # determinism
     logging.debug("Setting torch.use_deterministic_algorithms(True)")
     torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(config.torch_seed)
+
+    # wandb setup
+    if config.wandb_config.log:
+        init_wandb(config=config)
+
+
+def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
+    setup_training(config)
+    logging.info("Starting training...")
     logging.info("Config:")
     for field in fields(config):
         logging.info(f"  {field.name}: {getattr(config, field.name)}")
@@ -66,16 +82,6 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
 
     # derive iteration params (num_batches, num_steps, etc)
     iteration_params = set_iteration_params(config, train_ds, validation_ds)
-
-    # setup
-    logging.info("Setting up...")
-    os.makedirs(config.output_dir, exist_ok=True)
-    torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
-    torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
-
-    # wandb setup
-    if config.wandb_config.log:
-        init_wandb(config=config)
 
     # model init
     model_training_state = initialize_model_training_state(config, run_context.device)
