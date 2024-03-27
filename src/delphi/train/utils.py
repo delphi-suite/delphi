@@ -3,7 +3,6 @@ import logging
 import math
 import os
 import time
-from collections.abc import Generator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import cast
