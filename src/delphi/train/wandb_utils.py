@@ -9,14 +9,13 @@ from .utils import CheckpointData
 
 
 def silence_wandb():
-    # set env var WANDB_SILENT=true
     logging.info("silencing wandb output")
     os.environ["WANDB_SILENT"] = "true"
 
 
 def init_wandb(config: GigaConfig):
     # if log level < debug, silence wandb
-    if logging.getLogger().level > logging.INFO:
+    if logging.getLogger().level > logging.INFO or config.wandb_config.silence:
         silence_wandb()
     wandb.init(
         entity=config.wandb_config.entity,

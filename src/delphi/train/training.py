@@ -65,6 +65,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
+    # wandb setup
     if config.wandb_config.log:
         init_wandb(config=config)
 
