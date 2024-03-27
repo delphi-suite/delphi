@@ -1,6 +1,13 @@
+from math import isclose
+
+import pytest
 import torch
 
-from delphi.eval.utils import gather_logprobs, load_validation_dataset
+from delphi.eval.utils import (
+    dict_filter_quantile,
+    gather_logprobs,
+    load_validation_dataset,
+)
 
 
 def test_gather_logprobs():
@@ -46,3 +53,26 @@ def test_gather_logprobs():
 def test_load_validation_dataset():
     text = load_validation_dataset("tinystories-v2-clean")
     tokenized = load_validation_dataset("tinystories-v2-clean-tokenized-v0")
+
+
+@pytest.mark.filterwarnings(
+    "ignore::RuntimeWarning"
+)  # ignore warnings from numpy empty slice
+def test_dict_filter_quantile():
+    d = {1: 0.1, 2: 0.2, 3: 0.3, 4: 0.4, 5: 0.5}
+    result = dict_filter_quantile(d, 0.2, 0.6)
+    expected = {2: 0.2, 3: 0.3, 4: 0.4}
+    for k in result:
+        assert isclose(result[k], expected[k], rel_tol=1e-6)
+
+    # test invalid quantile range
+    with pytest.raises(ValueError):
+        dict_filter_quantile(d, 0.6, 0.2)
+    with pytest.raises(ValueError):
+        dict_filter_quantile(d, 0.1, 1.1)
+    with pytest.raises(ValueError):
+        dict_filter_quantile(d, -0.1, 0.6)
+
+    # test empty dict, will raise a warning
+    result = dict_filter_quantile({}, 0.2, 0.6)
+    assert result == {}
