@@ -6,7 +6,6 @@ import torch
 from datasets import Dataset
 
 from .config import GigaConfig
-from .config.models import ModelTypes
 from .iteration_params import IterationParams
 from .run_context import RunContext
 from .utils import EvalData, ModelTrainingState, estimate_loss, get_next_xy, set_lr
@@ -76,84 +75,36 @@ def iteration_step(
             callback(eval_data)
 
     # 3. forward backward update, with optional gradient accumulation to simulate larger batch size
-    logging.debug(
-        f"gradient accumulation steps: {config.optimizer.gradient_accumulation_steps}, "
-        f"num_steps: {iteration_params.num_steps}, iter_num: {model_training_state.iter_num}"
-    )
-    for micro_step in range(config.optimizer.gradient_accumulation_steps):
-        X, Y = get_next_xy(train_batch_iter, run_context.device)
-        if config.debug_config.no_training:
-            logging.debug("no_training set, skipping forward backward update")
-            loss = torch.Tensor([42.1]).to(run_context.device)
-        else:
+    if config.debug_config.no_training:
+        logging.debug("no_training set, skipping forward backward pass")
+        loss = torch.Tensor([42.1]).to(run_context.device)
+    else:
+        for micro_step in range(config.optimizer.gradient_accumulation_steps):
+            X, Y = get_next_xy(train_batch_iter, run_context.device)
             loss = (
                 model(X, labels=Y, return_dict=True).loss
                 / config.optimizer.gradient_accumulation_steps
             )
             loss.backward()
-    if config.debug_config.no_training:
-        logging.debug("debug no_training is set, skipping optimizer step")
-    else:
         # clip the gradient
         if config.grad_clip != 0.0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)  # type: ignore
         optimizer.step()
-
-    # flush the gradients as soon as we can, no need for this memory anymore
-    optimizer.zero_grad(set_to_none=True)
+        # flush the gradients as soon as we can, no need for this memory anymore
+        optimizer.zero_grad(set_to_none=True)
 
     # 4. log timing
     t1 = time.time()
-    dt = t1 - model_training_state.t0
-    model_training_state.t0 = t1
+    dt = t1 - model_training_state.last_training_step_time
+    model_training_state.last_training_step_time = t1
     if model_training_state.iter_num % config.log_interval == 0:
         # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
         lossf = loss.item() * config.optimizer.gradient_accumulation_steps
-        if (
-            model_training_state.local_iter_num >= 5
-        ):  # let the training loop settle a bit
-            mfu = estimate_mfu(
-                config=config, model=model_training_state.model, timedelta=dt
-            )
-            model_training_state.running_mfu = (
-                mfu
-                if model_training_state.running_mfu == -1.0
-                else 0.9 * model_training_state.running_mfu + 0.1 * mfu
-            )
         logging.debug(
             (
                 f"{model_training_state.iter_num} | loss {lossf:.4f} | lr {model_training_state.lr:e} | "
-                f"{dt*1000:.2f}ms | mfu {model_training_state.running_mfu*100:.2f}%"
+                f"{dt*1000:.2f}ms"
             )
         )
     model_training_state.iter_num += 1
     model_training_state.local_iter_num += 1
-
-
-def estimate_mfu(config: GigaConfig, model: torch.nn.Module, timedelta: float) -> float:
-    """estimate model flops utilization (MFU) in units of A100 bfloat16 peak FLOPS"""
-    # first estimate the number of flops we do per iteration.
-    # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
-    N = sum(p.numel() for p in model.parameters())
-    if config.model_config.model_type == ModelTypes.LLAMA2:
-        cfg = model.config
-        L, H, Q, T = (
-            cfg.num_hidden_layers,
-            cfg.num_attention_heads,
-            cfg.hidden_size // cfg.num_attention_heads,
-            cfg.max_position_embeddings,
-        )
-    else:
-        logging.debug(
-            f"estimate_mfu not implemented for {config.model_config.model_type}, setting MFU to -1"
-        )
-        return -1.0
-    flops_per_token = 6 * N + 12 * L * H * Q * T
-    flops_per_fwdbwd = flops_per_token * T
-    fwdbwd_per_iter = config.batch_size * config.optimizer.gradient_accumulation_steps
-    flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
-    # express our flops throughput as ratio of A100 bfloat16 peak flops
-    flops_achieved = flops_per_iter * (1.0 / timedelta)  # per second
-    flops_promised = 312e12  # A100 GPU bfloat16 peak flops is 312 TFLOPS
-    mfu = flops_achieved / flops_promised
-    return mfu

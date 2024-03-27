@@ -8,8 +8,8 @@
     "train_sample_limit": 256,
     "batch_size": 64,
     "model_config": {
-        "model_type": "llama2",
-        "llama2": {
+        "model_type": "LlamaForCausalLM",
+        "model_params": {
             "hidden_size": 48,
             "intermediate_size": 48,
             "num_attention_heads": 2,

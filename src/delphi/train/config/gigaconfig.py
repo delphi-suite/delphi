@@ -7,7 +7,7 @@ from beartype import beartype
 
 from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
-from .models import ModelConfig
+from .model_config import ModelConfig
 from .optimizer_config import OptimizerConfig
 from .wandb_config import WandbConfig
 

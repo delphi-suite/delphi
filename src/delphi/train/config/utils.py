@@ -1,8 +1,10 @@
 import json
 import logging
 import os
+from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Type
 
 import platformdirs
 from beartype.typing import Any, Iterable
@@ -68,6 +70,24 @@ def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
     return combined_config
 
 
+def filter_config_to_actual_config_values(target_dataclass: Type, config: dict):
+    """Remove non-config values from config dict.
+
+    This can happen if e.g. being lazy and passing in all args from a script
+    """
+    datafields = fields(target_dataclass)
+    name_to_field = {f.name: f for f in datafields}
+    to_remove = []
+    for k, v in config.items():
+        if k not in name_to_field.keys():
+            logging.debug(f"removing non-config-value {k}={v} from config dict")
+            to_remove.append(k)
+        elif isinstance(v, dict) and is_dataclass(name_to_field.get(k)):
+            filter_config_to_actual_config_values(name_to_field[k].type, v)
+    for k in to_remove:
+        config.pop(k)
+
+
 def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
     if len(config_files) == 1:
         prefix = f"{config_files[0].stem}__"
@@ -76,10 +96,23 @@ def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
     if "run_name" not in config:
         run_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         config["run_name"] = f"{prefix}{run_time}"
+        logging.info(f"Setting run_name to {config['run_name']}")
     if "output_dir" not in config:
         config["output_dir"] = os.path.join(
             platformdirs.user_data_dir(appname="delphi"), config["run_name"]
         )
+        logging.info(f"Setting output_dir to {config['output_dir']}")
+
+
+def log_config_recursively(
+    config: dict, logging_fn=logging.info, indent="  ", prefix=""
+):
+    for k, v in config.items():
+        if isinstance(v, dict):
+            logging_fn(f"{prefix}{k}")
+            log_config_recursively(v, logging_fn, indent, prefix=indent + prefix)
+        else:
+            logging_fn(f"{prefix}{k}: {v}")
 
 
 def build_config_from_files_and_overrides(
@@ -89,6 +122,11 @@ def build_config_from_files_and_overrides(
     combined_config = build_config_dict_from_files(config_files)
     _merge_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
+    filter_config_to_actual_config_values(GigaConfig, combined_config)
+    logging.info("User-set config values:")
+    log_config_recursively(
+        combined_config, logging_fn=logging.info, prefix="  ", indent="  "
+    )
     return from_dict(GigaConfig, combined_config)
 
 

@@ -10,6 +10,7 @@ from .utils import EvalData
 
 def silence_wandb():
     # set env var WANDB_SILENT=true
+    logging.info("silencing wandb output")
     os.environ["WANDB_SILENT"] = "true"
 
 
@@ -35,7 +36,6 @@ def log_to_wandb(eval_data: EvalData):
                 "loss/train": eval_data.losses["train"],
                 "loss/val": eval_data.losses["val"],
                 "lr": mts.lr,
-                "mfu": mts.running_mfu * 100,  # convert to percentage
             },
             step=mts.iter_num,
         )
