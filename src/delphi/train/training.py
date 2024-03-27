@@ -99,7 +99,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                 model_training_state=model_training_state,
                 train_ds=train_ds,
                 config=config,
-                run_context=run_context,
+                device=run_context.device,
                 indices=train_data_indices,
             )
             t1 = time.time()

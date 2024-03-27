@@ -12,7 +12,7 @@ def train_step(
     model_training_state: ModelTrainingState,
     train_ds: Dataset,
     config: GigaConfig,
-    run_context: RunContext,
+    device: torch.device,
     indices: list[int],
 ):
     """
@@ -21,7 +21,7 @@ def train_step(
     model = model_training_state.model
     optimizer = model_training_state.optimizer
 
-    loss = torch.Tensor([0.0]).to(run_context.device)
+    loss = torch.Tensor([0.0]).to(device)
     total_loss = loss.item()
     if config.debug_config.no_training:
         logging.debug("no_training set, skipping forward backward pass")
@@ -34,7 +34,7 @@ def train_step(
                 step=model_training_state.step,
                 microstep=micro_step,
                 gradient_accumulation_steps=config.optimizer.gradient_accumulation_steps,
-                device=run_context.device,
+                device=device,
             )
             loss = (
                 model(X, labels=Y, return_dict=True).loss
