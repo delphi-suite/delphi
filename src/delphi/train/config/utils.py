@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from dataclasses import fields
+from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Type
@@ -82,7 +82,7 @@ def filter_config_to_actual_config_values(target_dataclass: Type, config: dict):
         if k not in name_to_field.keys():
             logging.debug(f"removing non-config-value {k}={v} from config dict")
             to_remove.append(k)
-        elif isinstance(v, dict) and isinstance(name_to_field[k].type, type):
+        elif isinstance(v, dict) and is_dataclass(name_to_field.get(k)):
             filter_config_to_actual_config_values(name_to_field[k].type, v)
     for k in to_remove:
         config.pop(k)
