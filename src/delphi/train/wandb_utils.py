@@ -5,7 +5,7 @@ from dataclasses import asdict
 import wandb
 
 from .config import GigaConfig
-from .utils import EvalData
+from .utils import CheckpointData
 
 
 def silence_wandb():
@@ -26,7 +26,7 @@ def init_wandb(config: GigaConfig):
     )
 
 
-def log_to_wandb(eval_data: EvalData):
+def log_to_wandb(eval_data: CheckpointData):
     mts = eval_data.model_training_state
     try:
         wandb.log(

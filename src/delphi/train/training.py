@@ -11,7 +11,6 @@ from transformers import __version__ as transformers_version
 
 from delphi import __version__ as delphi_version
 
-from . import wandb_utils
 from .checkpoint_step import run_checkpoint, should_run_checkpoint
 from .config import GigaConfig
 from .iteration_params import set_iteration_params
@@ -23,7 +22,6 @@ from .utils import (
     get_indices_for_epoch,
     initialize_model_training_state,
     load_delphi_training_dataset,
-    save_checkpoint_if_needed,
     set_lr,
 )
 
@@ -69,17 +67,6 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     # model init
     model_training_state = initialize_model_training_state(config, run_context.device)
 
-    # setup eval callbacks
-    logging.info("Setting eval step callbacks...")
-    eval_callbacks = [save_checkpoint_if_needed]
-    logging.info(f"  added save_checkpoint_if_needed eval callback")
-    if config.wandb_config.log:
-        if config.wandb_config.silence:
-            wandb_utils.silence_wandb()
-        wandb_utils.init_wandb(config)
-        eval_callbacks.append(wandb_utils.log_to_wandb)
-        logging.info(f"  added log_to_wandb callback")
-
     # training loop
     logging.info("Starting training...")
     for epoch in range(config.max_epochs):
@@ -101,7 +88,6 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                     train_ds=train_ds,
                     validation_ds=validation_ds,
                     run_context=run_context,
-                    eval_callbacks=eval_callbacks,
                 )
             model_training_state.lr = set_lr(
                 lr_decay_iters=iteration_params.lr_decay_iters,

@@ -47,8 +47,9 @@ class ModelTrainingState:
 
 
 @dataclass
-class EvalData:
-    # values we expose to eval callback functions
+class CheckpointData:
+    """values we expose to assorted checkpoint/eval functions"""
+
     tokens_per_iter: int
     losses: dict[str, float]
     new_best_val_loss: bool
@@ -117,7 +118,7 @@ def set_lr(
     return lr
 
 
-def save_checkpoint_if_needed(eval_data: EvalData):
+def save_checkpoint_if_needed(eval_data: CheckpointData):
     mts = eval_data.model_training_state
     # we save if it's not the first iter AND at least one of:
     # 1) we have a new best validation loss

@@ -6,7 +6,13 @@ from datasets import Dataset
 from .config import GigaConfig
 from .iteration_params import IterationParams
 from .run_context import RunContext
-from .utils import EvalData, ModelTrainingState, estimate_loss
+from .utils import (
+    CheckpointData,
+    ModelTrainingState,
+    estimate_loss,
+    save_checkpoint_if_needed,
+)
+from .wandb_utils import log_to_wandb
 
 
 def should_run_checkpoint(config: GigaConfig, mts: ModelTrainingState):
@@ -20,7 +26,6 @@ def run_checkpoint(
     train_ds: Dataset,
     validation_ds: Dataset,
     run_context: RunContext,
-    eval_callbacks: list[Callable]
 ):
     model = mts.model
     if config.debug_config.no_eval:
@@ -39,7 +44,7 @@ def run_checkpoint(
     if losses["val"] < mts.best_val_loss:
         mts.best_val_loss = float(losses["val"])
         new_best_val_loss = True
-    eval_data = EvalData(
+    checkpoint_data = CheckpointData(
         tokens_per_iter=iteration_params.tokens_per_iter,
         losses=losses,
         new_best_val_loss=new_best_val_loss,
@@ -50,5 +55,6 @@ def run_checkpoint(
     logging.info(
         f"step {mts.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
     )
-    for callback in eval_callbacks:
-        callback(eval_data)
+    save_checkpoint_if_needed(checkpoint_data)
+    if config.wandb_config.log:
+        log_to_wandb(checkpoint_data)
