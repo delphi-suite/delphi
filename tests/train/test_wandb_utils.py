@@ -4,10 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
+import transformers
 from dacite import from_dict
 
 from delphi.train.config import GigaConfig
-from delphi.train.config.models import TypedLlamaConfig
+from delphi.train.config.utils import load_preset
 from delphi.train.run_context import RunContext
 from delphi.train.utils import EvalData, initialize_model_training_state
 from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
@@ -21,8 +22,15 @@ def mock_giga_config():
             "run_name": "test_run",
             "device": "cpu",
             "model_config": {
-                "model_type": "llama2",
-                "llama2": asdict(TypedLlamaConfig()),
+                "model_type": "LlamaForCausalLM",
+                "model_params": {
+                    "hidden_size": 48,
+                    "intermediate_size": 48,
+                    "num_attention_heads": 2,
+                    "num_hidden_layers": 2,
+                    "num_key_value_heads": 2,
+                    "vocab_size": 4096,
+                },
             },
             "wandb_config": {
                 "log": True,
@@ -43,7 +51,6 @@ def mock_model_training_state(mock_giga_config):
     mts.epoch = 1
     mts.iter_num = 1
     mts.lr = 0.001
-    mts.running_mfu = 3.0
     return mts
 
 
@@ -93,7 +100,6 @@ def test_log_to_wandb(mock_wandb_log, mock_eval_data):
             "loss/train": 0.5,
             "loss/val": 0.4,
             "lr": 0.001,
-            "mfu": 300.0,
         },
         step=1,
     )

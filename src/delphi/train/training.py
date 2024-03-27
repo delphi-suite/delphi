@@ -45,7 +45,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     logging.debug(f"Run context: {run_context}")
 
     # load data
-    logging.debug("Loading data...")
+    logging.info("Loading data...")
     train_ds = cast(
         Dataset, load_delphi_training_dataset("train", limit=config.train_sample_limit)
     )
@@ -67,14 +67,20 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     model_training_state = initialize_model_training_state(config, run_context.device)
 
     # setup eval callbacks
+    logging.info("Setting eval step callbacks...")
     eval_callbacks = [save_checkpoint_if_needed]
+    logging.info(f"  added save_checkpoint_if_needed eval callback")
     if config.wandb_config.log:
+        if config.wandb_config.silence:
+            wandb_utils.silence_wandb()
         wandb_utils.init_wandb(config)
         eval_callbacks.append(wandb_utils.log_to_wandb)
+        logging.info(f"  added log_to_wandb callback")
 
     # training loop
     logging.info("Starting training...")
     for epoch in range(config.max_epochs):
+        logging.info(f"Epoch: {epoch} / {config.max_epochs - 1}")
         train_batch_iter = iter(
             batch_generator(
                 train_ds, config.batch_size, epoch, config.batch_ordering_seed

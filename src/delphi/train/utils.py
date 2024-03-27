@@ -4,7 +4,7 @@ import math
 import os
 import time
 from collections.abc import Generator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import cast
 
@@ -25,16 +25,23 @@ from .shuffle import shuffle_list
 
 @dataclass
 class ModelTrainingState:
+    """mutable training state - stuff that changes over the course of training"""
+
     model: torch.nn.Module
     optimizer: torch.optim.Optimizer
-    iter_num: int
-    local_iter_num: int
-    best_val_loss: float
-    running_mfu: float
-    t0: float
-    epoch: int
-    step: int
-    lr: float = 1.0e-5
+    iter_num: int = field(
+        metadata={"help": "total iterations so far across all epochs"}
+    )
+    local_iter_num: int = field(
+        metadata={"help": "total iterations on this instance so far"}
+    )
+    best_val_loss: float = field(metadata={"help": "best validation loss so far"})
+    last_training_step_time: float = field(
+        metadata={"help": "time last iteration ended"}
+    )
+    epoch: int = field(metadata={"help": "current epoch"})
+    step: int = field(metadata={"help": "step within current epoch"})
+    lr: float = field(default=1.0e-5, metadata={"help": "learning rate"})
 
 
 @dataclass
@@ -61,25 +68,6 @@ def get_device(device_str: str = "auto") -> torch.device:
         else:
             device_str = "cpu"
     return torch.device(device_str)
-
-
-def get_optimizer(
-    model: torch.nn.Module,
-    config: GigaConfig,
-    output_dir=None,
-    device: torch.device = torch.device("cpu"),
-) -> AdamW:
-    optimizer = AdamW(
-        lr=config.optimizer.learning_rate,
-        params=model.parameters(),
-        weight_decay=config.optimizer.weight_decay,
-        betas=(config.optimizer.beta1, config.optimizer.beta2),
-    )
-    if output_dir is not None:
-        opt_path = os.path.join(output_dir, "opt.pt")
-        with open(opt_path, "rb") as f:
-            optimizer.load_state_dict(torch.load(f))
-    return optimizer
 
 
 def get_lr(
@@ -145,56 +133,48 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     )
 
 
-def load_model_from_checkpoint(config: GigaConfig, output_dir: str) -> torch.nn.Module:
-    model = config.model_config.get_model()
-    st.load_model(model, os.path.join(output_dir, "model", "model.safetensors"))
-    return model
-
-
 def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
-    training_state = None
+    model = config.model_config.get_model()
+    model.to(device)  # type: ignore
+    optimizer = AdamW(
+        lr=config.optimizer.learning_rate,
+        params=model.parameters(),
+        weight_decay=config.optimizer.weight_decay,
+        betas=(config.optimizer.beta1, config.optimizer.beta2),
+    )
+    training_state_vals = dict()
     if config.init_from == "scratch":
-        # init a new model from scratch
-        logging.debug("Initializing a new model from scratch")
-        model = config.model_config.get_model()
-        checkpoint = None
+        logging.info(f"  initialized model and optimizer from scratch")
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
         logging.info(f"Resuming training from {config.output_dir}")
         checkpoint = config.output_dir
-        model = load_model_from_checkpoint(config, checkpoint)
+        st.load_model(
+            model, os.path.join(config.output_dir, "model", "model.safetensors")
+        )
         with open(os.path.join(checkpoint, "training_state.json"), "r") as f:
-            training_state = json.load(f)
-    model.to(device)  # type: ignore
-    # optimizer
-    optimizer = get_optimizer(
-        model=model,
-        config=config,
-        output_dir=config.output_dir
-        if (Path(config.output_dir) / "opt.safetensors").exists()
-        else None,
-        device=device,
-    )
-    epoch = training_state.get("epoch", 0) if training_state is not None else 0
-    step = training_state.get("step", 0) if training_state is not None else 0
-    best_val_loss = training_state.get("best_val_loss", 1e9) if training_state else 1e9
-    iter_num = training_state.get("iter_num", 0) if training_state else 0
-    local_iter_num = training_state.get("local_iter_num", 0) if training_state else 0
-    running_mfu = training_state.get("running_mfu", 0.0) if training_state else -1.0
-    checkpoint = None  # free up memory
+            training_state_vals = json.load(f)
+        opt_state_dict_path = Path(os.path.join(config.output_dir, "opt.pt"))
+        if opt_state_dict_path.exists():
+            with open(opt_state_dict_path, "rb") as f:
+                logging.info("  Loading optimizer state from {state_dict_path}")
+                optimizer.load_state_dict(torch.load(f))
+    else:
+        raise ValueError(
+            f"{config.init_from} is not one of (scratch, resume), which are the two valid initialization methods. Unable to initialize model."
+        )
     return ModelTrainingState(
         model=model,
         optimizer=optimizer,
-        iter_num=iter_num,
-        local_iter_num=local_iter_num,
-        best_val_loss=best_val_loss,
-        running_mfu=running_mfu,
-        t0=t0,
-        epoch=epoch,
-        step=step,
+        last_training_step_time=t0,
+        iter_num=training_state_vals.get("iter_num", 0),
+        local_iter_num=training_state_vals.get("local_iter_num", 0),
+        best_val_loss=training_state_vals.get("best_val_loss", 1e9),
+        epoch=training_state_vals.get("epoch", 0),
+        step=training_state_vals.get("step", 0),
     )
 
 
@@ -214,10 +194,9 @@ def load_delphi_training_dataset(split: str, limit: int = -1):
 
 
 def get_next_xy(
-    train_batch_iter: Generator,
-    device: torch.device
-    # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
+    train_batch_iter: Generator, device: torch.device
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """break a (max_seq_len +1) sequence of tokens into sample [:-1] and label [1:] pairs"""
     data = next(train_batch_iter).to(device)
     X, Y = data[:, :-1], data[:, 1:]
     return X, Y
@@ -226,6 +205,9 @@ def get_next_xy(
 def batch_generator(
     dataset: Dataset, batch_size: int, epoch: int, ordering_seed: int
 ) -> Generator[torch.Tensor, None, None]:
+    """
+    Generate batches of training data for a given epoch with pseudorandom determinism
+    """
     sampler = list(range(len(dataset)))  # type: ignore
     shuffle_list(sampler, seed=ordering_seed + epoch)
     sampler = torch.Tensor(sampler)
@@ -257,19 +239,18 @@ def estimate_loss(
     return out
 
 
-def upload_to_huggingface(eval_data: EvalData):
-    model = eval_data.model_training_state.model
-    if isinstance(model, PreTrainedModel):
-        model = cast(PreTrainedModel, model)
-        model.save_pretrained(eval_data.config.output_dir)
-
-
 def save_results(
     config: GigaConfig,
     train_results: ModelTrainingState,
     run_context: RunContext,
     results_path: str,
 ):
+    """
+    save results to disk, and to huggingface if configured to do so.
+
+    Saves everything required to replicate the current state of training, including optimizer state,
+    config, context (e.g. hardware), training step, etc
+    """
     os.makedirs(results_path, exist_ok=True)
     with open(os.path.join(results_path, "config.json"), "w") as file:
         json.dump(asdict(config), file, indent=2)
@@ -291,7 +272,6 @@ def save_results(
             "iter_num": train_results.iter_num,
             "local_iter_num": train_results.local_iter_num,
             "best_val_loss": train_results.best_val_loss,
-            "running_mfu": train_results.running_mfu,
             "lr": train_results.lr,
             "epoch": train_results.epoch,
             "step": train_results.step,
