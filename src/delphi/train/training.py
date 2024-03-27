@@ -19,8 +19,8 @@ from .run_context import RunContext
 from .train_step import train_step
 from .utils import (
     ModelTrainingState,
-    batch_generator,
     get_device,
+    get_indices_for_epoch,
     initialize_model_training_state,
     load_delphi_training_dataset,
     save_checkpoint_if_needed,
@@ -84,10 +84,11 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     logging.info("Starting training...")
     for epoch in range(config.max_epochs):
         logging.info(f"Epoch: {epoch} / {config.max_epochs - 1}")
-        train_batch_iter = iter(
-            batch_generator(
-                train_ds, config.batch_size, epoch, config.batch_ordering_seed
-            )
+        train_data_indices = get_indices_for_epoch(
+            dataset_size=len(train_ds),
+            batch_size=config.batch_size,
+            epoch=epoch,
+            ordering_seed=config.batch_ordering_seed,
         )
         model_training_state.epoch = epoch
         for step in tqdm(range(iteration_params.num_steps)):
@@ -112,8 +113,8 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                 model_training_state=model_training_state,
                 train_ds=train_ds,
                 config=config,
-                train_batch_iter=train_batch_iter,
                 run_context=run_context,
+                indices=train_data_indices,
             )
             t1 = time.time()
             dt = t1 - model_training_state.last_training_step_time

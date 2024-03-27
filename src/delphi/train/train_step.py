@@ -1,22 +1,19 @@
 import logging
-import time
-from collections.abc import Callable, Generator
 
 import torch
 from datasets import Dataset
 
 from .config import GigaConfig
-from .iteration_params import IterationParams
 from .run_context import RunContext
-from .utils import EvalData, ModelTrainingState, estimate_loss, get_next_xy, set_lr
+from .utils import ModelTrainingState, get_xy_batch
 
 
 def train_step(
     model_training_state: ModelTrainingState,
     train_ds: Dataset,
     config: GigaConfig,
-    train_batch_iter: Generator,
     run_context: RunContext,
+    indices: list[int],
 ) -> float:
     """
     Runs a training step, updating (mutating in place) model_training_state
@@ -24,13 +21,21 @@ def train_step(
     model = model_training_state.model
     optimizer = model_training_state.optimizer
 
-    loss = torch.Tensor(0.0).to(run_context.device)
+    loss = torch.Tensor([0.0]).to(run_context.device)
     total_loss = loss.item()
     if config.debug_config.no_training:
         logging.debug("no_training set, skipping forward backward pass")
     else:
         for micro_step in range(config.optimizer.gradient_accumulation_steps):
-            X, Y = get_next_xy(train_batch_iter, run_context.device)
+            X, Y = get_xy_batch(
+                dataset=train_ds,
+                indices=indices,
+                batch_size=config.batch_size,
+                step=model_training_state.step,
+                microstep=micro_step,
+                gradient_accumulation_steps=config.optimizer.gradient_accumulation_steps,
+                device=run_context.device,
+            )
             loss = (
                 model(X, labels=Y, return_dict=True).loss
                 / config.optimizer.gradient_accumulation_steps
