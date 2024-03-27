@@ -20,16 +20,6 @@
             "console": "integratedTerminal",
             "args": "${command:pickArgs}"
         },
-
-        {
-            "name": "run_training 256",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "scripts/run_training.py",
-            "console": "integratedTerminal",
-            "args": "--debug --train_sample_limit=256"
-            //"args": "${command:pickArgs}"
-        },
         {
             "name": "run_training --help",
             "type": "debugpy",

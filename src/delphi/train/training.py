@@ -2,14 +2,13 @@ import logging
 import os
 import time
 from dataclasses import fields
-from typing import cast
 
 import torch
-from datasets import Dataset
 from tqdm import tqdm
 from transformers import __version__ as transformers_version
 
 from delphi import __version__ as delphi_version
+from delphi import constants
 
 from .checkpoint_step import run_checkpoint, should_run_checkpoint
 from .config import GigaConfig
@@ -21,7 +20,7 @@ from .utils import (
     get_device,
     get_indices_for_epoch,
     initialize_model_training_state,
-    load_delphi_training_dataset,
+    load_tokens_dataset_from_huggingface,
     set_lr,
 )
 from .wandb_utils import init_wandb
@@ -48,12 +47,21 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
 
     # load data
     logging.info("Loading data...")
-    train_ds = cast(
-        Dataset, load_delphi_training_dataset("train", limit=config.train_sample_limit)
+    train_ds = load_tokens_dataset_from_huggingface(
+        dataset=config.data_config.train_dataset,
+        split=config.data_config.train_split,
+        tokens_feature=config.data_config.train_feature,
+        limit=config.data_config.train_sample_limit,
     )
-    validation_ds = cast(
-        Dataset,
-        load_delphi_training_dataset("validation", limit=config.val_sample_limit),
+    validation_ds = load_tokens_dataset_from_huggingface(
+        dataset=(
+            config.data_config.validation_dataset or config.data_config.train_dataset
+        ),
+        split=config.data_config.validation_split,
+        tokens_feature=(
+            config.data_config.validation_feature or config.data_config.train_feature
+        ),
+        limit=config.data_config.validation_sample_limit,
     )
 
     # derive iteration params (num_batches, num_steps, etc)
@@ -111,7 +119,6 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
             dt = t1 - model_training_state.last_training_step_time
             model_training_state.last_training_step_time = t1
             if model_training_state.iter_num % config.log_interval == 0:
-                # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
                 logging.debug(
                     (
                         f"{model_training_state.iter_num} | loss {model_training_state.train_loss:.4f} | lr {model_training_state.lr:e} | "

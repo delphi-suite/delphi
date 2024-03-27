@@ -5,17 +5,15 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Optional, cast
 
+import datasets
 import safetensors.torch as st
 import torch
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
-
-from delphi import constants
-from delphi.eval.utils import load_delphi_dataset
 
 from .config import GigaConfig
 from .run_context import RunContext
@@ -180,21 +178,6 @@ def initialize_model_training_state(
     )
 
 
-def load_delphi_training_dataset(split: str, limit: int = -1):
-    """For training, we want (X, Y) pairs, where X is a chunk of text and Y is the next token.)
-    To construct this, we take the original tokenized dataset, break it into max_seq_len+1 length chunks,
-    and then take [:-1] as X and [1:] as Y.
-    """
-    if limit == -1:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split)
-    else:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split).select(
-            range(limit)
-        )
-    ds.set_format("torch")
-    return ds
-
-
 def get_indices_for_epoch(
     dataset_size: int, batch_size: int, epoch: int, ordering_seed: int
 ) -> list[int]:
@@ -318,3 +301,26 @@ def save_results(
             repo_id=str(config.huggingface.repo_id),
             path_in_repo=f"iter_{train_results.iter_num}/",
         )
+
+
+def load_tokens_dataset_from_huggingface(
+    dataset: str,
+    split: str,
+    tokens_feature: str,
+    limit: Optional[int] = None,
+) -> Dataset:
+    """Load a dataset from huggingface"""
+    ds = cast(
+        Dataset,
+        load_dataset(
+            dataset,
+            split=split,
+            features=datasets.Features(
+                {tokens_feature: datasets.Sequence(datasets.Value("int32"))}
+            ),
+        ),
+    )
+    if limit is not None and limit > 0:
+        ds = ds.select(range(limit))
+    ds.set_format("torch")
+    return ds

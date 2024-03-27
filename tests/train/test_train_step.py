@@ -7,13 +7,14 @@ import pytest
 import torch
 from dacite import from_dict
 
+from delphi import constants
 from delphi.train.config import GigaConfig
 from delphi.train.config.utils import load_preset
 from delphi.train.train_step import accumulate_gradients, train_step
 from delphi.train.utils import (
     ModelTrainingState,
     get_xy_batch,
-    load_delphi_training_dataset,
+    load_tokens_dataset_from_huggingface,
 )
 
 
@@ -23,7 +24,12 @@ def test_accumulate_gradients_accumulates():
     """
     # setup
     model = load_preset("debug").model_config.get_model()
-    dataset = load_delphi_training_dataset("train", limit=64)
+    dataset = load_tokens_dataset_from_huggingface(
+        dataset=constants.TOKENIZED_CORPUS_DATASET,
+        split="validation",
+        tokens_feature="tokens",
+        limit=10,
+    )
     indices_set_a = [
         [1, 2, 3],
         [4, 5, 6],
@@ -87,7 +93,12 @@ def test_accumulate_gradients_consistent():
     """
     # setup
     model = load_preset("debug").model_config.get_model()
-    dataset = load_delphi_training_dataset("train", limit=64)
+    dataset = load_tokens_dataset_from_huggingface(
+        dataset=constants.TOKENIZED_CORPUS_DATASET,
+        split="validation",
+        tokens_feature="tokens",
+        limit=10,
+    )
     indices_set = [
         [1, 2, 3],
         [4, 5, 6],
@@ -170,7 +181,12 @@ def test_train_step_no_training():
     model_training_state = get_model_training_state(
         model=model, optimizer=optimizer, step=0
     )
-    train_ds = load_delphi_training_dataset("train", limit=64)
+    train_ds = load_tokens_dataset_from_huggingface(
+        dataset=constants.TOKENIZED_CORPUS_DATASET,
+        split="train",
+        tokens_feature="tokens",
+        limit=64,
+    )
     device = torch.device("cpu")
     indices = [0, 1, 2, 3]
 
@@ -197,7 +213,12 @@ def test_train_step_with_training():
     model_training_state = get_model_training_state(
         model=model, optimizer=optimizer, step=0
     )
-    train_ds = load_delphi_training_dataset("train", limit=64)
+    train_ds = load_tokens_dataset_from_huggingface(
+        dataset=constants.TOKENIZED_CORPUS_DATASET,
+        split="train",
+        tokens_feature="tokens",
+        limit=64,
+    )
     device = torch.device("cpu")
     indices = [0, 1, 2, 3]
 
