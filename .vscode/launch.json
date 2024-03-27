@@ -5,6 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "run_training debug",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "--debug --loglevel 20"
+        },
+        {
+            "name": "run_training custom",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/run_training.py",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+
+        {
             "name": "run_training 256",
             "type": "debugpy",
             "request": "launch",
