@@ -4,13 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
-import transformers
 from dacite import from_dict
 
 from delphi.train.config import GigaConfig
-from delphi.train.config.utils import load_preset
 from delphi.train.run_context import RunContext
-from delphi.train.utils import EvalData, initialize_model_training_state
+from delphi.train.utils import CheckpointData, initialize_model_training_state
 from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 
 
@@ -55,8 +53,8 @@ def mock_model_training_state(mock_giga_config):
 
 
 @pytest.fixture
-def mock_eval_data(mock_giga_config, mock_model_training_state):
-    eval_data = EvalData(
+def mock_checkpoint_data(mock_giga_config, mock_model_training_state):
+    eval_data = CheckpointData(
         model_training_state=mock_model_training_state,
         tokens_per_iter=1000,
         losses={"train": 0.5, "val": 0.4},
@@ -91,8 +89,8 @@ def test_init_wandb(mock_wandb_init: MagicMock, mock_giga_config):
 
 
 @patch("wandb.log")
-def test_log_to_wandb(mock_wandb_log, mock_eval_data):
-    log_to_wandb(mock_eval_data)
+def test_log_to_wandb(mock_wandb_log, mock_checkpoint_data):
+    log_to_wandb(mock_checkpoint_data)
     mock_wandb_log.assert_called_once_with(
         {
             "iter": 1,

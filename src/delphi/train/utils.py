@@ -3,20 +3,17 @@ import logging
 import math
 import os
 import time
-from collections.abc import Generator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Optional, cast
 
+import datasets
 import safetensors.torch as st
 import torch
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
-
-from delphi import constants
-from delphi.eval.utils import load_delphi_dataset
 
 from .config import GigaConfig
 from .run_context import RunContext
@@ -27,13 +24,10 @@ from .shuffle import shuffle_list
 class ModelTrainingState:
     """mutable training state - stuff that changes over the course of training"""
 
-    model: torch.nn.Module
+    model: PreTrainedModel
     optimizer: torch.optim.Optimizer
     iter_num: int = field(
         metadata={"help": "total iterations so far across all epochs"}
-    )
-    local_iter_num: int = field(
-        metadata={"help": "total iterations on this instance so far"}
     )
     best_val_loss: float = field(metadata={"help": "best validation loss so far"})
     last_training_step_time: float = field(
@@ -42,11 +36,15 @@ class ModelTrainingState:
     epoch: int = field(metadata={"help": "current epoch"})
     step: int = field(metadata={"help": "step within current epoch"})
     lr: float = field(default=1.0e-5, metadata={"help": "learning rate"})
+    train_loss: float = field(
+        default=0.0, metadata={"help": "loss on most recent train step"}
+    )
 
 
 @dataclass
-class EvalData:
-    # values we expose to eval callback functions
+class CheckpointData:
+    """values we expose to assorted checkpoint/eval functions"""
+
     tokens_per_iter: int
     losses: dict[str, float]
     new_best_val_loss: bool
@@ -96,6 +94,9 @@ def set_lr(
     optimizer: torch.optim.Optimizer,
     iter_num: int,
 ):
+    """
+    Set the learning rate (calculated by get_lr) on the optimizer
+    """
     lr = (
         get_lr(
             iter_num=iter_num,
@@ -112,7 +113,7 @@ def set_lr(
     return lr
 
 
-def save_checkpoint_if_needed(eval_data: EvalData):
+def save_checkpoint_if_needed(eval_data: CheckpointData):
     mts = eval_data.model_training_state
     # we save if it's not the first iter AND at least one of:
     # 1) we have a new best validation loss
@@ -171,48 +172,47 @@ def initialize_model_training_state(
         optimizer=optimizer,
         last_training_step_time=t0,
         iter_num=training_state_vals.get("iter_num", 0),
-        local_iter_num=training_state_vals.get("local_iter_num", 0),
         best_val_loss=training_state_vals.get("best_val_loss", 1e9),
         epoch=training_state_vals.get("epoch", 0),
         step=training_state_vals.get("step", 0),
     )
 
 
-def load_delphi_training_dataset(split: str, limit: int = -1):
-    """For training, we want (X, Y) pairs, where X is a chunk of text and Y is the next token.)
-    To construct this, we take the original tokenized dataset, break it into max_seq_len+1 length chunks,
-    and then take [:-1] as X and [1:] as Y.
-    """
-    if limit == -1:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split)
-    else:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split).select(
-            range(limit)
-        )
-    ds.set_format("torch")
-    return ds
+def get_indices_for_epoch(
+    dataset_size: int, batch_size: int, epoch: int, ordering_seed: int
+) -> list[int]:
+    """ """
+    num_indices = dataset_size // batch_size
+    indices = list(range(num_indices))
+    shuffle_list(indices, seed=ordering_seed + epoch)
+    return indices
 
 
-def get_next_xy(
-    train_batch_iter: Generator, device: torch.device
+def get_xy_batch(
+    batch_size: int,
+    dataset: Dataset,
+    indices: list[int],
+    step: int,
+    microstep: int,
+    gradient_accumulation_steps: int,
+    device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """break a (max_seq_len +1) sequence of tokens into sample [:-1] and label [1:] pairs"""
-    data = next(train_batch_iter).to(device)
-    X, Y = data[:, :-1], data[:, 1:]
-    return X, Y
-
-
-def batch_generator(
-    dataset: Dataset, batch_size: int, epoch: int, ordering_seed: int
-) -> Generator[torch.Tensor, None, None]:
     """
-    Generate batches of training data for a given epoch with pseudorandom determinism
+    Get a batch of data from a dataset given a batch number and indices
+
+    Imagine dataset is functionally split into batches of size batch_size. If batch_size=3, then
+    the split each sample belongs to would go: [0, 0, 0, 1, 1, 1, 2, 2, 2, ... n_batches-1, n_batches-1, n_batches-1]
+    We can refer to these splits by indices (0...n_batches-1), each of which is a contiguous chunk of size batch_size.
+    At the start of each epoch, we make a list of indices (range(n_batches)) and shuffle it deterministically
+    so that we get a different ordering of the dataset each epoch. Here, we want to get the split-of-size-batch_size
+    corresponding to the current batch number within this batch.
     """
-    sampler = list(range(len(dataset)))  # type: ignore
-    shuffle_list(sampler, seed=ordering_seed + epoch)
-    sampler = torch.Tensor(sampler)
-    for samples in sampler.split(batch_size):
-        yield dataset[samples]["tokens"]
+    batch_num = step * gradient_accumulation_steps + microstep
+    index = indices[batch_num]
+    start = index * batch_size
+    end = (index + 1) * batch_size
+    data = dataset[start:end]["tokens"].to(device)
+    return data[:, :-1], data[:, 1:]
 
 
 @torch.no_grad()
@@ -228,10 +228,24 @@ def estimate_loss(
     out = {}
     model.eval()
     for split, ds in split_to_ds.items():
-        batch_iter = iter(batch_generator(ds, batch_size, epoch, 1234))
-        losses = torch.zeros(eval_iters)  # keep on CPU
-        for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
-            X, Y = get_next_xy(batch_iter, device)
+        indices = get_indices_for_epoch(
+            dataset_size=len(ds),
+            batch_size=batch_size,
+            epoch=epoch,
+            ordering_seed=1234,
+        )
+        num_losses = min(eval_iters, len(ds) // batch_size)
+        losses = torch.zeros(num_losses)  # keep on CPU
+        for k in range(num_losses):  # type: ignore
+            X, Y = get_xy_batch(
+                batch_size=batch_size,
+                dataset=ds,
+                indices=indices,
+                step=k,
+                microstep=0,
+                gradient_accumulation_steps=1,
+                device=device,
+            )
             loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
         out[split] = losses.mean()
@@ -270,7 +284,6 @@ def save_results(
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
-            "local_iter_num": train_results.local_iter_num,
             "best_val_loss": train_results.best_val_loss,
             "lr": train_results.lr,
             "epoch": train_results.epoch,
@@ -288,3 +301,26 @@ def save_results(
             repo_id=str(config.huggingface.repo_id),
             path_in_repo=f"iter_{train_results.iter_num}/",
         )
+
+
+def load_tokens_dataset_from_huggingface(
+    dataset: str,
+    split: str,
+    tokens_feature: str,
+    limit: Optional[int] = None,
+) -> Dataset:
+    """Load a dataset from huggingface"""
+    ds = cast(
+        Dataset,
+        load_dataset(
+            dataset,
+            split=split,
+            features=datasets.Features(
+                {tokens_feature: datasets.Sequence(datasets.Value("int32"))}
+            ),
+        ),
+    )
+    if limit is not None and limit > 0:
+        ds = ds.select(range(limit))
+    ds.set_format("torch")
+    return ds
