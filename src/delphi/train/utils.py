@@ -42,6 +42,9 @@ class ModelTrainingState:
     epoch: int = field(metadata={"help": "current epoch"})
     step: int = field(metadata={"help": "step within current epoch"})
     lr: float = field(default=1.0e-5, metadata={"help": "learning rate"})
+    train_loss: float = field(
+        default=0.0, metadata={"help": "loss on most recent train step"}
+    )
 
 
 @dataclass
@@ -96,6 +99,9 @@ def set_lr(
     optimizer: torch.optim.Optimizer,
     iter_num: int,
 ):
+    """
+    Set the learning rate (calculated by get_lr) on the optimizer
+    """
     lr = (
         get_lr(
             iter_num=iter_num,

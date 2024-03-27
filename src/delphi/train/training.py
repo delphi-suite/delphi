@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from dataclasses import fields
 from typing import cast
 
@@ -11,10 +12,11 @@ from transformers import __version__ as transformers_version
 from delphi import __version__ as delphi_version
 
 from . import wandb_utils
+from .checkpoint_step import run_checkpoint, should_run_checkpoint
 from .config import GigaConfig
 from .iteration_params import set_iteration_params
 from .run_context import RunContext
-from .iteration_step import iteration_step
+from .train_step import train_step
 from .utils import (
     ModelTrainingState,
     batch_generator,
@@ -22,6 +24,7 @@ from .utils import (
     initialize_model_training_state,
     load_delphi_training_dataset,
     save_checkpoint_if_needed,
+    set_lr,
 )
 
 
@@ -89,14 +92,39 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         model_training_state.epoch = epoch
         for step in tqdm(range(iteration_params.num_steps)):
             model_training_state.step = step
-            iteration_step(
-                model_training_state,
-                train_ds,
-                validation_ds,
-                iteration_params,
-                eval_callbacks,
-                config,
-                train_batch_iter,
-                run_context,
+            if should_run_checkpoint(config, model_training_state):
+                run_checkpoint(
+                    config=config,
+                    mts=model_training_state,
+                    iteration_params=iteration_params,
+                    train_ds=train_ds,
+                    validation_ds=validation_ds,
+                    run_context=run_context,
+                    eval_callbacks=eval_callbacks,
+                )
+            model_training_state.lr = set_lr(
+                lr_decay_iters=iteration_params.lr_decay_iters,
+                config=config,
+                optimizer=model_training_state.optimizer,
+                iter_num=model_training_state.iter_num,
             )
+            train_step(
+                model_training_state=model_training_state,
+                train_ds=train_ds,
+                config=config,
+                train_batch_iter=train_batch_iter,
+                run_context=run_context,
+            )
+            t1 = time.time()
+            dt = t1 - model_training_state.last_training_step_time
+            model_training_state.last_training_step_time = t1
+            if model_training_state.iter_num % config.log_interval == 0:
+                # get loss as float, scale up due to the divide above. note: this is a CPU-GPU sync point
+                logging.debug(
+                    (
+                        f"{model_training_state.iter_num} | loss {model_training_state.train_loss:.4f} | lr {model_training_state.lr:e} | "
+                        f"{dt*1000:.2f}ms"
+                    )
+                )
+            model_training_state.iter_num += 1
     return model_training_state, run_context
