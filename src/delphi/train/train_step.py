@@ -14,7 +14,7 @@ def train_step(
     config: GigaConfig,
     run_context: RunContext,
     indices: list[int],
-) -> float:
+):
     """
     Runs a training step, updating (mutating in place) model_training_state
     """
@@ -49,4 +49,3 @@ def train_step(
         # flush the gradients as soon as we can, no need for this memory anymore
         optimizer.zero_grad(set_to_none=True)
     model_training_state.train_loss = total_loss
-    return total_loss
