@@ -59,7 +59,7 @@ def accumulate_gradients(
     num_batches: int,
 ) -> float:
     """
-    Accumulate gradient on model over gradient_accumulation_steps
+    Accumulate gradients over multiple batches as if they were a single batch
     """
     total_loss = 0.0
     for X, Y in batches:
