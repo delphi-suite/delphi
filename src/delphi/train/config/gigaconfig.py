@@ -27,14 +27,13 @@ class GigaConfig:
         default=os.path.join(platformdirs.user_data_dir(appname="delphi"), run_name),
         metadata={"help": "output directory"},
     )
-    huggingface: HuggingfaceConfig = field(default_factory=HuggingfaceConfig)
 
     # device
     device: str = field(
         default="auto", metadata={"help": "device to use (cuda, mps, cpu)"}
     )
 
-    # I/O
+    # checkpoints, logging, eval
     checkpoint_interval: int = field(
         default=2000, metadata={"help": "checkpoint every N iters"}
     )
@@ -44,10 +43,8 @@ class GigaConfig:
     )
     log_interval: int = field(default=1, metadata={"help": "log every N iters"})
     eval_iters: int = field(default=100, metadata={"help": "use N iters for each eval"})
-    always_save_checkpoint: bool = field(
-        default=False,
-        metadata={"help": "if True, always save a checkpoint after each eval"},
-    )
+
+    # initialization
     init_from: str = field(
         default="scratch",
         metadata={
@@ -60,8 +57,7 @@ class GigaConfig:
             "help": "path to a checkpoint to resume from (if init_from=='resume')"
         },
     )
-    # wandb logging
-    wandb_config: WandbConfig = field(default_factory=WandbConfig)
+
     # data
     batch_size: int = field(
         default=64,
@@ -69,8 +65,10 @@ class GigaConfig:
             "help": "if gradient_accumulation_steps > 1, this is the micro-batch size"
         },
     )
+
     # model config
     max_seq_len: int = field(default=512, metadata={"help": "max sequence length"})
+
     # training
     max_epochs: int = field(
         default=10, metadata={"help": "total number of training epochs"}
@@ -81,6 +79,7 @@ class GigaConfig:
     )
     # (adamw) optimizer
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
+
     # reproducibility
     batch_ordering_seed: int = field(
         default=1337,
@@ -94,17 +93,9 @@ class GigaConfig:
         metadata={"help": "specify training and validation data"},
     )
 
-    # debugging
-    train_sample_limit: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": "for debugging: limit size of the training set.# -1 implies no limit"
-        },
-    )
-    val_sample_limit: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": "for debugging: limit size of the validation set. -1 implies no limit"
-        },
-    )
+    # third party
+    wandb_config: WandbConfig = field(default_factory=WandbConfig)
+    huggingface: HuggingfaceConfig = field(default_factory=HuggingfaceConfig)
+
+    # debug
     debug_config: DebugConfig = field(default_factory=DebugConfig)
