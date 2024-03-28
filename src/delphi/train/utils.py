@@ -115,16 +115,16 @@ def initialize_model_training_state(
     training_state_vals = dict()
     if config.init_from == "scratch":
         logging.info(f"  initialized model and optimizer from scratch")
-    # TODO: resume from huggingface model
     elif config.init_from == "resume":
-        logging.info(f"Resuming training from {config.output_dir}")
-        checkpoint = config.output_dir
+        logging.info(f"Resuming training from {config.resume_from_path}")
         st.load_model(
-            model, os.path.join(config.output_dir, "model", "model.safetensors")
+            model, os.path.join(config.resume_from_path, "model", "model.safetensors")
         )
-        with open(os.path.join(checkpoint, "training_state.json"), "r") as f:
+        with open(
+            os.path.join(config.resume_from_path, "training_state.json"), "r"
+        ) as f:
             training_state_vals = json.load(f)
-        opt_state_dict_path = Path(os.path.join(config.output_dir, "opt.pt"))
+        opt_state_dict_path = Path(os.path.join(config.resume_from_path, "opt.pt"))
         if opt_state_dict_path.exists():
             with open(opt_state_dict_path, "rb") as f:
                 logging.info("  Loading optimizer state from {state_dict_path}")

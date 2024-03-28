@@ -22,9 +22,7 @@ class GigaConfig:
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_dir: str = field(
         default=os.path.join(platformdirs.user_data_dir(appname="delphi"), run_name),
-        metadata={
-            "help": "output directory; also directory to resume from if init_from=='resume'"
-        },
+        metadata={"help": "output directory"},
     )
     huggingface: HuggingfaceConfig = field(default_factory=HuggingfaceConfig)
 
@@ -47,6 +45,12 @@ class GigaConfig:
         default="scratch",
         metadata={
             "help": "'scratch' for a new model, 'resume' to resume from output_dir"
+        },
+    )
+    resume_from_path: str = field(
+        default=".",
+        metadata={
+            "help": "path to a checkpoint to resume from (if init_from=='resume')"
         },
     )
     # wandb logging
