@@ -13,6 +13,7 @@ from delphi.train.config.utils import load_preset
 from delphi.train.train_step import accumulate_gradients, train_step
 from delphi.train.utils import (
     ModelTrainingState,
+    get_model,
     get_xy_batch,
     load_tokens_dataset_from_huggingface,
 )
@@ -23,7 +24,17 @@ def test_accumulate_gradients_accumulates():
     check that gradient accumulation works as expected and doesn't reset on each microstep
     """
     # setup
-    model = load_preset("debug").model_config.get_model()
+    model = get_model(
+        {
+            "model_class": "LlamaForCausalLM",
+            "hidden_size": 48,
+            "intermediate_size": 48,
+            "num_attention_heads": 2,
+            "num_hidden_layers": 2,
+            "num_key_value_heads": 2,
+            "vocab_size": 4096,
+        }
+    )
     dataset = load_tokens_dataset_from_huggingface(
         dataset=constants.TOKENIZED_CORPUS_DATASET,
         split="validation",
@@ -92,7 +103,18 @@ def test_accumulate_gradients_consistent():
     Validate that the gradients are consistent when the same batch is passed to accumulate_gradients
     """
     # setup
-    model = load_preset("debug").model_config.get_model()
+
+    model = get_model(
+        {
+            "model_class": "LlamaForCausalLM",
+            "hidden_size": 48,
+            "intermediate_size": 48,
+            "num_attention_heads": 2,
+            "num_hidden_layers": 2,
+            "num_key_value_heads": 2,
+            "vocab_size": 4096,
+        }
+    )
     dataset = load_tokens_dataset_from_huggingface(
         dataset=constants.TOKENIZED_CORPUS_DATASET,
         split="validation",
@@ -175,7 +197,17 @@ def test_train_step_no_training():
     config_dict = asdict(load_preset("debug"))
     config_dict["debug_config"] = {"no_training": True}
     config = from_dict(GigaConfig, config_dict)
-    model = config.model_config.get_model()
+    model = get_model(
+        {
+            "model_class": "LlamaForCausalLM",
+            "hidden_size": 48,
+            "intermediate_size": 48,
+            "num_attention_heads": 2,
+            "num_hidden_layers": 2,
+            "num_key_value_heads": 2,
+            "vocab_size": 4096,
+        }
+    )
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     model_training_state = get_model_training_state(
         model=model, optimizer=optimizer, step=0
@@ -207,7 +239,17 @@ def test_train_step_with_training():
     config_dict["optimizer"] = {"gradient_accumulation_steps": 4}
     config_dict["grad_clip"] = 1.0
     config = from_dict(GigaConfig, config_dict)
-    model = config.model_config.get_model()
+    model = get_model(
+        {
+            "model_class": "LlamaForCausalLM",
+            "hidden_size": 48,
+            "intermediate_size": 48,
+            "num_attention_heads": 2,
+            "num_hidden_layers": 2,
+            "num_key_value_heads": 2,
+            "vocab_size": 4096,
+        }
+    )
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     model_training_state = get_model_training_state(
         model=model, optimizer=optimizer, step=0

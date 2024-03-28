@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import platformdirs
 from beartype import beartype
@@ -9,7 +9,6 @@ from beartype import beartype
 from .data_config import DataConfig
 from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
-from .model_config import ModelConfig
 from .optimizer_config import OptimizerConfig
 from .wandb_config import WandbConfig
 
@@ -17,7 +16,11 @@ from .wandb_config import WandbConfig
 @beartype
 @dataclass(frozen=True)
 class GigaConfig:
-    model_config: ModelConfig
+    model_config: dict[str, Any] = field(
+        metadata={
+            "help": "dictionary specifying model_class in transformers and arguments of the corresponding model config"
+        }
+    )
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_dir: str = field(

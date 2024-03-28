@@ -5,11 +5,12 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Optional, Type, cast
 
 import datasets
 import safetensors.torch as st
 import torch
+import transformers
 from datasets import Dataset, load_dataset
 from huggingface_hub import HfApi
 from torch.optim import AdamW
@@ -104,7 +105,8 @@ def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
-    model = config.model_config.get_model()
+    model = get_model(config.model_config)
+    # TODO: REMOVE THIS WHEN FINISHED. model = config.model_config.get_model()
     model.to(device)  # type: ignore
     optimizer = AdamW(
         lr=config.optimizer.learning_rate,
@@ -298,3 +300,14 @@ def count_tokens_so_far(config: GigaConfig, mts: ModelTrainingState) -> int:
     )
 
     return mts.iter_num * tokens_per_iter
+
+
+def get_model(model_config_dict: dict[str, Any]) -> PreTrainedModel:
+    """
+    Get a model from a model config dictionary
+    """
+    model_class = getattr(transformers, model_config_dict["model_class"])
+    config_class = cast(Type[transformers.PretrainedConfig], model_class.config_class)
+    model_params_dict = model_config_dict.copy()
+    model_params_dict.pop("model_class")
+    return model_class(config_class(**(model_params_dict)))
