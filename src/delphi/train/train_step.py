@@ -6,7 +6,6 @@ from datasets import Dataset
 from transformers import PreTrainedModel
 
 from .config import GigaConfig
-from .run_context import RunContext
 from .utils import ModelTrainingState, get_xy_batch
 
 

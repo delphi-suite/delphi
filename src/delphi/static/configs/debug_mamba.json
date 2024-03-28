@@ -11,15 +11,13 @@
   },
   "batch_size": 8,
   "model_config": {
-    "model_type": "MambaForCausalLM",
-    "model_params": {
-      "vocab_size": 4096,
-      "hidden_size": 48,
-      "state_size": 16,
-      "num_hidden_layers": 2,
-      "conv_kernel": 2,
-      "expand": 2,
-      "time_step_rank": 2
-    }
+    "model_class": "MambaForCausalLM",
+    "vocab_size": 4096,
+    "hidden_size": 48,
+    "state_size": 16,
+    "num_hidden_layers": 2,
+    "conv_kernel": 2,
+    "expand": 2,
+    "time_step_rank": 2
   }
 }

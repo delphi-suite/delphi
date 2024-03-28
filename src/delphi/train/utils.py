@@ -5,11 +5,12 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Optional, Type, cast
 
 import datasets
 import safetensors.torch as st
 import torch
+import transformers
 from datasets import Dataset, load_dataset
 from huggingface_hub import HfApi
 from torch.optim import AdamW
@@ -29,7 +30,6 @@ class ModelTrainingState:
     iter_num: int = field(
         metadata={"help": "total iterations so far across all epochs"}
     )
-    best_val_loss: float = field(metadata={"help": "best validation loss so far"})
     last_training_step_time: float = field(
         metadata={"help": "time last iteration ended"}
     )
@@ -39,18 +39,6 @@ class ModelTrainingState:
     train_loss: float = field(
         default=0.0, metadata={"help": "loss on most recent train step"}
     )
-
-
-@dataclass
-class CheckpointData:
-    """values we expose to assorted checkpoint/eval functions"""
-
-    tokens_per_iter: int
-    losses: dict[str, float]
-    new_best_val_loss: bool
-    config: GigaConfig
-    model_training_state: ModelTrainingState
-    run_context: RunContext
 
 
 def get_device(device_str: str = "auto") -> torch.device:
@@ -113,32 +101,11 @@ def set_lr(
     return lr
 
 
-def save_checkpoint_if_needed(eval_data: CheckpointData):
-    mts = eval_data.model_training_state
-    # we save if it's not the first iter AND at least one of:
-    # 1) we have a new best validation loss
-    # 2) always_save_checkpoint is set
-    if mts.iter_num == 0:
-        return
-    if (not eval_data.new_best_val_loss) and (
-        not eval_data.config.always_save_checkpoint
-    ):
-        return
-    results_path = os.path.join(eval_data.config.output_dir, f"iter_{mts.iter_num:06d}")
-    logging.info(f"saving checkpoint to {results_path}")
-    save_results(
-        config=eval_data.config,
-        train_results=mts,
-        run_context=eval_data.run_context,
-        results_path=results_path,
-    )
-
-
 def initialize_model_training_state(
     config: GigaConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
-    model = config.model_config.get_model()
+    model = get_model(config.model_config)
     model.to(device)  # type: ignore
     optimizer = AdamW(
         lr=config.optimizer.learning_rate,
@@ -149,16 +116,16 @@ def initialize_model_training_state(
     training_state_vals = dict()
     if config.init_from == "scratch":
         logging.info(f"  initialized model and optimizer from scratch")
-    # TODO: resume from huggingface model
     elif config.init_from == "resume":
-        logging.info(f"Resuming training from {config.output_dir}")
-        checkpoint = config.output_dir
+        logging.info(f"Resuming training from {config.resume_from_path}")
         st.load_model(
-            model, os.path.join(config.output_dir, "model", "model.safetensors")
+            model, os.path.join(config.resume_from_path, "model", "model.safetensors")
         )
-        with open(os.path.join(checkpoint, "training_state.json"), "r") as f:
+        with open(
+            os.path.join(config.resume_from_path, "training_state.json"), "r"
+        ) as f:
             training_state_vals = json.load(f)
-        opt_state_dict_path = Path(os.path.join(config.output_dir, "opt.pt"))
+        opt_state_dict_path = Path(os.path.join(config.resume_from_path, "opt.pt"))
         if opt_state_dict_path.exists():
             with open(opt_state_dict_path, "rb") as f:
                 logging.info("  Loading optimizer state from {state_dict_path}")
@@ -172,7 +139,6 @@ def initialize_model_training_state(
         optimizer=optimizer,
         last_training_step_time=t0,
         iter_num=training_state_vals.get("iter_num", 0),
-        best_val_loss=training_state_vals.get("best_val_loss", 1e9),
         epoch=training_state_vals.get("epoch", 0),
         step=training_state_vals.get("step", 0),
     )
@@ -284,7 +250,6 @@ def save_results(
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
-            "best_val_loss": train_results.best_val_loss,
             "lr": train_results.lr,
             "epoch": train_results.epoch,
             "step": train_results.step,
@@ -299,7 +264,7 @@ def save_results(
         api.upload_folder(
             folder_path=results_path,
             repo_id=str(config.huggingface.repo_id),
-            path_in_repo=f"iter_{train_results.iter_num}/",
+            revision=f"iter_{train_results.iter_num}",
         )
 
 
@@ -324,3 +289,24 @@ def load_tokens_dataset_from_huggingface(
         ds = ds.select(range(limit))
     ds.set_format("torch")
     return ds
+
+
+def count_tokens_so_far(config: GigaConfig, mts: ModelTrainingState) -> int:
+    tokens_per_iter = (
+        config.batch_size
+        * config.optimizer.gradient_accumulation_steps
+        * config.max_seq_len
+    )
+
+    return mts.iter_num * tokens_per_iter
+
+
+def get_model(model_config_dict: dict[str, Any]) -> PreTrainedModel:
+    """
+    Get a model from a model config dictionary
+    """
+    model_class = getattr(transformers, model_config_dict["model_class"])
+    config_class = cast(Type[transformers.PretrainedConfig], model_class.config_class)
+    model_params_dict = model_config_dict.copy()
+    model_params_dict.pop("model_class")
+    return model_class(config_class(**(model_params_dict)))
