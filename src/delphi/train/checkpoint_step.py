@@ -4,7 +4,6 @@ import os
 from datasets import Dataset
 
 from .config import GigaConfig
-from .iteration_params import IterationParams
 from .run_context import RunContext
 from .utils import ModelTrainingState, count_tokens_so_far, estimate_loss, save_results
 from .wandb_utils import log_to_wandb
@@ -17,7 +16,6 @@ def should_run_checkpoint(config: GigaConfig, mts: ModelTrainingState):
 def run_checkpoint(
     config: GigaConfig,
     mts: ModelTrainingState,
-    iteration_params: IterationParams,
     train_ds: Dataset,
     validation_ds: Dataset,
     run_context: RunContext,
@@ -29,7 +27,7 @@ def run_checkpoint(
     else:
         losses = estimate_loss(
             model=model,
-            eval_iters=iteration_params.eval_iters,
+            eval_iters=config.eval_iters,
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
             device=run_context.device,

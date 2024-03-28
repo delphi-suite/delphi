@@ -8,11 +8,9 @@ from tqdm import tqdm
 from transformers import __version__ as transformers_version
 
 from delphi import __version__ as delphi_version
-from delphi import constants
 
 from .checkpoint_step import run_checkpoint, should_run_checkpoint
 from .config import GigaConfig
-from .iteration_params import set_iteration_params
 from .run_context import RunContext
 from .train_step import train_step
 from .utils import (
@@ -81,7 +79,11 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     )
 
     # derive iteration params (num_batches, num_steps, etc)
-    iteration_params = set_iteration_params(config, train_ds, validation_ds)
+    num_batches = len(train_ds) // config.batch_size
+    num_steps = num_batches // config.optimizer.gradient_accumulation_steps
+    lr_decay_iters = (
+        config.max_epochs * num_batches
+    )  # should be ~=max_iters per Chinchilla
 
     # model init
     model_training_state = initialize_model_training_state(config, run_context.device)
@@ -97,19 +99,18 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
             ordering_seed=config.batch_ordering_seed,
         )
         model_training_state.epoch = epoch
-        for step in tqdm(range(iteration_params.num_steps)):
+        for step in tqdm(range(num_steps)):
             model_training_state.step = step
             if should_run_checkpoint(config, model_training_state):
                 run_checkpoint(
                     config=config,
                     mts=model_training_state,
-                    iteration_params=iteration_params,
                     train_ds=train_ds,
                     validation_ds=validation_ds,
                     run_context=run_context,
                 )
             model_training_state.lr = set_lr(
-                lr_decay_iters=iteration_params.lr_decay_iters,
+                lr_decay_iters=lr_decay_iters,
                 config=config,
                 optimizer=model_training_state.optimizer,
                 iter_num=model_training_state.iter_num,
