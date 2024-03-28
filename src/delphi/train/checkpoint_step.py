@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import Callable
 
 from datasets import Dataset
@@ -6,17 +7,12 @@ from datasets import Dataset
 from .config import GigaConfig
 from .iteration_params import IterationParams
 from .run_context import RunContext
-from .utils import (
-    CheckpointData,
-    ModelTrainingState,
-    estimate_loss,
-    save_checkpoint_if_needed,
-)
+from .utils import CheckpointData, ModelTrainingState, estimate_loss, save_results
 from .wandb_utils import log_to_wandb
 
 
 def should_run_checkpoint(config: GigaConfig, mts: ModelTrainingState):
-    return mts.iter_num % config.eval_interval == 0
+    return mts.iter_num % config.checkpoint_interval == 0 and mts.iter_num > 0
 
 
 def run_checkpoint(
@@ -40,14 +36,11 @@ def run_checkpoint(
             device=run_context.device,
             epoch=mts.epoch,
         )
-    new_best_val_loss = False
     if losses["val"] < mts.best_val_loss:
         mts.best_val_loss = float(losses["val"])
-        new_best_val_loss = True
     checkpoint_data = CheckpointData(
         tokens_per_iter=iteration_params.tokens_per_iter,
         losses=losses,
-        new_best_val_loss=new_best_val_loss,
         config=config,
         model_training_state=mts,
         run_context=run_context,
@@ -55,6 +48,13 @@ def run_checkpoint(
     logging.info(
         f"step {mts.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
     )
-    save_checkpoint_if_needed(checkpoint_data)
+    results_path = os.path.join(config.output_dir, f"iter_{mts.iter_num:06d}")
+    logging.info(f"saving checkpoint to {results_path}")
+    save_results(
+        config=config,
+        train_results=mts,
+        run_context=run_context,
+        results_path=results_path,
+    )
     if config.wandb_config.log:
         log_to_wandb(checkpoint_data)

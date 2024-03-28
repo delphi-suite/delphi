@@ -47,7 +47,6 @@ class CheckpointData:
 
     tokens_per_iter: int
     losses: dict[str, float]
-    new_best_val_loss: bool
     config: GigaConfig
     model_training_state: ModelTrainingState
     run_context: RunContext
@@ -111,27 +110,6 @@ def set_lr(
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr
     return lr
-
-
-def save_checkpoint_if_needed(eval_data: CheckpointData):
-    mts = eval_data.model_training_state
-    # we save if it's not the first iter AND at least one of:
-    # 1) we have a new best validation loss
-    # 2) always_save_checkpoint is set
-    if mts.iter_num == 0:
-        return
-    if (not eval_data.new_best_val_loss) and (
-        not eval_data.config.always_save_checkpoint
-    ):
-        return
-    results_path = os.path.join(eval_data.config.output_dir, f"iter_{mts.iter_num:06d}")
-    logging.info(f"saving checkpoint to {results_path}")
-    save_results(
-        config=eval_data.config,
-        train_results=mts,
-        run_context=eval_data.run_context,
-        results_path=results_path,
-    )
 
 
 def initialize_model_training_state(
