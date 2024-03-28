@@ -38,6 +38,10 @@ class GigaConfig:
     checkpoint_interval: int = field(
         default=2000, metadata={"help": "checkpoint every N iters"}
     )
+    extra_checkpoint_iters: list[int] = field(
+        default_factory=lambda: [],
+        metadata={"help": "manually list iterations to save checkpoints on"},
+    )
     log_interval: int = field(default=1, metadata={"help": "log every N iters"})
     eval_iters: int = field(default=100, metadata={"help": "use N iters for each eval"})
     always_save_checkpoint: bool = field(

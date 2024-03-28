@@ -106,7 +106,6 @@ def initialize_model_training_state(
 ) -> ModelTrainingState:
     t0 = time.time()
     model = get_model(config.model_config)
-    # TODO: REMOVE THIS WHEN FINISHED. model = config.model_config.get_model()
     model.to(device)  # type: ignore
     optimizer = AdamW(
         lr=config.optimizer.learning_rate,

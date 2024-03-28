@@ -10,7 +10,12 @@ from .wandb_utils import log_to_wandb
 
 
 def should_run_checkpoint(config: GigaConfig, mts: ModelTrainingState):
-    return mts.iter_num % config.checkpoint_interval == 0 and mts.iter_num > 0
+    return any(
+        [
+            mts.iter_num % config.checkpoint_interval == 0 and mts.iter_num > 0,
+            mts.iter_num in config.extra_checkpoint_iters,
+        ]
+    )
 
 
 def run_checkpoint(
