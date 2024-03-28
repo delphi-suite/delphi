@@ -263,7 +263,7 @@ def save_results(
         api.upload_folder(
             folder_path=results_path,
             repo_id=str(config.huggingface.repo_id),
-            path_in_repo=f"iter_{train_results.iter_num}/",
+            revision=f"iter_{train_results.iter_num}",
         )
 
 
