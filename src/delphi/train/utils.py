@@ -29,7 +29,6 @@ class ModelTrainingState:
     iter_num: int = field(
         metadata={"help": "total iterations so far across all epochs"}
     )
-    best_val_loss: float = field(metadata={"help": "best validation loss so far"})
     last_training_step_time: float = field(
         metadata={"help": "time last iteration ended"}
     )
@@ -39,17 +38,6 @@ class ModelTrainingState:
     train_loss: float = field(
         default=0.0, metadata={"help": "loss on most recent train step"}
     )
-
-
-@dataclass
-class CheckpointData:
-    """values we expose to assorted checkpoint/eval functions"""
-
-    tokens_per_iter: int
-    losses: dict[str, float]
-    config: GigaConfig
-    model_training_state: ModelTrainingState
-    run_context: RunContext
 
 
 def get_device(device_str: str = "auto") -> torch.device:
@@ -150,7 +138,6 @@ def initialize_model_training_state(
         optimizer=optimizer,
         last_training_step_time=t0,
         iter_num=training_state_vals.get("iter_num", 0),
-        best_val_loss=training_state_vals.get("best_val_loss", 1e9),
         epoch=training_state_vals.get("epoch", 0),
         step=training_state_vals.get("step", 0),
     )
@@ -262,7 +249,6 @@ def save_results(
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
-            "best_val_loss": train_results.best_val_loss,
             "lr": train_results.lr,
             "epoch": train_results.epoch,
             "step": train_results.step,
@@ -302,3 +288,13 @@ def load_tokens_dataset_from_huggingface(
         ds = ds.select(range(limit))
     ds.set_format("torch")
     return ds
+
+
+def count_tokens_so_far(config: GigaConfig, mts: ModelTrainingState) -> int:
+    tokens_per_iter = (
+        config.batch_size
+        * config.optimizer.gradient_accumulation_steps
+        * config.max_seq_len
+    )
+
+    return mts.iter_num * tokens_per_iter

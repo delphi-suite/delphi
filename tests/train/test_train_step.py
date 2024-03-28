@@ -163,7 +163,6 @@ def get_model_training_state(model, optimizer, step):
         step=step,
         train_loss=0.0,
         lr=0.01,
-        best_val_loss=float("inf"),
         last_training_step_time=0.0,
     )
 

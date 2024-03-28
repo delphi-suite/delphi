@@ -1,13 +1,12 @@
 import logging
 import os
-from collections.abc import Callable
 
 from datasets import Dataset
 
 from .config import GigaConfig
 from .iteration_params import IterationParams
 from .run_context import RunContext
-from .utils import CheckpointData, ModelTrainingState, estimate_loss, save_results
+from .utils import ModelTrainingState, count_tokens_so_far, estimate_loss, save_results
 from .wandb_utils import log_to_wandb
 
 
@@ -36,15 +35,6 @@ def run_checkpoint(
             device=run_context.device,
             epoch=mts.epoch,
         )
-    if losses["val"] < mts.best_val_loss:
-        mts.best_val_loss = float(losses["val"])
-    checkpoint_data = CheckpointData(
-        tokens_per_iter=iteration_params.tokens_per_iter,
-        losses=losses,
-        config=config,
-        model_training_state=mts,
-        run_context=run_context,
-    )
     logging.info(
         f"step {mts.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
     )
@@ -57,4 +47,8 @@ def run_checkpoint(
         results_path=results_path,
     )
     if config.wandb_config.log:
-        log_to_wandb(checkpoint_data)
+        log_to_wandb(
+            mts=mts,
+            losses=losses,
+            tokens_so_far=count_tokens_so_far(config, mts),
+        )
