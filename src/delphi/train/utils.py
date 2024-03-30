@@ -122,9 +122,7 @@ def initialize_model_training_state(
         betas=(config.optimizer.beta1, config.optimizer.beta2),
     )
     training_state_vals = dict()
-    if config.init_from == "scratch":
-        logging.info(f"  initialized model and optimizer from scratch")
-    elif config.init_from == "resume":
+    if config.resume_from_path is not None:
         logging.info(f"Resuming training from {config.resume_from_path}")
         st.load_model(
             model, os.path.join(config.resume_from_path, "model", "model.safetensors")
@@ -138,10 +136,6 @@ def initialize_model_training_state(
             with open(opt_state_dict_path, "rb") as f:
                 logging.info("  Loading optimizer state from {state_dict_path}")
                 optimizer.load_state_dict(torch.load(f))
-    else:
-        raise ValueError(
-            f"{config.init_from} is not one of (scratch, resume), which are the two valid initialization methods. Unable to initialize model."
-        )
     return ModelTrainingState(
         model=model,
         optimizer=optimizer,

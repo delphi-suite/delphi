@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import platformdirs
 from beartype import beartype
@@ -38,21 +38,15 @@ class TrainingConfig:
         default=2000, metadata={"help": "checkpoint every N iters"}
     )
     extra_checkpoint_iters: list[int] = field(
-        default_factory=lambda: [],
+        default_factory=list,
         metadata={"help": "manually list iterations to save checkpoints on"},
     )
     log_interval: int = field(default=1, metadata={"help": "log every N iters"})
     eval_iters: int = field(default=100, metadata={"help": "use N iters for each eval"})
 
-    # initialization
-    init_from: str = field(
-        default="scratch",
-        metadata={
-            "help": "'scratch' for a new model, 'resume' to resume from output_dir"
-        },
-    )
-    resume_from_path: str = field(
-        default=".",
+    # resume from checkpoint
+    resume_from_path: Optional[str] = field(
+        default=None,
         metadata={
             "help": "path to a checkpoint to resume from (if init_from=='resume')"
         },
