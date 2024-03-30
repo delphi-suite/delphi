@@ -16,7 +16,7 @@ from .wandb_config import WandbConfig
 
 @beartype
 @dataclass(frozen=True)
-class GigaConfig:
+class TrainingConfig:
     model_config: ModelConfig
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")

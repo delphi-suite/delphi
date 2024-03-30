@@ -10,8 +10,8 @@ from transformers import __version__ as transformers_version
 from delphi import __version__ as delphi_version
 from delphi import constants
 
-from .checkpoint_step import run_checkpoint, should_run_checkpoint
-from .config import GigaConfig
+from .checkpoint_step import log_and_save_checkpoint, should_save_checkpoint
+from .config import TrainingConfig
 from .iteration_params import set_iteration_params
 from .run_context import RunContext
 from .train_step import train_step
@@ -26,7 +26,7 @@ from .utils import (
 from .wandb_utils import init_wandb
 
 
-def setup_training(config: GigaConfig):
+def setup_training(config: TrainingConfig):
     logging.info("Setting up training...")
     os.makedirs(config.output_dir, exist_ok=True)
 
@@ -45,7 +45,7 @@ def setup_training(config: GigaConfig):
         init_wandb(config=config)
 
 
-def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
+def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext]:
     setup_training(config)
     logging.info("Starting training...")
     logging.info("Config:")
@@ -64,13 +64,13 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     # load data
     logging.info("Loading data...")
     train_ds = load_tokens_dataset_from_huggingface(
-        dataset=config.data_config.train_dataset,
+        hf_dataset_id=config.data_config.train_dataset,
         split=config.data_config.train_split,
         tokens_feature=config.data_config.train_feature,
         limit=config.data_config.train_sample_limit,
     )
     validation_ds = load_tokens_dataset_from_huggingface(
-        dataset=(
+        hf_dataset_id=(
             config.data_config.validation_dataset or config.data_config.train_dataset
         ),
         split=config.data_config.validation_split,
@@ -99,8 +99,8 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         model_training_state.epoch = epoch
         for step in tqdm(range(iteration_params.num_steps)):
             model_training_state.step = step
-            if should_run_checkpoint(config, model_training_state):
-                run_checkpoint(
+            if should_save_checkpoint(config, model_training_state):
+                log_and_save_checkpoint(
                     config=config,
                     mts=model_training_state,
                     iteration_params=iteration_params,
@@ -119,7 +119,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                 train_ds=train_ds,
                 config=config,
                 device=run_context.device,
-                indices=train_data_indices,
+                ds_indices=train_data_indices,
             )
             t1 = time.time()
             dt = t1 - model_training_state.last_training_step_time

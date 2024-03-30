@@ -5,7 +5,7 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional, cast
+from typing import Generator, Optional, cast
 
 import datasets
 import safetensors.torch as st
@@ -15,7 +15,7 @@ from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
 
-from .config import GigaConfig
+from .config import TrainingConfig
 from .run_context import RunContext
 from .shuffle import shuffle_list
 
@@ -48,7 +48,7 @@ class CheckpointData:
     tokens_per_iter: int
     losses: dict[str, float]
     new_best_val_loss: bool
-    config: GigaConfig
+    config: TrainingConfig
     model_training_state: ModelTrainingState
     run_context: RunContext
 
@@ -90,7 +90,7 @@ def get_lr(
 
 def set_lr(
     lr_decay_iters: int,
-    config: GigaConfig,
+    config: TrainingConfig,
     optimizer: torch.optim.Optimizer,
     iter_num: int,
 ):
@@ -135,7 +135,7 @@ def save_checkpoint_if_needed(eval_data: CheckpointData):
 
 
 def initialize_model_training_state(
-    config: GigaConfig, device: torch.device
+    config: TrainingConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
     model = config.model_config.get_model()
@@ -189,30 +189,51 @@ def get_indices_for_epoch(
 
 
 def get_xy_batch(
-    batch_size: int,
     dataset: Dataset,
     indices: list[int],
-    step: int,
-    microstep: int,
-    gradient_accumulation_steps: int,
+    batch_size: int,
+    batch_num: int,
+    feature_name: str,
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Get a batch of data from a dataset given a batch number and indices
 
-    Imagine dataset is functionally split into batches of size batch_size. If batch_size=3, then
-    the split each sample belongs to would go: [0, 0, 0, 1, 1, 1, 2, 2, 2, ... n_batches-1, n_batches-1, n_batches-1]
-    We can refer to these splits by indices (0...n_batches-1), each of which is a contiguous chunk of size batch_size.
-    At the start of each epoch, we make a list of indices (range(n_batches)) and shuffle it deterministically
-    so that we get a different ordering of the dataset each epoch. Here, we want to get the split-of-size-batch_size
-    corresponding to the current batch number within this batch.
+    Args:
     """
-    batch_num = step * gradient_accumulation_steps + microstep
-    index = indices[batch_num]
-    start = index * batch_size
-    end = (index + 1) * batch_size
-    data = dataset[start:end]["tokens"].to(device)
+    start = batch_num * batch_size
+    end = (batch_num + 1) * batch_size
+    batch_indices = indices[start:end]
+    data = dataset[batch_indices][feature_name].to(device)
     return data[:, :-1], data[:, 1:]
+
+
+def gen_minibatches(
+    dataset: Dataset,
+    batch_size: int,
+    num_minibatches: int,
+    step: int,
+    indices: list[int],
+    device: torch.device,
+    feature_name: str,
+) -> Generator[tuple[torch.Tensor, torch.Tensor], None, None]:
+    """
+    Generate minibatches from a dataset given a step and indices
+    """
+    assert (
+        batch_size % num_minibatches == 0
+    ), "batch_size must be divisible by num_minibatches"
+    minibatch_size = batch_size // num_minibatches
+    first_minibatch_num = num_minibatches * step
+    for i in range(num_minibatches):
+        yield get_xy_batch(
+            dataset=dataset,
+            indices=indices,
+            batch_num=first_minibatch_num + i,
+            batch_size=minibatch_size,
+            feature_name=feature_name,
+            device=device,
+        )
 
 
 @torch.no_grad()
@@ -234,18 +255,18 @@ def estimate_loss(
             epoch=epoch,
             ordering_seed=1234,
         )
-        num_losses = min(eval_iters, len(ds) // batch_size)
-        losses = torch.zeros(num_losses)  # keep on CPU
-        for k in range(num_losses):  # type: ignore
-            X, Y = get_xy_batch(
-                batch_size=batch_size,
-                dataset=ds,
-                indices=indices,
-                step=k,
-                microstep=0,
-                gradient_accumulation_steps=1,
-                device=device,
-            )
+        eval_iters = min(eval_iters, len(ds) // batch_size)
+        losses = torch.zeros(eval_iters)  # keep on CPU
+        minibatches = gen_minibatches(
+            dataset=ds,
+            batch_size=batch_size,
+            num_minibatches=eval_iters,
+            step=0,
+            indices=indices,
+            device=device,
+            feature_name=split,
+        )
+        for k, (X, Y) in enumerate(minibatches):
             loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
         out[split] = losses.mean()
@@ -254,7 +275,7 @@ def estimate_loss(
 
 
 def save_results(
-    config: GigaConfig,
+    config: TrainingConfig,
     train_results: ModelTrainingState,
     run_context: RunContext,
     results_path: str,
@@ -304,16 +325,23 @@ def save_results(
 
 
 def load_tokens_dataset_from_huggingface(
-    dataset: str,
+    hf_dataset_id: str,
     split: str,
     tokens_feature: str,
     limit: Optional[int] = None,
 ) -> Dataset:
-    """Load a dataset from huggingface"""
+    """Load a dataset from huggingface
+
+    Args:
+        hf_dataset_id (str): huggingface dataset id e.g. "delphi-suite/v0-tinystories-v2-clean-tokenized"
+        split (str): split to load, e.g. "train" or "validation"
+        tokens_feature (str): feature name for tokens, e.g. "tokens"
+        limit (Optional[int], optional): limit the number of samples. None (default) means no limit (use full dataset split)
+    """
     ds = cast(
         Dataset,
         load_dataset(
-            dataset,
+            hf_dataset_id,
             split=split,
             features=datasets.Features(
                 {tokens_feature: datasets.Sequence(datasets.Value("int32"))}

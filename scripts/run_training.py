@@ -13,7 +13,7 @@ import platformdirs
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config import (
-    GigaConfig,
+    TrainingConfig,
     build_config_from_files_and_overrides,
     get_preset_paths,
     get_user_config_path,
@@ -208,7 +208,9 @@ def setup_parser() -> (
     )
     config_arg_group = parser.add_argument_group("Config arguments")
     help_parsers = dict()
-    add_dataclass_args_recursively(parser, GigaConfig, config_arg_group, help_parsers)
+    add_dataclass_args_recursively(
+        parser, TrainingConfig, config_arg_group, help_parsers
+    )
     add_preset_args(parser)
     add_logging_args(parser)
     return parser, help_parsers
@@ -232,7 +234,7 @@ def var_args_to_dict(config_vars: dict[str, Any]) -> dict[str, Any]:
 
 def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
     # at the toplevel, filter for args corresponding to field names in GigaConfig
-    field_names = set(field.name for field in fields(GigaConfig))
+    field_names = set(field.name for field in fields(TrainingConfig))
     config_vars = {
         k: v for k, v in vars(args).items() if k.split(".")[0] in field_names
     }

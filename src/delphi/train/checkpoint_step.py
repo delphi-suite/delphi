@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from datasets import Dataset
 
-from .config import GigaConfig
+from .config import TrainingConfig
 from .iteration_params import IterationParams
 from .run_context import RunContext
 from .utils import (
@@ -15,18 +15,21 @@ from .utils import (
 from .wandb_utils import log_to_wandb
 
 
-def should_run_checkpoint(config: GigaConfig, mts: ModelTrainingState):
+def should_save_checkpoint(config: TrainingConfig, mts: ModelTrainingState):
     return mts.iter_num % config.eval_interval == 0
 
 
-def run_checkpoint(
-    config: GigaConfig,
+def log_and_save_checkpoint(
+    config: TrainingConfig,
     mts: ModelTrainingState,
     iteration_params: IterationParams,
     train_ds: Dataset,
     validation_ds: Dataset,
     run_context: RunContext,
 ):
+    """
+    Save a checkpoint of the current model + training state, evaluate, and optionally upload to huggingface and log to wandb (if configured)
+    """
     model = mts.model
     if config.debug_config.no_eval:
         logging.debug("no_eval=True, skipping evaluation and using dummy losses")

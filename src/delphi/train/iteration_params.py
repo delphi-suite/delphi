@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from datasets import Dataset
 
-from .config import GigaConfig
+from .config import TrainingConfig
 
 
 @dataclass
@@ -16,7 +16,7 @@ class IterationParams:
 
 
 def set_iteration_params(
-    config: GigaConfig, train_ds: Dataset, validation_ds: Dataset
+    config: TrainingConfig, train_ds: Dataset, validation_ds: Dataset
 ) -> IterationParams:
     num_batches = len(train_ds) // config.batch_size
     # we take gradient_accumulation_steps batches per step (one in each microstep)
