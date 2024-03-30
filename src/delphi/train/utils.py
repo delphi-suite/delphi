@@ -96,13 +96,13 @@ def set_lr(
     lr = (
         get_lr(
             iter_num=iter_num,
-            warmup_iters=config.optimizer.warmup_iters,
-            learning_rate=config.optimizer.learning_rate,
+            warmup_iters=config.adam.warmup_iters,
+            learning_rate=config.adam.learning_rate,
             lr_decay_iters=lr_decay_iters,
-            min_lr=config.optimizer.min_lr,
+            min_lr=config.adam.min_lr,
         )
-        if config.optimizer.decay_lr
-        else config.optimizer.learning_rate
+        if config.adam.decay_lr
+        else config.adam.learning_rate
     )
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr
@@ -116,10 +116,10 @@ def initialize_model_training_state(
     model = init_model(config.model_config, seed=config.torch_seed)
     model.to(device)  # type: ignore
     optimizer = AdamW(
-        lr=config.optimizer.learning_rate,
+        lr=config.adam.learning_rate,
         params=model.parameters(),
-        weight_decay=config.optimizer.weight_decay,
-        betas=(config.optimizer.beta1, config.optimizer.beta2),
+        weight_decay=config.adam.weight_decay,
+        betas=(config.adam.beta1, config.adam.beta2),
     )
     training_state_vals = dict()
     if config.resume_from_path is not None:
@@ -323,9 +323,7 @@ def load_tokens_dataset_from_huggingface(
 
 def count_tokens_so_far(config: TrainingConfig, mts: ModelTrainingState) -> int:
     tokens_per_iter = (
-        config.batch_size
-        * config.optimizer.gradient_accumulation_steps
-        * config.max_seq_len
+        config.batch_size * config.gradient_accumulation_steps * config.max_seq_len
     )
 
     return mts.iter_num * tokens_per_iter

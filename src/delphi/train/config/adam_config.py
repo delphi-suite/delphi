@@ -2,9 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class OptimizerConfig:
-    # TODO: move gas to gigaconfig; it's for training
-    gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
+class AdamConfig:
     # adamw optimizer
     learning_rate: float = 5e-4  # max learning rate
     weight_decay: float = 1e-1

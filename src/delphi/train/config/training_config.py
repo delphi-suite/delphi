@@ -6,10 +6,10 @@ from typing import Any, Optional
 import platformdirs
 from beartype import beartype
 
+from .adam_config import AdamConfig
 from .data_config import DataConfig
 from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
-from .optimizer_config import OptimizerConfig
 from .wandb_config import WandbConfig
 
 
@@ -71,8 +71,9 @@ class TrainingConfig:
         default=1.0,
         metadata={"help": "clip gradients at this value, or disable if == 0.0"},
     )
+    gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
     # (adamw) optimizer
-    optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
+    adam: AdamConfig = field(default_factory=AdamConfig)
 
     # reproducibility
     batch_ordering_seed: int = field(

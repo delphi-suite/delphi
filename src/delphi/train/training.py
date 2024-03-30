@@ -78,7 +78,7 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
 
     # derive iteration params (num_batches, num_steps, etc)
     num_batches = len(train_ds) // config.batch_size
-    num_steps = num_batches // config.optimizer.gradient_accumulation_steps
+    num_steps = num_batches // config.gradient_accumulation_steps
     lr_decay_iters = (
         config.max_epochs * num_batches
     )  # should be ~=max_iters per Chinchilla
