@@ -57,17 +57,18 @@ if __name__ == "__main__":
         text_docs = input_dataset[args.column_name]
     else:
         if len(input_dataset.column_names) > 1:
-            raise ValueError("There are more than one column in the specified dataset")
+            raise ValueError("There is more than one column in the specified dataset")
         text_docs = input_dataset[input_dataset.column_names[0]]
 
+    tokenized_dataset = tokenize_dataset(
+        text_docs,
+        tokenizer,
+        context_size=args.context_size,
+        batch_size=args.batch_size,
+    )
     output_dataset = Dataset.from_dict(
         {
-            "tokens": tokenize_dataset(
-                text_docs,
-                tokenizer,
-                context_size=args.context_size,
-                batch_size=args.batch_size,
-            )
+            "tokens": tokenized_dataset,
         }
     )
 
