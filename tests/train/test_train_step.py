@@ -7,11 +7,12 @@ import dacite
 import pytest
 import torch
 from datasets import Dataset
+from jaxtyping import Float
 
 from delphi.train.config import TrainingConfig
 from delphi.train.config.utils import load_preset
 from delphi.train.train_step import accumulate_gradients, train_step
-from delphi.train.utils import ModelTrainingState, get_xy_batch
+from delphi.train.utils import ModelTrainingState, get_xy_batch, setup_determinism
 
 
 @pytest.fixture
@@ -27,8 +28,17 @@ def dataset():
 
 @pytest.fixture
 def model():
+    setup_determinism(42)
     # TODO: replace this with a model config dict after model_config update is in (next PR)
     return load_preset("debug").model_config.get_model()
+
+
+def get_params(model: torch.nn.Module) -> Float[torch.Tensor, "params"]:
+    params = [
+        (name, param) for name, param in model.named_parameters() if param.requires_grad
+    ]
+    params.sort(key=lambda x: x[0])
+    return torch.cat([p.flatten() for _, p in params])
 
 
 def test_basic_reproducibility(dataset, model):
@@ -54,12 +64,12 @@ def test_basic_reproducibility(dataset, model):
     # train
     train_step(model_training_state, dataset, load_preset("debug"), device, indices)
 
-    params = torch.cat([p.flatten() for p in list(model.parameters())])
+    params = get_params(model)
 
     assert torch.isclose(
-        params[1000],
-        torch.tensor([-0.0057]),
-    )
+        params[[1000, 2000, 3000]],
+        torch.tensor([-0.01782517, -0.00771354, 0.03517739]),
+    ).all()
 
 
 def test_accumulate_gradients_accumulates(dataset, model):

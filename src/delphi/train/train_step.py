@@ -26,10 +26,6 @@ def train_step(
     """
     model = model_training_state.model
     optimizer = model_training_state.optimizer
-    assert (
-        config.batch_size % config.optimizer.gradient_accumulation_steps == 0
-    ), "batch_size must be divisible by gradient_accumulation_steps for minibatch size to make sense"
-    minibatch_size = config.batch_size // config.optimizer.gradient_accumulation_steps
 
     if config.debug_config.no_training:
         total_loss = 0.0

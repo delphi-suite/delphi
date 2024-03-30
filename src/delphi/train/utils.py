@@ -3,9 +3,10 @@ import logging
 import math
 import os
 import time
+from collections.abc import Generator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Generator, Optional, cast
+from typing import Optional, cast
 
 import datasets
 import safetensors.torch as st
@@ -51,6 +52,13 @@ class CheckpointData:
     config: TrainingConfig
     model_training_state: ModelTrainingState
     run_context: RunContext
+
+
+def setup_determinism(seed: int):
+    logging.debug(f"Setting up torch determinism (seed={seed})...")
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
 
 
 def get_device(device_str: str = "auto") -> torch.device:
@@ -182,8 +190,7 @@ def get_indices_for_epoch(
     dataset_size: int, batch_size: int, epoch: int, ordering_seed: int
 ) -> list[int]:
     """ """
-    num_indices = dataset_size // batch_size
-    indices = list(range(num_indices))
+    indices = list(range(dataset_size))
     shuffle_list(indices, seed=ordering_seed + epoch)
     return indices
 
@@ -244,6 +251,7 @@ def estimate_loss(
     split_to_ds: dict[str, Dataset],
     device: torch.device,
     epoch: int,
+    feature_names: dict[str, str],
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
@@ -264,7 +272,7 @@ def estimate_loss(
             step=0,
             indices=indices,
             device=device,
-            feature_name=split,
+            feature_name=feature_names[split],
         )
         for k, (X, Y) in enumerate(minibatches):
             loss = model(X, labels=Y, return_dict=True).loss

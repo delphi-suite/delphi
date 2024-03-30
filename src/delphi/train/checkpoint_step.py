@@ -42,6 +42,13 @@ def log_and_save_checkpoint(
             split_to_ds={"train": train_ds, "val": validation_ds},
             device=run_context.device,
             epoch=mts.epoch,
+            feature_names={
+                "train": config.data_config.train_feature,
+                "val": (
+                    config.data_config.validation_feature
+                    or config.data_config.train_feature
+                ),
+            },
         )
     new_best_val_loss = False
     if losses["val"] < mts.best_val_loss:

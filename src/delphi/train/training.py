@@ -8,7 +8,6 @@ from tqdm import tqdm
 from transformers import __version__ as transformers_version
 
 from delphi import __version__ as delphi_version
-from delphi import constants
 
 from .checkpoint_step import log_and_save_checkpoint, should_save_checkpoint
 from .config import TrainingConfig
@@ -22,6 +21,7 @@ from .utils import (
     initialize_model_training_state,
     load_tokens_dataset_from_huggingface,
     set_lr,
+    setup_determinism,
 )
 from .wandb_utils import init_wandb
 
@@ -35,10 +35,7 @@ def setup_training(config: TrainingConfig):
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
     # determinism
-    logging.debug("Setting torch.use_deterministic_algorithms(True)")
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.benchmark = False
-    torch.manual_seed(config.torch_seed)
+    setup_determinism(config.torch_seed)
 
     # wandb setup
     if config.wandb_config.log:
