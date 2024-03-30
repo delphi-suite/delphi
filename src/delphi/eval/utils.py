@@ -109,12 +109,12 @@ def tokenize(
     )
 
 
-def load_logprob_dataset(model: str) -> Dataset:
-    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")  # type: ignore
+def load_logprob_dataset(model: str):
+    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")
 
 
 def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
     return {
-        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]
+        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]  # type: ignore
         for model in constants.LLAMA2_MODELS
     }

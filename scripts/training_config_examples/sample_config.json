@@ -51,7 +51,5 @@
     "decay_lr": true,
     "warmup_iters": 1000,
     "min_lr": 0.0
-  },
-  "train_sample_limit": -1,
-  "val_sample_limit": -1
+  }
 }

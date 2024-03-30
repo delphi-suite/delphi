@@ -1,10 +1,12 @@
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 import platformdirs
 from beartype import beartype
 
+from .data_config import DataConfig
 from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
 from .model_config import ModelConfig
@@ -14,7 +16,7 @@ from .wandb_config import WandbConfig
 
 @beartype
 @dataclass(frozen=True)
-class GigaConfig:
+class TrainingConfig:
     model_config: ModelConfig
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -72,15 +74,22 @@ class GigaConfig:
         metadata={"help": "seed used for pseudorandomly sampling data during training"},
     )
     torch_seed: int = field(default=42, metadata={"help": "seed used for torch"})
+
+    # data
+    data_config: DataConfig = field(
+        default_factory=DataConfig,
+        metadata={"help": "specify training and validation data"},
+    )
+
     # debugging
-    train_sample_limit: int = field(
-        default=-1,
+    train_sample_limit: Optional[int] = field(
+        default=None,
         metadata={
             "help": "for debugging: limit size of the training set.# -1 implies no limit"
         },
     )
-    val_sample_limit: int = field(
-        default=-1,
+    val_sample_limit: Optional[int] = field(
+        default=None,
         metadata={
             "help": "for debugging: limit size of the validation set. -1 implies no limit"
         },
