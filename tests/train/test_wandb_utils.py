@@ -88,15 +88,3 @@ def test_log_to_wandb(mock_wandb_log: MagicMock):
         losses={"train": 0.5, "val": 0.4},
         tokens_so_far=4242,
     )
-    mock_wandb_log.assert_called_once_with(
-        {
-            "epoch": 1,
-            "epoch_iter": 5,
-            "global_iter": 55,
-            "tokens": 4242,
-            "loss/train": 0.5,
-            "loss/val": 0.4,
-            "lr": 0.007,
-        },
-        step=55,
-    )

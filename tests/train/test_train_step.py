@@ -70,9 +70,7 @@ def test_basic_reproducibility(dataset, model):
         last_training_step_time=0.0,
     )
     device = torch.device("cpu")
-    indices = list(range(64))
-
-    # train
+    indices = list(range(len(dataset)))
     train_step(model_training_state, dataset, load_preset("debug"), device, indices)
 
     params = get_params(model)
