@@ -50,8 +50,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    input_dataset = load_validation_dataset(f"delphi-suite/{args.input_dataset_name}")
-    tokenizer = AutoTokenizer.from_pretrained(f"delphi-suite/{args.tokenizer_name}")
+    input_dataset = load_validation_dataset(args.input_dataset_name)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
 
     if args.column_name:
         text_docs = input_dataset[args.column_name]
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     )
 
     output_dataset.push_to_hub(
-        repo_id=f"delphi-suite/{args.output_dataset_name}",
+        repo_id=args.output_dataset_name,
         private=False,
         token=args.token,
     )
