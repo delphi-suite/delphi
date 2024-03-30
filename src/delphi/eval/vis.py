@@ -1,6 +1,7 @@
 import uuid
 from typing import cast
 
+import panel as pn
 import torch
 from IPython.core.display import HTML
 from IPython.core.display_functions import display
@@ -138,3 +139,18 @@ def vis_sample_prediction_probs(
     """
     display(HTML(html_str))
     return html_str
+
+
+def token_selector(
+    vocab_map: dict[str, int]
+) -> tuple[pn.widgets.MultiChoice, list[int]]:
+    tokens = list(vocab_map.keys())
+    token_selector = pn.widgets.MultiChoice(name="Tokens", options=tokens)
+    token_ids = [vocab_map[token] for token in cast(list[str], token_selector.value)]
+
+    def update_tokens(event):
+        token_ids.clear()
+        token_ids.extend([vocab_map[token] for token in event.new])
+
+    token_selector.param.watch(update_tokens, "value")
+    return token_selector, token_ids
