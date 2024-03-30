@@ -15,11 +15,11 @@ from .wandb_config import WandbConfig
 
 @beartype
 @dataclass(frozen=True)
-class GigaConfig:
+class TrainingConfig:
     model_config: dict[str, Any] = field(
         metadata={
-            "help": "dictionary specifying model_class in transformers and arguments of the corresponding model config"
-        }
+            "help": "model config; class_name=name of model class in transformers, everything else is kwargs for the corresponding model config"
+        },
     )
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")

@@ -5,19 +5,24 @@ import torch
 from datasets import Dataset
 from transformers import PreTrainedModel
 
-from .config import GigaConfig
-from .utils import ModelTrainingState, get_xy_batch
+from .config import TrainingConfig
+from .utils import ModelTrainingState, gen_minibatches
 
 
 def train_step(
     model_training_state: ModelTrainingState,
     train_ds: Dataset,
-    config: GigaConfig,
+    config: TrainingConfig,
     device: torch.device,
-    indices: list[int],
+    ds_indices: list[int],
 ):
     """
-    Runs a training step, updating (mutating in place) model_training_state
+    Runs a training step, updating (mutating in place) model_training_state:
+    - generate gradient_accumulation_steps batches (each batch is batch_size/gradient_accumulation_steps items)
+    - forward pass, accumulating gradient/gradient_accumulation_steps over gradient_accumulation_steps batches
+    - clip gradient where gradient exceeds grad_clip (if configured)
+    - backward pass, updating model weights
+    - reset grad
     """
     model = model_training_state.model
     optimizer = model_training_state.optimizer
@@ -26,21 +31,18 @@ def train_step(
         total_loss = 0.0
         logging.debug("no_training set, skipping forward backward pass")
     else:
-        batches = (
-            get_xy_batch(
-                dataset=train_ds,
-                indices=indices,
-                batch_size=config.batch_size,
-                step=model_training_state.step,
-                microstep=microstep,
-                gradient_accumulation_steps=config.optimizer.gradient_accumulation_steps,
-                device=device,
-            )
-            for microstep in range(config.optimizer.gradient_accumulation_steps)
+        minibatches = gen_minibatches(
+            dataset=train_ds,
+            indices=ds_indices,
+            batch_size=config.batch_size,
+            num_minibatches=config.optimizer.gradient_accumulation_steps,
+            step=model_training_state.step,
+            device=device,
+            feature_name=config.data_config.train_feature,
         )
         total_loss = accumulate_gradients(
             model=model,
-            batches=batches,
+            batches=minibatches,
             num_batches=config.optimizer.gradient_accumulation_steps,
         )
         # clip the gradient

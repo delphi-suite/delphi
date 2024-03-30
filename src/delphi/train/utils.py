@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import time
+from collections.abc import Generator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Type, cast
@@ -16,7 +17,7 @@ from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
 
-from .config import GigaConfig
+from .config import TrainingConfig
 from .run_context import RunContext
 from .shuffle import shuffle_list
 
@@ -39,6 +40,13 @@ class ModelTrainingState:
     train_loss: float = field(
         default=0.0, metadata={"help": "loss on most recent train step"}
     )
+
+
+def setup_determinism(seed: int):
+    logging.debug(f"Setting up torch determinism (seed={seed})...")
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
 
 
 def get_device(device_str: str = "auto") -> torch.device:
@@ -78,7 +86,7 @@ def get_lr(
 
 def set_lr(
     lr_decay_iters: int,
-    config: GigaConfig,
+    config: TrainingConfig,
     optimizer: torch.optim.Optimizer,
     iter_num: int,
 ):
@@ -102,10 +110,10 @@ def set_lr(
 
 
 def initialize_model_training_state(
-    config: GigaConfig, device: torch.device
+    config: TrainingConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
-    model = get_model(config.model_config)
+    model = init_model(config.model_config, seed=config.torch_seed)
     model.to(device)  # type: ignore
     optimizer = AdamW(
         lr=config.optimizer.learning_rate,
@@ -148,37 +156,57 @@ def get_indices_for_epoch(
     dataset_size: int, batch_size: int, epoch: int, ordering_seed: int
 ) -> list[int]:
     """ """
-    num_indices = dataset_size // batch_size
-    indices = list(range(num_indices))
+    indices = list(range(dataset_size))
     shuffle_list(indices, seed=ordering_seed + epoch)
     return indices
 
 
 def get_xy_batch(
-    batch_size: int,
     dataset: Dataset,
     indices: list[int],
-    step: int,
-    microstep: int,
-    gradient_accumulation_steps: int,
+    batch_size: int,
+    batch_num: int,
+    feature_name: str,
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Get a batch of data from a dataset given a batch number and indices
 
-    Imagine dataset is functionally split into batches of size batch_size. If batch_size=3, then
-    the split each sample belongs to would go: [0, 0, 0, 1, 1, 1, 2, 2, 2, ... n_batches-1, n_batches-1, n_batches-1]
-    We can refer to these splits by indices (0...n_batches-1), each of which is a contiguous chunk of size batch_size.
-    At the start of each epoch, we make a list of indices (range(n_batches)) and shuffle it deterministically
-    so that we get a different ordering of the dataset each epoch. Here, we want to get the split-of-size-batch_size
-    corresponding to the current batch number within this batch.
+    Args:
     """
-    batch_num = step * gradient_accumulation_steps + microstep
-    index = indices[batch_num]
-    start = index * batch_size
-    end = (index + 1) * batch_size
-    data = dataset[start:end]["tokens"].to(device)
+    start = batch_num * batch_size
+    end = (batch_num + 1) * batch_size
+    batch_indices = indices[start:end]
+    data = dataset[batch_indices][feature_name].to(device)
     return data[:, :-1], data[:, 1:]
+
+
+def gen_minibatches(
+    dataset: Dataset,
+    batch_size: int,
+    num_minibatches: int,
+    step: int,
+    indices: list[int],
+    device: torch.device,
+    feature_name: str,
+) -> Generator[tuple[torch.Tensor, torch.Tensor], None, None]:
+    """
+    Generate minibatches from a dataset given a step and indices
+    """
+    assert (
+        batch_size % num_minibatches == 0
+    ), "batch_size must be divisible by num_minibatches"
+    minibatch_size = batch_size // num_minibatches
+    first_minibatch_num = num_minibatches * step
+    for i in range(num_minibatches):
+        yield get_xy_batch(
+            dataset=dataset,
+            indices=indices,
+            batch_num=first_minibatch_num + i,
+            batch_size=minibatch_size,
+            feature_name=feature_name,
+            device=device,
+        )
 
 
 @torch.no_grad()
@@ -189,6 +217,7 @@ def estimate_loss(
     split_to_ds: dict[str, Dataset],
     device: torch.device,
     epoch: int,
+    feature_names: dict[str, str],
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
@@ -200,18 +229,18 @@ def estimate_loss(
             epoch=epoch,
             ordering_seed=1234,
         )
-        num_losses = min(eval_iters, len(ds) // batch_size)
-        losses = torch.zeros(num_losses)  # keep on CPU
-        for k in range(num_losses):  # type: ignore
-            X, Y = get_xy_batch(
-                batch_size=batch_size,
-                dataset=ds,
-                indices=indices,
-                step=k,
-                microstep=0,
-                gradient_accumulation_steps=1,
-                device=device,
-            )
+        eval_iters = min(eval_iters, len(ds) // batch_size)
+        losses = torch.zeros(eval_iters)  # keep on CPU
+        minibatches = gen_minibatches(
+            dataset=ds,
+            batch_size=batch_size,
+            num_minibatches=eval_iters,
+            step=0,
+            indices=indices,
+            device=device,
+            feature_name=feature_names[split],
+        )
+        for k, (X, Y) in enumerate(minibatches):
             loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
         out[split] = losses.mean()
@@ -220,7 +249,7 @@ def estimate_loss(
 
 
 def save_results(
-    config: GigaConfig,
+    config: TrainingConfig,
     train_results: ModelTrainingState,
     run_context: RunContext,
     results_path: str,
@@ -269,16 +298,23 @@ def save_results(
 
 
 def load_tokens_dataset_from_huggingface(
-    dataset: str,
+    hf_dataset_id: str,
     split: str,
     tokens_feature: str,
     limit: Optional[int] = None,
 ) -> Dataset:
-    """Load a dataset from huggingface"""
+    """Load a dataset from huggingface
+
+    Args:
+        hf_dataset_id (str): huggingface dataset id e.g. "delphi-suite/v0-tinystories-v2-clean-tokenized"
+        split (str): split to load, e.g. "train" or "validation"
+        tokens_feature (str): feature name for tokens, e.g. "tokens"
+        limit (Optional[int], optional): limit the number of samples. None (default) means no limit (use full dataset split)
+    """
     ds = cast(
         Dataset,
         load_dataset(
-            dataset,
+            hf_dataset_id,
             split=split,
             features=datasets.Features(
                 {tokens_feature: datasets.Sequence(datasets.Value("int32"))}
@@ -291,7 +327,7 @@ def load_tokens_dataset_from_huggingface(
     return ds
 
 
-def count_tokens_so_far(config: GigaConfig, mts: ModelTrainingState) -> int:
+def count_tokens_so_far(config: TrainingConfig, mts: ModelTrainingState) -> int:
     tokens_per_iter = (
         config.batch_size
         * config.optimizer.gradient_accumulation_steps
@@ -301,10 +337,12 @@ def count_tokens_so_far(config: GigaConfig, mts: ModelTrainingState) -> int:
     return mts.iter_num * tokens_per_iter
 
 
-def get_model(model_config_dict: dict[str, Any]) -> PreTrainedModel:
+def init_model(model_config_dict: dict[str, Any], seed: int) -> PreTrainedModel:
     """
     Get a model from a model config dictionary
     """
+    # reseed torch to ensure reproducible results in case other torch calls are different up to this point
+    torch.random.manual_seed(seed)
     model_class = getattr(transformers, model_config_dict["model_class"])
     config_class = cast(Type[transformers.PretrainedConfig], model_class.config_class)
     model_params_dict = model_config_dict.copy()

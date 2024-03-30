@@ -9,8 +9,8 @@ from transformers import __version__ as transformers_version
 
 from delphi import __version__ as delphi_version
 
-from .checkpoint_step import run_checkpoint, should_run_checkpoint
-from .config import GigaConfig
+from .checkpoint_step import log_and_save_checkpoint, should_save_checkpoint
+from .config import TrainingConfig
 from .run_context import RunContext
 from .train_step import train_step
 from .utils import (
@@ -20,11 +20,12 @@ from .utils import (
     initialize_model_training_state,
     load_tokens_dataset_from_huggingface,
     set_lr,
+    setup_determinism,
 )
 from .wandb_utils import init_wandb
 
 
-def setup_training(config: GigaConfig):
+def setup_training(config: TrainingConfig):
     logging.info("Setting up training...")
     os.makedirs(config.output_dir, exist_ok=True)
 
@@ -33,17 +34,14 @@ def setup_training(config: GigaConfig):
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
     # determinism
-    logging.debug("Setting torch.use_deterministic_algorithms(True)")
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.benchmark = False
-    torch.manual_seed(config.torch_seed)
+    setup_determinism(config.torch_seed)
 
     # wandb setup
     if config.wandb_config.log:
         init_wandb(config=config)
 
 
-def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
+def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext]:
     setup_training(config)
     logging.info("Starting training...")
     logging.info("Config:")
@@ -62,13 +60,13 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
     # load data
     logging.info("Loading data...")
     train_ds = load_tokens_dataset_from_huggingface(
-        dataset=config.data_config.train_dataset,
+        hf_dataset_id=config.data_config.train_dataset,
         split=config.data_config.train_split,
         tokens_feature=config.data_config.train_feature,
         limit=config.data_config.train_sample_limit,
     )
     validation_ds = load_tokens_dataset_from_huggingface(
-        dataset=(
+        hf_dataset_id=(
             config.data_config.validation_dataset or config.data_config.train_dataset
         ),
         split=config.data_config.validation_split,
@@ -101,8 +99,8 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
         model_training_state.epoch = epoch
         for step in tqdm(range(num_steps)):
             model_training_state.step = step
-            if should_run_checkpoint(config, model_training_state):
-                run_checkpoint(
+            if should_save_checkpoint(config, model_training_state):
+                log_and_save_checkpoint(
                     config=config,
                     mts=model_training_state,
                     train_ds=train_ds,
@@ -120,7 +118,7 @@ def run_training(config: GigaConfig) -> tuple[ModelTrainingState, RunContext]:
                 train_ds=train_ds,
                 config=config,
                 device=run_context.device,
-                indices=train_data_indices,
+                ds_indices=train_data_indices,
             )
             t1 = time.time()
             dt = t1 - model_training_state.last_training_step_time

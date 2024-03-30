@@ -10,7 +10,8 @@ from delphi import constants
 @dataclass(frozen=True)
 class DataConfig:
     train_dataset: str = field(
-        default=constants.TOKENIZED_CORPUS_DATASET,
+        # TODO: remove default after updating configs to include this field
+        default=constants.TINYSTORIES_TOKENIZED_HF_DATASET,
         metadata={"help": "tokenized dataset on huggingface to use for train"},
     )
     train_split: str = field(

@@ -12,7 +12,7 @@ from dacite import from_dict
 
 from delphi.constants import CONFIG_PRESETS_DIR
 
-from .gigaconfig import GigaConfig
+from .training_config import TrainingConfig
 
 
 def _merge_dicts(merge_into: dict[str, Any], merge_from: dict[str, Any]):
@@ -39,7 +39,7 @@ def get_user_config_path() -> Path:
     return user_config_path
 
 
-def get_presets_by_name() -> dict[str, GigaConfig]:
+def get_presets_by_name() -> dict[str, TrainingConfig]:
     return {
         preset.stem: build_config_from_files([preset]) for preset in get_preset_paths()
     }
@@ -118,22 +118,22 @@ def log_config_recursively(
 def build_config_from_files_and_overrides(
     config_files: list[Path],
     overrides: dict[str, Any],
-) -> GigaConfig:
+) -> TrainingConfig:
     combined_config = build_config_dict_from_files(config_files)
     _merge_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
-    filter_config_to_actual_config_values(GigaConfig, combined_config)
+    filter_config_to_actual_config_values(TrainingConfig, combined_config)
     logging.info("User-set config values:")
     log_config_recursively(
         combined_config, logging_fn=logging.info, prefix="  ", indent="  "
     )
-    return from_dict(GigaConfig, combined_config)
+    return from_dict(TrainingConfig, combined_config)
 
 
-def build_config_from_files(config_files: list[Path]) -> GigaConfig:
+def build_config_from_files(config_files: list[Path]) -> TrainingConfig:
     return build_config_from_files_and_overrides(config_files, {})
 
 
-def load_preset(preset_name: str) -> GigaConfig:
+def load_preset(preset_name: str) -> TrainingConfig:
     preset_path = Path(CONFIG_PRESETS_DIR) / f"{preset_name}.json"  # type: ignore
     return build_config_from_files([preset_path])

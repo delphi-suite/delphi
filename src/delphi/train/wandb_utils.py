@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import wandb
 
-from .config import GigaConfig
+from .config import TrainingConfig
 from .utils import ModelTrainingState
 
 
@@ -13,7 +13,7 @@ def silence_wandb():
     os.environ["WANDB_SILENT"] = "true"
 
 
-def init_wandb(config: GigaConfig):
+def init_wandb(config: TrainingConfig):
     # if log level < debug, silence wandb
     if logging.getLogger().level > logging.INFO or config.wandb_config.silence:
         silence_wandb()

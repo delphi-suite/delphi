@@ -7,7 +7,7 @@ import torch
 import transformers
 from dacite import from_dict
 
-from delphi.train.config import GigaConfig
+from delphi.train.config import TrainingConfig
 from delphi.train.utils import ModelTrainingState, initialize_model_training_state
 from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 
@@ -15,7 +15,7 @@ from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 @pytest.fixture
 def mock_giga_config():
     config = from_dict(
-        GigaConfig,
+        TrainingConfig,
         {
             "run_name": "test_run",
             "device": "cpu",
