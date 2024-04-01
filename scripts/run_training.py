@@ -97,7 +97,6 @@ def overrides_to_dict(overrides: list[str]) -> dict[str, Any]:
 def main():
     parser = setup_parser()
     args = parser.parse_args()
-    print(args.config_files)
     if len(sys.argv) == 1:
         parser.print_help()
         exit(0)
