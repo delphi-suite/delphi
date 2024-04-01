@@ -4,50 +4,61 @@ import math
 import os
 import time
 from collections.abc import Generator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Optional, cast
 
+import datasets
 import safetensors.torch as st
 import torch
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
 
-from delphi import constants
-from delphi.eval.utils import load_delphi_dataset
-
-from .config.gigaconfig import GigaConfig
-from .config.models import ModelTypes, get_delphi_config
-from .config.models.model_config import ModelConfig
+from .config import TrainingConfig
 from .run_context import RunContext
 from .shuffle import shuffle_list
 
 
 @dataclass
 class ModelTrainingState:
-    model: torch.nn.Module
+    """mutable training state - stuff that changes over the course of training"""
+
+    model: PreTrainedModel
     optimizer: torch.optim.Optimizer
-    iter_num: int
-    local_iter_num: int
-    best_val_loss: float
-    running_mfu: float
-    t0: float
-    epoch: int
-    step: int
-    lr: float = 1.0e-5
+    iter_num: int = field(
+        metadata={"help": "total iterations so far across all epochs"}
+    )
+    best_val_loss: float = field(metadata={"help": "best validation loss so far"})
+    last_training_step_time: float = field(
+        metadata={"help": "time last iteration ended"}
+    )
+    epoch: int = field(metadata={"help": "current epoch"})
+    step: int = field(metadata={"help": "step within current epoch"})
+    lr: float = field(default=1.0e-5, metadata={"help": "learning rate"})
+    train_loss: float = field(
+        default=0.0, metadata={"help": "loss on most recent train step"}
+    )
 
 
 @dataclass
-class EvalData:
-    # values we expose to eval callback functions
+class CheckpointData:
+    """values we expose to assorted checkpoint/eval functions"""
+
     tokens_per_iter: int
     losses: dict[str, float]
     new_best_val_loss: bool
-    config: GigaConfig
+    config: TrainingConfig
     model_training_state: ModelTrainingState
     run_context: RunContext
+
+
+def setup_determinism(seed: int):
+    logging.debug(f"Setting up torch determinism (seed={seed})...")
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
 
 
 def get_device(device_str: str = "auto") -> torch.device:
@@ -63,25 +74,6 @@ def get_device(device_str: str = "auto") -> torch.device:
         else:
             device_str = "cpu"
     return torch.device(device_str)
-
-
-def get_optimizer(
-    model: torch.nn.Module,
-    config: GigaConfig,
-    output_dir=None,
-    device: torch.device = torch.device("cpu"),
-) -> AdamW:
-    optimizer = AdamW(
-        lr=config.optimizer.learning_rate,
-        params=model.parameters(),
-        weight_decay=config.optimizer.weight_decay,
-        betas=(config.optimizer.beta1, config.optimizer.beta2),
-    )
-    if output_dir is not None:
-        opt_path = os.path.join(output_dir, "opt.pt")
-        with open(opt_path, "rb") as f:
-            optimizer.load_state_dict(torch.load(f))
-    return optimizer
 
 
 def get_lr(
@@ -106,10 +98,13 @@ def get_lr(
 
 def set_lr(
     lr_decay_iters: int,
-    config: GigaConfig,
+    config: TrainingConfig,
     optimizer: torch.optim.Optimizer,
     iter_num: int,
 ):
+    """
+    Set the learning rate (calculated by get_lr) on the optimizer
+    """
     lr = (
         get_lr(
             iter_num=iter_num,
@@ -126,7 +121,7 @@ def set_lr(
     return lr
 
 
-def save_checkpoint_if_needed(eval_data: EvalData):
+def save_checkpoint_if_needed(eval_data: CheckpointData):
     mts = eval_data.model_training_state
     # we save if it's not the first iter AND at least one of:
     # 1) we have a new best validation loss
@@ -147,99 +142,105 @@ def save_checkpoint_if_needed(eval_data: EvalData):
     )
 
 
-def load_model_from_checkpoint(config: GigaConfig, output_dir: str) -> torch.nn.Module:
-    model = config_to_model(config.model_config)
-    st.load_model(model, os.path.join(output_dir, "model", "model.safetensors"))
-    return model
-
-
-def config_to_model(config: ModelConfig) -> PreTrainedModel:
-    # get ModelType object from name ('llama2' -> ModelType(...))
-    delphi_config = get_delphi_config(config)
-    model_type = ModelTypes.get(config.model_type)
-    return model_type.model(model_type.config(**asdict(delphi_config)))
-
-
 def initialize_model_training_state(
-    config: GigaConfig, device: torch.device
+    config: TrainingConfig, device: torch.device
 ) -> ModelTrainingState:
     t0 = time.time()
-    training_state = None
+    model = config.model_config.get_model()
+    model.to(device)  # type: ignore
+    optimizer = AdamW(
+        lr=config.optimizer.learning_rate,
+        params=model.parameters(),
+        weight_decay=config.optimizer.weight_decay,
+        betas=(config.optimizer.beta1, config.optimizer.beta2),
+    )
+    training_state_vals = dict()
     if config.init_from == "scratch":
-        # init a new model from scratch
-        logging.debug("Initializing a new model from scratch")
-        model = config_to_model(config.model_config)
-        checkpoint = None
+        logging.info(f"  initialized model and optimizer from scratch")
     # TODO: resume from huggingface model
     elif config.init_from == "resume":
         logging.info(f"Resuming training from {config.output_dir}")
         checkpoint = config.output_dir
-        model = load_model_from_checkpoint(config, checkpoint)
+        st.load_model(
+            model, os.path.join(config.output_dir, "model", "model.safetensors")
+        )
         with open(os.path.join(checkpoint, "training_state.json"), "r") as f:
-            training_state = json.load(f)
-    model.to(device)  # type: ignore
-    # optimizer
-    optimizer = get_optimizer(
-        model=model,
-        config=config,
-        output_dir=config.output_dir
-        if (Path(config.output_dir) / "opt.safetensors").exists()
-        else None,
-        device=device,
-    )
-    epoch = training_state.get("epoch", 0) if training_state is not None else 0
-    step = training_state.get("step", 0) if training_state is not None else 0
-    best_val_loss = training_state.get("best_val_loss", 1e9) if training_state else 1e9
-    iter_num = training_state.get("iter_num", 0) if training_state else 0
-    local_iter_num = training_state.get("local_iter_num", 0) if training_state else 0
-    running_mfu = training_state.get("running_mfu", 0.0) if training_state else -1.0
-    checkpoint = None  # free up memory
+            training_state_vals = json.load(f)
+        opt_state_dict_path = Path(os.path.join(config.output_dir, "opt.pt"))
+        if opt_state_dict_path.exists():
+            with open(opt_state_dict_path, "rb") as f:
+                logging.info("  Loading optimizer state from {state_dict_path}")
+                optimizer.load_state_dict(torch.load(f))
+    else:
+        raise ValueError(
+            f"{config.init_from} is not one of (scratch, resume), which are the two valid initialization methods. Unable to initialize model."
+        )
     return ModelTrainingState(
         model=model,
         optimizer=optimizer,
-        iter_num=iter_num,
-        local_iter_num=local_iter_num,
-        best_val_loss=best_val_loss,
-        running_mfu=running_mfu,
-        t0=t0,
-        epoch=epoch,
-        step=step,
+        last_training_step_time=t0,
+        iter_num=training_state_vals.get("iter_num", 0),
+        best_val_loss=training_state_vals.get("best_val_loss", 1e9),
+        epoch=training_state_vals.get("epoch", 0),
+        step=training_state_vals.get("step", 0),
     )
 
 
-def load_delphi_training_dataset(split: str, limit: int = -1):
-    """For training, we want (X, Y) pairs, where X is a chunk of text and Y is the next token.)
-    To construct this, we take the original tokenized dataset, break it into max_seq_len+1 length chunks,
-    and then take [:-1] as X and [1:] as Y.
-    """
-    if limit == -1:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split)
-    else:
-        ds = load_delphi_dataset(constants.TOKENIZED_CORPUS_DATASET, split).select(
-            range(limit)
-        )
-    ds.set_format("torch")
-    return ds
+def get_indices_for_epoch(
+    dataset_size: int, batch_size: int, epoch: int, ordering_seed: int
+) -> list[int]:
+    """ """
+    indices = list(range(dataset_size))
+    shuffle_list(indices, seed=ordering_seed + epoch)
+    return indices
 
 
-def get_next_xy(
-    train_batch_iter: Generator,
-    device: torch.device
-    # train_batch_iter: Generator[dict[str, list[int]], None, None], device: torch.device
+def get_xy_batch(
+    dataset: Dataset,
+    indices: list[int],
+    batch_size: int,
+    batch_num: int,
+    feature_name: str,
+    device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    data = next(train_batch_iter).to(device)
-    X, Y = data[:, :-1], data[:, 1:]
-    return X, Y
+    """
+    Get a batch of data from a dataset given a batch number and indices
+
+    Args:
+    """
+    start = batch_num * batch_size
+    end = (batch_num + 1) * batch_size
+    batch_indices = indices[start:end]
+    data = dataset[batch_indices][feature_name].to(device)
+    return data[:, :-1], data[:, 1:]
 
 
-def batch_generator(
-    dataset: Dataset, batch_size: int, epoch: int, ordering_seed: int
-) -> Generator[torch.Tensor, None, None]:
-    sampler = list(range(len(dataset)))  # type: ignore
-    shuffle_list(sampler, seed=ordering_seed + epoch)
-    sampler = torch.Tensor(sampler)
-    for samples in sampler.split(batch_size):
-        yield dataset[samples]["tokens"]
+def gen_minibatches(
+    dataset: Dataset,
+    batch_size: int,
+    num_minibatches: int,
+    step: int,
+    indices: list[int],
+    device: torch.device,
+    feature_name: str,
+) -> Generator[tuple[torch.Tensor, torch.Tensor], None, None]:
+    """
+    Generate minibatches from a dataset given a step and indices
+    """
+    assert (
+        batch_size % num_minibatches == 0
+    ), "batch_size must be divisible by num_minibatches"
+    minibatch_size = batch_size // num_minibatches
+    first_minibatch_num = num_minibatches * step
+    for i in range(num_minibatches):
+        yield get_xy_batch(
+            dataset=dataset,
+            indices=indices,
+            batch_num=first_minibatch_num + i,
+            batch_size=minibatch_size,
+            feature_name=feature_name,
+            device=device,
+        )
 
 
 @torch.no_grad()
@@ -250,15 +251,30 @@ def estimate_loss(
     split_to_ds: dict[str, Dataset],
     device: torch.device,
     epoch: int,
+    feature_names: dict[str, str],
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
     model.eval()
     for split, ds in split_to_ds.items():
-        batch_iter = iter(batch_generator(ds, batch_size, epoch, 1234))
+        indices = get_indices_for_epoch(
+            dataset_size=len(ds),
+            batch_size=batch_size,
+            epoch=epoch,
+            ordering_seed=1234,
+        )
+        eval_iters = min(eval_iters, len(ds) // batch_size)
         losses = torch.zeros(eval_iters)  # keep on CPU
-        for k in range(min(eval_iters, len(ds) // batch_size)):  # type: ignore
-            X, Y = get_next_xy(batch_iter, device)
+        minibatches = gen_minibatches(
+            dataset=ds,
+            batch_size=batch_size,
+            num_minibatches=eval_iters,
+            step=0,
+            indices=indices,
+            device=device,
+            feature_name=feature_names[split],
+        )
+        for k, (X, Y) in enumerate(minibatches):
             loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
         out[split] = losses.mean()
@@ -266,19 +282,18 @@ def estimate_loss(
     return out
 
 
-def upload_to_huggingface(eval_data: EvalData):
-    model = eval_data.model_training_state.model
-    if isinstance(model, PreTrainedModel):
-        model = cast(PreTrainedModel, model)
-        model.save_pretrained(eval_data.config.output_dir)
-
-
 def save_results(
-    config: GigaConfig,
+    config: TrainingConfig,
     train_results: ModelTrainingState,
     run_context: RunContext,
     results_path: str,
 ):
+    """
+    save results to disk, and to huggingface if configured to do so.
+
+    Saves everything required to replicate the current state of training, including optimizer state,
+    config, context (e.g. hardware), training step, etc
+    """
     os.makedirs(results_path, exist_ok=True)
     with open(os.path.join(results_path, "config.json"), "w") as file:
         json.dump(asdict(config), file, indent=2)
@@ -298,9 +313,7 @@ def save_results(
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
-            "local_iter_num": train_results.local_iter_num,
             "best_val_loss": train_results.best_val_loss,
-            "running_mfu": train_results.running_mfu,
             "lr": train_results.lr,
             "epoch": train_results.epoch,
             "step": train_results.step,
@@ -317,3 +330,33 @@ def save_results(
             repo_id=str(config.huggingface.repo_id),
             path_in_repo=f"iter_{train_results.iter_num}/",
         )
+
+
+def load_tokens_dataset_from_huggingface(
+    hf_dataset_id: str,
+    split: str,
+    tokens_feature: str,
+    limit: Optional[int] = None,
+) -> Dataset:
+    """Load a dataset from huggingface
+
+    Args:
+        hf_dataset_id (str): huggingface dataset id e.g. "delphi-suite/v0-tinystories-v2-clean-tokenized"
+        split (str): split to load, e.g. "train" or "validation"
+        tokens_feature (str): feature name for tokens, e.g. "tokens"
+        limit (Optional[int], optional): limit the number of samples. None (default) means no limit (use full dataset split)
+    """
+    ds = cast(
+        Dataset,
+        load_dataset(
+            hf_dataset_id,
+            split=split,
+            features=datasets.Features(
+                {tokens_feature: datasets.Sequence(datasets.Value("int32"))}
+            ),
+        ),
+    )
+    if limit is not None and limit > 0:
+        ds = ds.select(range(limit))
+    ds.set_format("torch")
+    return ds

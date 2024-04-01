@@ -1,6 +1,8 @@
+import logging
 from collections.abc import Callable
-from typing import cast
+from typing import Any, cast
 
+import numpy as np
 import torch
 from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
@@ -85,7 +87,9 @@ def load_delphi_dataset(dataset_name: str, split: str, slice: str = "") -> Datas
         # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
         split=f"train{slice}",
     )
-    return cast(Dataset, dataset)
+    dataset = cast(Dataset, dataset)
+    logging.info(f" Loaded {data_files_str} ({len(dataset)} entries)")
+    return dataset
 
 
 def load_validation_dataset(dataset_name: str, slice: str = "") -> Dataset:
@@ -106,12 +110,24 @@ def tokenize(
     )
 
 
-def load_logprob_dataset(model: str) -> Dataset:
-    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")  # type: ignore
+def load_logprob_dataset(model: str):
+    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")
 
 
 def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
     return {
-        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]
+        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]  # type: ignore
         for model in constants.LLAMA2_MODELS
+    }
+
+
+def dict_filter_quantile(
+    d: dict[Any, float], q_start: float, q_end: float
+) -> dict[Any, float]:
+    if not (0 <= q_start < q_end <= 1):
+        raise ValueError("Invalid quantile range")
+    q_start_val = np.nanquantile(list(d.values()), q_start)
+    q_end_val = np.nanquantile(list(d.values()), q_end)
+    return {
+        k: v for k, v in d.items() if q_start_val <= v <= q_end_val and not np.isnan(v)
     }

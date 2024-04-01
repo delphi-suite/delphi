@@ -16,8 +16,8 @@
   "batch_size": 64,
   "max_seq_len": 512,
   "model_config": {
-    "model_type": "mamba",
-    "mamba": {
+    "model_type": "MambaForCausalLM",
+    "model_params": {
       "vocab_size": 4096,
       "hidden_size": 768,
       "state_size": 16,
@@ -42,8 +42,7 @@
       "rescale_prenorm_residual": false,
       "use_cache": true,
       "tie_word_embeddings": true
-    },
-    "llama": null
+    }
   },
   "max_epochs": 10,
   "grad_clip": 1.0,
@@ -57,7 +56,5 @@
     "decay_lr": true,
     "warmup_iters": 1000,
     "min_lr": 0.0
-  },
-  "train_sample_limit": -1,
-  "val_sample_limit": -1
+  }
 }

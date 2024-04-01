@@ -6,11 +6,13 @@
   "eval_interval": 1,
   "log_interval": 1,
   "eval_iters": 10,
-  "train_sample_limit": 64,
+  "data_config": {
+    "train_sample_limit": 64
+  },
   "batch_size": 8,
   "model_config": {
-    "model_type": "mamba",
-    "mamba": {
+    "model_type": "MambaForCausalLM",
+    "model_params": {
       "vocab_size": 4096,
       "hidden_size": 48,
       "state_size": 16,

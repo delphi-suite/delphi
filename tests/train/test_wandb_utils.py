@@ -6,23 +6,29 @@ import pytest
 import torch
 from dacite import from_dict
 
-from delphi.train.config import GigaConfig
-from delphi.train.config.models import TypedLlamaConfig
+from delphi.train.config import TrainingConfig
 from delphi.train.run_context import RunContext
-from delphi.train.utils import EvalData, initialize_model_training_state
+from delphi.train.utils import CheckpointData, initialize_model_training_state
 from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 
 
 @pytest.fixture
 def mock_giga_config():
     config = from_dict(
-        GigaConfig,
+        TrainingConfig,
         {
             "run_name": "test_run",
             "device": "cpu",
             "model_config": {
-                "model_type": "llama2",
-                "llama2": asdict(TypedLlamaConfig()),
+                "model_type": "LlamaForCausalLM",
+                "model_params": {
+                    "hidden_size": 48,
+                    "intermediate_size": 48,
+                    "num_attention_heads": 2,
+                    "num_hidden_layers": 2,
+                    "num_key_value_heads": 2,
+                    "vocab_size": 4096,
+                },
             },
             "wandb_config": {
                 "log": True,
@@ -43,13 +49,12 @@ def mock_model_training_state(mock_giga_config):
     mts.epoch = 1
     mts.iter_num = 1
     mts.lr = 0.001
-    mts.running_mfu = 3.0
     return mts
 
 
 @pytest.fixture
-def mock_eval_data(mock_giga_config, mock_model_training_state):
-    eval_data = EvalData(
+def mock_checkpoint_data(mock_giga_config, mock_model_training_state):
+    eval_data = CheckpointData(
         model_training_state=mock_model_training_state,
         tokens_per_iter=1000,
         losses={"train": 0.5, "val": 0.4},
@@ -84,8 +89,8 @@ def test_init_wandb(mock_wandb_init: MagicMock, mock_giga_config):
 
 
 @patch("wandb.log")
-def test_log_to_wandb(mock_wandb_log, mock_eval_data):
-    log_to_wandb(mock_eval_data)
+def test_log_to_wandb(mock_wandb_log, mock_checkpoint_data):
+    log_to_wandb(mock_checkpoint_data)
     mock_wandb_log.assert_called_once_with(
         {
             "iter": 1,
@@ -93,7 +98,6 @@ def test_log_to_wandb(mock_wandb_log, mock_eval_data):
             "loss/train": 0.5,
             "loss/val": 0.4,
             "lr": 0.001,
-            "mfu": 300.0,
         },
         step=1,
     )
