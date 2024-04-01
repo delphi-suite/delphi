@@ -13,7 +13,7 @@ from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 
 
 @pytest.fixture
-def mock_giga_config():
+def mock_training_config():
     config = from_dict(
         TrainingConfig,
         {
@@ -41,10 +41,10 @@ def mock_giga_config():
 
 
 @pytest.fixture
-def mock_model_training_state(mock_giga_config):
-    device = torch.device(mock_giga_config.device)
+def mock_model_training_state(mock_training_config):
+    device = torch.device(mock_training_config.device)
     # this is gross and horrible, sorry, I'm rushing
-    mts = initialize_model_training_state(config=mock_giga_config, device=device)
+    mts = initialize_model_training_state(config=mock_training_config, device=device)
     mts.step = 1
     mts.epoch = 1
     mts.iter_num = 1
@@ -59,13 +59,13 @@ def test_silence_wandb():
 
 
 @patch("wandb.init")
-def test_init_wandb(mock_wandb_init: MagicMock, mock_giga_config):
-    init_wandb(mock_giga_config)
+def test_init_wandb(mock_wandb_init: MagicMock, mock_training_config):
+    init_wandb(mock_training_config)
     mock_wandb_init.assert_called_once_with(
         entity="test_entity",
         project="test_project",
         name="test_run",
-        config=asdict(mock_giga_config),
+        config=asdict(mock_training_config),
     )
 
 
