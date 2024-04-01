@@ -8,8 +8,13 @@ import plotly.graph_objects as go
 def visualize_per_token_category(
     input: dict[Union[str, int], dict[str, tuple]],
     log_scale=False,
-    **kwargs: Union[str, bool],
-    # ) -> ipywidgets.VBox:
+    line_metric="Means",
+    checkpoint_mode=True,
+    shade_color="rgba(68, 68, 68, 0.3)",
+    line_color="rgb(31, 119, 180)",
+    bar_color="purple",
+    marker_color="SkyBlue",
+    background_color="AliceBlue",
 ) -> go.FigureWidget:
     input_x = list(input.keys())
     categories = list(input[input_x[0]].keys())
@@ -25,7 +30,7 @@ def visualize_per_token_category(
 
     means, err_lo, err_hi = get_plot_values(category)
 
-    if kwargs.get("checkpoint_mode"):
+    if checkpoint_mode:
         scatter_plot = go.Figure(
             [
                 go.Scatter(
@@ -33,7 +38,7 @@ def visualize_per_token_category(
                     x=input_x,
                     y=means + err_hi,
                     mode="lines",
-                    marker=dict(color=kwargs.get("shade_color", "#444")),
+                    marker=dict(color=shade_color),
                     line=dict(width=0),
                     showlegend=False,
                 ),
@@ -41,24 +46,22 @@ def visualize_per_token_category(
                     name="Lower Bound",
                     x=input_x,
                     y=means - err_lo,
-                    marker=dict(color=kwargs.get("shade_color", "#444")),
+                    marker=dict(color=shade_color),
                     line=dict(width=0),
                     mode="lines",
-                    fillcolor=kwargs.get("shade_color", "rgba(68, 68, 68, 0.3)"),
+                    fillcolor=shade_color,
                     fill="tonexty",
                     showlegend=False,
                 ),
                 go.Scatter(
-                    name=kwargs.get("line_metric", "Means"),
+                    name=line_metric,
                     x=input_x,
                     y=means,
                     mode="lines",
                     marker=dict(
-                        color=kwargs.get("line_color", "rgb(31, 119, 180)"),
+                        color=line_color,
                         size=0,
-                        line=dict(
-                            color=kwargs.get("line_color", "rgb(31, 119, 180)"), width=1
-                        ),
+                        line=dict(color=line_color, width=1),
                     ),
                 ),
             ]
@@ -72,12 +75,12 @@ def visualize_per_token_category(
                 symmetric=False,
                 array=err_hi,
                 arrayminus=err_lo,
-                color=kwargs.get("bar_color", "purple"),
+                color=bar_color,
             ),
             marker=dict(
-                color=kwargs.get("marker_color", "SkyBlue"),
+                color=marker_color,
                 size=15,
-                line=dict(color=kwargs.get("line_color", "MediumPurple"), width=2),
+                line=dict(color=line_color, width=2),
             ),
             hovertext=get_hovertexts(means, err_lo, err_hi),
             hoverinfo="text+x",
@@ -89,31 +92,8 @@ def visualize_per_token_category(
                 title="Loss",
                 type="log" if log_scale else "linear",
             ),
-            plot_bgcolor=kwargs.get("bg_color", "AliceBlue"),
+            plot_bgcolor=background_color,
         ),
     )
 
-    # selected_category = ipywidgets.Dropdown(
-    #     options=categories,
-    #     placeholder="",
-    #     description="Token Category:",
-    #     disabled=False,
-    # )
-
-    # def response(change):
-    #     means, err_lo, err_hi = get_plot_values(selected_category.value)
-    #     with g.batch_update():
-    #         if kwargs.get("checkpoint_mode"):
-    #             g.data[0].y = means
-    #             g.data[1].y = means + err_hi
-    #             g.data[2].y = means - err_lo
-    #         else:
-    #             g.data[0].y = means
-    #             g.data[0].error_y["array"] = err_hi
-    #             g.data[0].error_y["arrayminus"] = err_lo
-    #             g.data[0].hovertext = get_hovertexts(means, err_lo, err_hi)
-
-    # selected_category.observe(response, names="value")
-
-    # return ipywidgets.VBox([selected_category, g])
     return g
