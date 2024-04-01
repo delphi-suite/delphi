@@ -71,13 +71,11 @@ def test_init_wandb(mock_wandb_init: MagicMock, mock_giga_config):
 
 @patch("wandb.log")
 def test_log_to_wandb(mock_wandb_log: MagicMock):
-    model = MagicMock()  # type: ignore
-    model.__class__ = transformers.LlamaForCausalLM
-    optimizer = MagicMock()
-    optimizer.__class__ = torch.optim.AdamW
+    model = MagicMock(spec=transformers.LlamaForCausalLM)
+    optimizer = MagicMock(spec=torch.optim.AdamW)
     log_to_wandb(
         mts=ModelTrainingState(
-            model=model,  # type: ignore
+            model=model,
             optimizer=optimizer,
             step=5,
             epoch=1,
@@ -87,4 +85,17 @@ def test_log_to_wandb(mock_wandb_log: MagicMock):
         ),
         losses={"train": 0.5, "val": 0.4},
         tokens_so_far=4242,
+    )
+    assert mock_wandb_log.call_count == 1
+    mock_wandb_log.assert_called_with(
+        {
+            "epoch": 1,
+            "epoch_iter": 5,
+            "global_iter": 55,
+            "tokens": 4242,
+            "loss/train": 0.5,
+            "loss/val": 0.4,
+            "lr": 0.007,
+        },
+        step=55,
     )
