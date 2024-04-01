@@ -1,3 +1,5 @@
+import math
+import random
 import uuid
 from typing import cast
 
@@ -18,6 +20,27 @@ def probs_to_colors(probs: Float[torch.Tensor, "next_pos"]) -> list[str]:
         green_blue_val = red_gap + int((255 - red_gap) * (1 - p))
         colors.append(f"rgb(255, {green_blue_val}, {green_blue_val})")
     return colors
+
+
+def single_loss_diff_to_color(loss_diff: float) -> str:
+    # if loss_diff is negative, we want the color to be red
+    # if loss_diff is positive, we want the color to be green
+    # if loss_diff is 0, we want the color to be white
+    # the color should be more intense the larger the absolute value of loss_diff
+
+    def sigmoid(x: float) -> float:
+        return 1 / (1 + math.exp(-x))
+
+    scaled_loss_diff = sigmoid(loss_diff)  # scale to 0-1
+
+    if scaled_loss_diff < 0.5:  # red
+        red_val = 255
+        green_blue_val = min(int(255 * 2 * scaled_loss_diff), 255)
+        return f"rgb({red_val}, {green_blue_val}, {green_blue_val})"
+    else:  # green
+        green_val = 255
+        red_blue_val = min(int(255 * 2 * (1 - scaled_loss_diff)), 255)
+        return f"rgb({red_blue_val}, {green_val}, {red_blue_val})"
 
 
 def to_tok_prob_str(tok: int, prob: float, tokenizer: PreTrainedTokenizerBase) -> str:
@@ -111,6 +134,84 @@ def vis_sample_prediction_probs(
                 "class='token'", f"class='{token_class}'"
             )
         )
+
+    html_str = f"""
+    <style>.{token_class} {{ {_token_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
+    {"".join(token_htmls)} <div id='{hover_div_id}'></div>
+    <script>
+        (function() {{
+            var token_divs = document.querySelectorAll('.{token_class}');
+            var hover_info = document.getElementById('{hover_div_id}');
+
+
+            token_divs.forEach(function(token_div) {{
+                token_div.addEventListener('mousemove', function(e) {{
+                    hover_info.innerHTML = ""
+                    for( var d in this.dataset) {{
+                        hover_info.innerHTML += "<b>" + d + "</b> ";
+                        hover_info.innerHTML += this.dataset[d] + "<br>";
+                    }}
+                }});
+
+                token_div.addEventListener('mouseout', function(e) {{
+                    hover_info.innerHTML = ""
+                }});
+            }});
+        }})();
+    </script>
+    """
+    display(HTML(html_str))
+    return html_str
+
+
+def vis_pos_map(
+    pos_map: dict[tuple[int, int], float | int],
+    token_ids: Int[torch.Tensor, "prompt pos"],
+    tokenizer: PreTrainedTokenizerBase,
+    sample: int = 3,
+):
+    """
+    Randomly sample from pos_map and visualize the loss diff at the corresponding position.
+    """
+
+    token_htmls = []
+    unique_id = str(uuid.uuid4())
+    token_class = f"token_{unique_id}"
+    hover_div_id = f"hover_info_{unique_id}"
+
+    # choose n random keys from pos_map
+    keys = random.sample(list(pos_map.keys()), k=sample)
+
+    for key in keys:
+        prompt, pos = key
+        pre_toks = token_ids[prompt][:pos]
+        mask = torch.isin(pre_toks, torch.tensor([0, 1], dtype=torch.int8))
+        pre_toks = pre_toks[
+            ~mask
+        ]  # remove <unk> and <s> tokens, <s> cause strikethrough in html
+
+        for i in range(pre_toks.shape[0]):
+            pre_tok = cast(int, pre_toks[i].item())
+            token_htmls.append(
+                token_to_html(pre_tok, tokenizer, bg_color="white", data={}).replace(
+                    "class='token'", f"class='{token_class}'"
+                )
+            )
+
+        tok = cast(int, token_ids[prompt][pos].item())
+        value = cast(float, pos_map[key])
+
+        token_htmls.append(
+            token_to_html(
+                tok,
+                tokenizer,
+                bg_color=single_loss_diff_to_color(value),
+                data={"loss-diff": f"{value:.2f}"},
+            ).replace("class='token'", f"class='{token_class}'")
+        )
+
+        # add break line
+        token_htmls.append("<br><br>")
 
     html_str = f"""
     <style>.{token_class} {{ {_token_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
