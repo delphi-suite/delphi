@@ -6,24 +6,24 @@ import plotly.graph_objects as go
 
 
 def visualize_per_token_category(
-    input: dict[Union[str, int], tuple],
-    # input: dict[Union[str, int], dict[str, tuple]],
+    input: dict[Union[str, int], dict[str, tuple]],
     log_scale=False,
     **kwargs: Union[str, bool],
+    # ) -> ipywidgets.VBox:
 ) -> go.FigureWidget:
     input_x = list(input.keys())
-    # categories = list(input[input_x[0]].keys())
-    # category = categories[0]
+    categories = list(input[input_x[0]].keys())
+    category = categories[0]
 
     def get_hovertexts(mid: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> list[str]:
         return [f"Loss: {m:.3f} ({l:.3f}, {h:.3f})" for m, l, h in zip(mid, lo, hi)]
 
-    def get_plot_values() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        x = np.array([input[x] for x in input_x]).T
+    def get_plot_values(category: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        x = np.array([input[x][category] for x in input_x]).T
         means, err_lo, err_hi = x[0], x[1], x[2]
         return means, err_lo, err_hi
 
-    means, err_lo, err_hi = get_plot_values()
+    means, err_lo, err_hi = get_plot_values(category)
 
     if kwargs.get("checkpoint_mode"):
         scatter_plot = go.Figure(
