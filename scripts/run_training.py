@@ -233,7 +233,7 @@ def var_args_to_dict(config_vars: dict[str, Any]) -> dict[str, Any]:
 
 
 def args_to_dict(args: argparse.Namespace) -> dict[str, Any]:
-    # at the toplevel, filter for args corresponding to field names in GigaConfig
+    # at the toplevel, filter for args corresponding to field names in TrainingConfig
     field_names = set(field.name for field in fields(TrainingConfig))
     config_vars = {
         k: v for k, v in vars(args).items() if k.split(".")[0] in field_names
