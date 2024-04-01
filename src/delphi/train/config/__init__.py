@@ -1,5 +1,4 @@
-from .model_config import ModelConfig
-from .optimizer_config import OptimizerConfig
+from .adam_config import AdamConfig
 from .training_config import TrainingConfig
 from .utils import (
     build_config_dict_from_files,

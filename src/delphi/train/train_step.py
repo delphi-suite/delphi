@@ -35,7 +35,7 @@ def train_step(
             dataset=train_ds,
             indices=ds_indices,
             batch_size=config.batch_size,
-            num_minibatches=config.optimizer.gradient_accumulation_steps,
+            num_minibatches=config.gradient_accumulation_steps,
             step=model_training_state.step,
             device=device,
             feature_name=config.data_config.train_feature,
@@ -43,7 +43,7 @@ def train_step(
         total_loss = accumulate_gradients(
             model=model,
             batches=minibatches,
-            num_batches=config.optimizer.gradient_accumulation_steps,
+            num_batches=config.gradient_accumulation_steps,
         )
         # clip the gradient
         if config.grad_clip != 0.0:

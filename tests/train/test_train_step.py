@@ -1,6 +1,3 @@
-# TODO: there are some ugly hacks here, and the test states are way too complicated
-# clean this up as other parts of the codebase are refactored
-
 from dataclasses import asdict
 
 import dacite
@@ -12,7 +9,12 @@ from jaxtyping import Float
 from delphi.train.config import TrainingConfig
 from delphi.train.config.utils import load_preset
 from delphi.train.train_step import accumulate_gradients, train_step
-from delphi.train.utils import ModelTrainingState, get_xy_batch, setup_determinism
+from delphi.train.utils import (
+    ModelTrainingState,
+    get_xy_batch,
+    init_model,
+    setup_determinism,
+)
 
 
 @pytest.fixture
@@ -29,8 +31,18 @@ def dataset():
 @pytest.fixture
 def model():
     setup_determinism(42)
-    # TODO: replace this with a model config dict after model_config update is in (next PR)
-    return load_preset("debug").model_config.get_model()
+    return init_model(
+        {
+            "model_class": "LlamaForCausalLM",
+            "hidden_size": 48,
+            "intermediate_size": 48,
+            "num_attention_heads": 2,
+            "num_hidden_layers": 2,
+            "num_key_value_heads": 2,
+            "vocab_size": 4096,
+        },
+        seed=42,
+    )
 
 
 def get_params(model: torch.nn.Module) -> Float[torch.Tensor, "params"]:
@@ -55,13 +67,10 @@ def test_basic_reproducibility(dataset, model):
         step=0,
         train_loss=0.0,
         lr=0.01,
-        best_val_loss=float("inf"),
         last_training_step_time=0.0,
     )
     device = torch.device("cpu")
-    indices = list(range(64))
-
-    # train
+    indices = list(range(len(dataset)))
     train_step(model_training_state, dataset, load_preset("debug"), device, indices)
 
     params = get_params(model)
@@ -77,6 +86,12 @@ def test_accumulate_gradients_accumulates(dataset, model):
     check that gradient accumulation works as expected and doesn't reset on each microstep
     """
     # setup
+    indices_set_a = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ]
+    # different batch but idential last batch;
     indices_set_a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     # different batch but idential last batch (with batches of 3);
     # this should result in a different accumulated gradient
@@ -139,6 +154,11 @@ def test_accumulate_gradients_consistent(dataset, model):
     Validate that the gradients are consistent when the same batch is passed to accumulate_gradients
     """
     # setup
+    indices_set = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ]
     indices_set = list(range(1, 10))
     num_batches = 3
     batch_size = 3
@@ -201,7 +221,6 @@ def get_model_training_state(model, optimizer, step):
         step=step,
         train_loss=0.0,
         lr=0.01,
-        best_val_loss=float("inf"),
         last_training_step_time=0.0,
     )
 

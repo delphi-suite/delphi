@@ -5,7 +5,7 @@ from dataclasses import asdict
 import wandb
 
 from .config import TrainingConfig
-from .utils import CheckpointData
+from .utils import ModelTrainingState
 
 
 def silence_wandb():
@@ -25,15 +25,16 @@ def init_wandb(config: TrainingConfig):
     )
 
 
-def log_to_wandb(eval_data: CheckpointData):
-    mts = eval_data.model_training_state
+def log_to_wandb(mts: ModelTrainingState, losses: dict[str, float], tokens_so_far: int):
     try:
         wandb.log(
             {
-                "iter": mts.iter_num,
-                "tokens": mts.iter_num * eval_data.tokens_per_iter,
-                "loss/train": eval_data.losses["train"],
-                "loss/val": eval_data.losses["val"],
+                "epoch": mts.epoch,
+                "epoch_iter": mts.step,
+                "global_iter": mts.iter_num,
+                "tokens": tokens_so_far,
+                "loss/train": losses["train"],
+                "loss/val": losses["val"],
                 "lr": mts.lr,
             },
             step=mts.iter_num,
