@@ -4,12 +4,9 @@ import logging
 import os
 import sys
 from dataclasses import _MISSING_TYPE, fields, is_dataclass
-from datetime import datetime
 from itertools import chain
 from pathlib import Path
 from typing import Any, Type, Union
-
-import platformdirs
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config import (
