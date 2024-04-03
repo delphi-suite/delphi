@@ -1,10 +1,12 @@
+import ast
 import json
 import logging
 import os
 from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Type
+from typing import _GenericAlias  # type: ignore
+from typing import Any, Type, TypeVar, Union
 
 import platformdirs
 from beartype.typing import Any, Iterable
@@ -14,8 +16,10 @@ from delphi.constants import CONFIG_PRESETS_DIR
 
 from .training_config import TrainingConfig
 
+T = TypeVar("T")
 
-def _merge_dicts(merge_into: dict[str, Any], merge_from: dict[str, Any]):
+
+def merge_two_dicts(merge_into: dict[str, Any], merge_from: dict[str, Any]):
     """recursively merge two dicts, with values in merge_from taking precedence"""
     for key, val in merge_from.items():
         if (
@@ -23,9 +27,19 @@ def _merge_dicts(merge_into: dict[str, Any], merge_from: dict[str, Any]):
             and isinstance(merge_into[key], dict)
             and isinstance(val, dict)
         ):
-            _merge_dicts(merge_into[key], val)
+            merge_two_dicts(merge_into[key], val)
         else:
             merge_into[key] = val
+
+
+def merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
+    """
+    Recursively merge multiple dictionaries, with later dictionaries taking precedence.
+    """
+    merged = {}
+    for d in dicts:
+        merge_two_dicts(merged, d)
+    return merged
 
 
 def get_preset_paths() -> Iterable[Path]:
@@ -45,28 +59,13 @@ def get_presets_by_name() -> dict[str, TrainingConfig]:
     }
 
 
-def get_config_dicts_from_files(config_files: list[Path]) -> list[dict[str, Any]]:
-    """loads config files in ascending priority order"""
+def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
     config_dicts = []
     for config_file in config_files:
-        logging.info(f"Loading {config_file}")
+        logging.debug(f"Loading {config_file}")
         with open(config_file, "r") as f:
             config_dicts.append(json.load(f))
-    return config_dicts
-
-
-def combine_configs(configs: list[dict[str, Any]]) -> dict[str, Any]:
-    # combine configs dicts, with key "priority" setting precendence (higher priority overrides lower priority)
-    sorted_configs = sorted(configs, key=lambda c: c.get("priority", -999))
-    combined_config = dict()
-    for config in sorted_configs:
-        _merge_dicts(merge_into=combined_config, merge_from=config)
-    return combined_config
-
-
-def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
-    configs_in_order = get_config_dicts_from_files(config_files)
-    combined_config = combine_configs(configs_in_order)
+    combined_config = merge_dicts(*config_dicts)
     return combined_config
 
 
@@ -104,9 +103,7 @@ def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
         logging.info(f"Setting output_dir to {config['output_dir']}")
 
 
-def log_config_recursively(
-    config: dict, logging_fn=logging.info, indent="  ", prefix=""
-):
+def log_config_recursively(config: dict, logging_fn, indent="  ", prefix=""):
     for k, v in config.items():
         if isinstance(v, dict):
             logging_fn(f"{prefix}{k}")
@@ -115,17 +112,37 @@ def log_config_recursively(
             logging_fn(f"{prefix}{k}: {v}")
 
 
+def cast_types(config: dict[str, Any], target_dataclass: Type):
+    """
+    user overrides are passed in as strings, so we need to cast them to the correct type
+    """
+    dc_fields = {f.name: f for f in fields(target_dataclass)}
+    for k, v in config.items():
+        if k in dc_fields:
+            field = dc_fields[k]
+            field_type = _unoptionalize(field.type)  # type: ignore
+            if is_dataclass(field_type):
+                cast_types(v, field_type)
+            elif isinstance(field_type, dict):
+                #  for dictionaries, make best effort to cast values to the correct type
+                for _k, _v in v.items():
+                    v[_k] = ast.literal_eval(_v)
+            else:
+                config[k] = field_type(v)
+
+
 def build_config_from_files_and_overrides(
     config_files: list[Path],
     overrides: dict[str, Any],
 ) -> TrainingConfig:
     combined_config = build_config_dict_from_files(config_files)
-    _merge_dicts(merge_into=combined_config, merge_from=overrides)
+    cast_types(overrides, TrainingConfig)
+    merge_two_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
     filter_config_to_actual_config_values(TrainingConfig, combined_config)
-    logging.info("User-set config values:")
+    logging.debug("User-set config values:")
     log_config_recursively(
-        combined_config, logging_fn=logging.info, prefix="  ", indent="  "
+        combined_config, logging_fn=logging.debug, prefix="  ", indent="  "
     )
     return from_dict(TrainingConfig, combined_config)
 
@@ -135,5 +152,36 @@ def build_config_from_files(config_files: list[Path]) -> TrainingConfig:
 
 
 def load_preset(preset_name: str) -> TrainingConfig:
-    preset_path = Path(CONFIG_PRESETS_DIR) / f"{preset_name}.json"  # type: ignore
+    preset_path = CONFIG_PRESETS_DIR / f"{preset_name}.json"
     return build_config_from_files([preset_path])
+
+
+def dot_notation_to_dict(vars: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert {"a.b.c": 4, "foo": false} to {"a": {"b": {"c": 4}}, "foo": False}
+    """
+    nested_dict = dict()
+    for k, v in vars.items():
+        if v is None:
+            continue
+        cur = nested_dict
+        subkeys = k.split(".")
+        for subkey in subkeys[:-1]:
+            if subkey not in cur:
+                cur[subkey] = {}
+            cur = cur[subkey]
+        cur[subkeys[-1]] = v
+    return nested_dict
+
+
+def _unoptionalize(t: Type | _GenericAlias) -> Type:
+    """unwrap `Optional[T]` to T"""
+    # Under the hood, `Optional` is really `Union[T, None]`. So we
+    # just check if this is a Union over two types including None, and
+    # return the other
+    if hasattr(t, "__origin__") and t.__origin__ is Union:
+        args = t.__args__
+        # Check if one of the Union arguments is type None
+        if len(args) == 2 and type(None) in args:
+            return args[0] if args[1] is type(None) else args[1]
+    return t
