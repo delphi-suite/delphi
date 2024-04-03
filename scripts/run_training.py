@@ -55,6 +55,8 @@ def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a delphi model")
     parser.add_argument(
         "--config_files",
+        "--config_file",
+        "-c",
         help=(
             "Path to json file(s) containing config values. Specific values can be overridden with --overrides. "
             "e.g. `--config_files primary_config.json secondary_config.json"
