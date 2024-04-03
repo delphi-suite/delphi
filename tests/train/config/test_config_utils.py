@@ -1,10 +1,10 @@
-from pathlib import Path
-from typing import cast
+from typing import Optional
 
 import pytest
 
 from delphi.constants import CONFIG_PRESETS_DIR
 from delphi.train.config.utils import (
+    _unoptionalize,
     build_config_from_files_and_overrides,
     dot_notation_to_dict,
     merge_dicts,
@@ -43,3 +43,8 @@ def test_build_config_from_files_and_overrides():
     # check base values
     assert config.max_epochs == 2
     assert config.data_config.train_sample_limit == 256
+
+
+def test_unoptionalize():
+    assert _unoptionalize(int) == int
+    assert _unoptionalize(Optional[str]) == str
