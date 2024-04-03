@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cuda = [
+mamba_cuda = [
     "mamba_ssm==1.2.0.post1",
     "causal-conv1d==1.2.0.post2",
 ]
