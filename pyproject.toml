@@ -10,7 +10,7 @@ dependencies = [
     "pytest==7.4.4",
     "black==23.12.1",
     "jaxtyping==0.2.25",
-    "beartype==0.16.4",
+    "beartype==0.18.2",
     "pre-commit==3.6.0",
     "isort==5.13.2",
     "chardet==5.2.0",
