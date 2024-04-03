@@ -43,7 +43,7 @@ def merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_preset_paths() -> Iterable[Path]:
-    return Path(CONFIG_PRESETS_DIR).glob("*.json")  # type: ignore
+    return CONFIG_PRESETS_DIR.glob("*.json")
 
 
 def get_user_config_path() -> Path:
@@ -120,7 +120,7 @@ def cast_types(config: dict[str, Any], target_dataclass: Type):
     for k, v in config.items():
         if k in dc_fields:
             field = dc_fields[k]
-            field_type = _unoptionalize(field.type)  # type: ignore
+            field_type = _unoptionalize(field.type)
             if is_dataclass(field_type):
                 cast_types(v, field_type)
             elif isinstance(field_type, dict):
