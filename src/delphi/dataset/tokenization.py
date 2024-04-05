@@ -1,6 +1,7 @@
 from collections import deque
 from typing import Optional
 
+from tqdm.auto import tqdm
 from transformers import PreTrainedTokenizerBase
 
 
@@ -97,11 +98,15 @@ def tokenize_dataset(
     doc_idx = 0
     samples = []
 
-    while doc_idx < len(text_documents):
-        doc_idx = extend_deque(
-            dq, context_size, text_documents, doc_idx, tokenizer, batch_size
-        )
-        samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
+    with tqdm(total=len(text_documents), desc="Tokenizing text documents") as pbar:
+        # iterate through the text documents and tokenize them
+        while doc_idx < len(text_documents):
+            doc_idx = extend_deque(
+                dq, context_size, text_documents, doc_idx, tokenizer, batch_size
+            )
+            samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
+            # update the tqdm bar
+            pbar.update(len(text_documents) - doc_idx)
 
     # We discard the last chunk, so no processing on the remainder of the deque here
     return samples
