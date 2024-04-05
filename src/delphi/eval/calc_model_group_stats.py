@@ -1,12 +1,14 @@
 import numpy as np
+import torch
+from jaxtyping import Float
 
 
 def calc_model_group_stats(
     tokenized_corpus_dataset: list,
-    logprobs_by_dataset: dict[str, list[list[float]]],
+    logprobs_by_dataset: dict[str, Float[torch.Tensor, "prompt tok"]],
     token_labels_by_token: dict[int, dict[str, bool]],
     token_labels: list[str],
-) -> dict[tuple[str, str], dict[str, float]]:
+) -> dict[tuple[str, str], dict[str, np.float32]]:
     """
     For each (model, token group) pair, calculate useful stats (for visualization)
 
