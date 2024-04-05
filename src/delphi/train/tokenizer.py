@@ -4,21 +4,10 @@ import sentencepiece as spm
 from datasets import Dataset
 
 
-def get_tokenizer_model_path(
-    vocab_size: int,
-    cache_dir: str = "cache"
-) -> str:
-    """
-    Returns path to the SentencePiece tokenizer model for a given vocab size.
-    """
-    if vocab_size == 0:
-        return ""
-    else:
-        return os.path.join(cache_dir, f"tok{vocab_size}.model")
-
 def train_vocab(
     vocab_size: int, 
     dataset: Dataset,
+    column: str,
     cache_dir: str = "cache"
 ) -> None:
     """
@@ -33,7 +22,7 @@ def train_vocab(
     text_file = os.path.join(cache_dir, "text.txt")
     with open(text_file, 'w', encoding='utf-8') as file:
         for item in dataset:
-            text = item['story']
+            text = item[column]
             text = text.strip()
             file.write(text + '\n')
     print(f"Size is: {os.path.getsize(text_file) / 1024 / 1024:.2f} MB")
