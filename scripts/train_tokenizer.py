@@ -2,10 +2,9 @@ import argparse
 import os
 
 from datasets import load_dataset
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm, trange
 from transformers import LlamaTokenizerFast
 from tokenizers import SentencePieceBPETokenizer
-from tqdm import trange
 
 from delphi.train.tokenizer import train_vocab, get_tokenizer_model_path
 
