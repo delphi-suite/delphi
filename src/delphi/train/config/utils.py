@@ -2,14 +2,13 @@ import ast
 import json
 import logging
 import os
+from collections.abc import Iterable
 from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import _GenericAlias  # type: ignore
 from typing import Any, Type, TypeVar, Union
 
-import platformdirs
-from beartype.typing import Any, Iterable
 from dacite import from_dict
 
 from delphi.constants import CONFIG_PRESETS_DIR

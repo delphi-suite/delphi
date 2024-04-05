@@ -81,7 +81,7 @@ def setup_parser() -> argparse.ArgumentParser:
 
 
 def overrides_to_dict(overrides: list[str]) -> dict[str, Any]:
-    # {"--overrides a.b.c=4 foo=false} to {"a": {"b": {"c": 4}}, "foo": False}
+    # ["a.b.c=4", "foo=false"] to {"a": {"b": {"c": 4}}, "foo": False}
     config_vars = {k: v for k, v in [x.split("=") for x in overrides if "=" in x]}
     return dot_notation_to_dict(config_vars)
 
