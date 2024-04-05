@@ -6,7 +6,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from delphi.train.config import build_config_from_files_and_overrides
+from delphi.train.config import (
+    build_config_from_files_and_overrides,
+    dot_notation_to_dict,
+)
 from delphi.train.training import run_training
 from delphi.train.utils import save_results
 
@@ -52,6 +55,8 @@ def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a delphi model")
     parser.add_argument(
         "--config_files",
+        "--config_file",
+        "-c",
         help=(
             "Path to json file(s) containing config values. Specific values can be overridden with --overrides. "
             "e.g. `--config_files primary_config.json secondary_config.json"
@@ -76,22 +81,9 @@ def setup_parser() -> argparse.ArgumentParser:
 
 
 def overrides_to_dict(overrides: list[str]) -> dict[str, Any]:
-    # {"--overrides a.b.c=4 foo=false} to {"a": {"b": {"c": 4}}, "foo": False}
+    # ["a.b.c=4", "foo=false"] to {"a": {"b": {"c": 4}}, "foo": False}
     config_vars = {k: v for k, v in [x.split("=") for x in overrides if "=" in x]}
-    d = {}
-    for k, v in config_vars.items():
-        if v is None:
-            continue
-        # the laziest, most dangerous type conversion you've seen today
-        v = eval(v)
-        cur = d
-        subkeys = k.split(".")
-        for subkey in subkeys[:-1]:
-            if subkey not in cur:
-                cur[subkey] = {}
-            cur = cur[subkey]
-        cur[subkeys[-1]] = v
-    return d
+    return dot_notation_to_dict(config_vars)
 
 
 def main():

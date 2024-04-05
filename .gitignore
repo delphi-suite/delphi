@@ -175,3 +175,6 @@ notebooks/scratch.ipynb
 
 # dsstore
 .DS_Store
+
+# vscode debug configs
+**/launch.json
