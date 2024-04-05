@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import _GenericAlias  # type: ignore
 from typing import Any, Type, TypeVar, Union
 
+import platformdirs
 from dacite import from_dict
 
 from delphi.constants import CONFIG_PRESETS_DIR
@@ -42,23 +43,26 @@ def merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_preset_paths() -> Iterable[Path]:
+    """This gets all the paths to the preset config files in the static preset config dir."""
     return CONFIG_PRESETS_DIR.glob("*.json")
 
 
 def get_user_config_path() -> Path:
+    """
+    This enables a user-specific config to always be included in the training config.
+
+    This is useful for things like wandb config, where you'll generally want to use your own account.
+    """
     _user_config_dir = Path(platformdirs.user_config_dir(appname="delphi"))
     _user_config_dir.mkdir(parents=True, exist_ok=True)
     user_config_path = _user_config_dir / "config.json"
     return user_config_path
 
 
-def get_presets_by_name() -> dict[str, TrainingConfig]:
-    return {
-        preset.stem: build_config_from_files([preset]) for preset in get_preset_paths()
-    }
-
-
 def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
+    """
+    Given a list of config json paths, merge them into a combined config dict (with later files taking precedence).
+    """
     config_dicts = []
     for config_file in config_files:
         logging.debug(f"Loading {config_file}")
@@ -68,25 +72,13 @@ def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
     return combined_config
 
 
-def filter_config_to_actual_config_values(target_dataclass: Type, config: dict):
-    """Remove non-config values from config dict.
-
-    This can happen if e.g. being lazy and passing in all args from a script
-    """
-    datafields = fields(target_dataclass)
-    name_to_field = {f.name: f for f in datafields}
-    to_remove = []
-    for k, v in config.items():
-        if k not in name_to_field.keys():
-            logging.debug(f"removing non-config-value {k}={v} from config dict")
-            to_remove.append(k)
-        elif isinstance(v, dict) and is_dataclass(name_to_field.get(k)):
-            filter_config_to_actual_config_values(name_to_field[k].type, v)
-    for k in to_remove:
-        config.pop(k)
-
-
 def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
+    """
+    Convenience default values for run_name and output_dir based on config file (if exactly one passed)
+
+    If the user is using 1 config file and has not set a run_name, we set it to the filename.
+    Likewise for output_dir, we set it to a user-specific directory based on the run_name.
+    """
     if len(config_files) == 1:
         prefix = f"{config_files[0].stem}__"
     else:
@@ -100,15 +92,6 @@ def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
             platformdirs.user_data_dir(appname="delphi"), config["run_name"]
         )
         logging.info(f"Setting output_dir to {config['output_dir']}")
-
-
-def log_config_recursively(config: dict, logging_fn, indent="  ", prefix=""):
-    for k, v in config.items():
-        if isinstance(v, dict):
-            logging_fn(f"{prefix}{k}")
-            log_config_recursively(v, logging_fn, indent, prefix=indent + prefix)
-        else:
-            logging_fn(f"{prefix}{k}: {v}")
 
 
 def cast_types(config: dict[str, Any], target_dataclass: Type):
@@ -134,25 +117,28 @@ def build_config_from_files_and_overrides(
     config_files: list[Path],
     overrides: dict[str, Any],
 ) -> TrainingConfig:
+    """
+    This is the main entrypoint for building a TrainingConfig object from a list of config files and overrides.
+
+    1. Load config_files in order, merging them into one dict, with later taking precedence.
+    2. Cast the strings from overrides to the correct types
+        (we expect this to be passed as strings w/o type hints from a script argument:
+        e.g. `--overrides model_config.hidden_size=42 run_name=foo`)
+    3. Merge in overrides to config_dict, taking precedence over all config_files values.
+    4. Set backup values (for run_name and output_dir) if they are not already set.
+    5. Build the TrainingConfig object from the final config dict and return it.
+    """
     combined_config = build_config_dict_from_files(config_files)
     cast_types(overrides, TrainingConfig)
     merge_two_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
-    filter_config_to_actual_config_values(TrainingConfig, combined_config)
-    logging.debug("User-set config values:")
-    log_config_recursively(
-        combined_config, logging_fn=logging.debug, prefix="  ", indent="  "
-    )
     return from_dict(TrainingConfig, combined_config)
 
 
-def build_config_from_files(config_files: list[Path]) -> TrainingConfig:
-    return build_config_from_files_and_overrides(config_files, {})
-
-
 def load_preset(preset_name: str) -> TrainingConfig:
+    """Load a preset config by name, e.g. `load_preset("debug")`."""
     preset_path = CONFIG_PRESETS_DIR / f"{preset_name}.json"
-    return build_config_from_files([preset_path])
+    return build_config_from_files_and_overrides([preset_path], {})
 
 
 def dot_notation_to_dict(vars: dict[str, Any]) -> dict[str, Any]:
@@ -174,7 +160,14 @@ def dot_notation_to_dict(vars: dict[str, Any]) -> dict[str, Any]:
 
 
 def _unoptionalize(t: Type | _GenericAlias) -> Type:
-    """unwrap `Optional[T]` to T"""
+    """unwrap `Optional[T]` to T.
+
+    We need this to correctly interpret user-passed overrides, which are always strings
+    without any type information attached. We need to look up what type they should be
+    and cast accordingly. As part of this lookup we need to pierce Optional values -
+    if the user is setting a value, it's clearly not Optional, and we need to get the underlying
+    type to cast correctly.
+    """
     # Under the hood, `Optional` is really `Union[T, None]`. So we
     # just check if this is a Union over two types including None, and
     # return the other
