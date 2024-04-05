@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
+from typing import cast
 
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from transformers import AutoTokenizer
 
 from delphi.dataset.tokenization import tokenize_dataset
@@ -50,7 +51,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    input_dataset = load_validation_dataset(args.input_dataset_name)
+    input_dataset = load_dataset(args.input_dataset_name)
+    input_dataset = cast(Dataset, input_dataset)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
 
     if args.column_name:
