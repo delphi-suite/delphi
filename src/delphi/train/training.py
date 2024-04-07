@@ -76,11 +76,10 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
         limit=config.data_config.validation_sample_limit,
     )
 
-    # derive iteration params (num_batches, num_steps, etc)
-    num_batches = len(train_ds) // config.batch_size
-    num_steps = num_batches // config.gradient_accumulation_steps
+    # derive iteration params
+    steps_per_epoch = len(train_ds) // config.batch_size
     lr_decay_iters = (
-        config.max_epochs * num_batches
+        config.max_epochs * steps_per_epoch
     )  # should be ~=max_iters per Chinchilla
 
     # model init
@@ -97,7 +96,7 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
             ordering_seed=config.batch_ordering_seed,
         )
         model_training_state.epoch = epoch
-        for step in tqdm(range(num_steps)):
+        for step in tqdm(range(steps_per_epoch)):
             model_training_state.step = step
             if should_save_checkpoint(config, model_training_state):
                 log_and_save_checkpoint(
