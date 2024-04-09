@@ -1,0 +1,29 @@
+{
+  "model_config": {
+    "model_class": "MambaForCausalLM",
+    "vocab_size": 4096,
+    "hidden_size": 12,
+    "state_size": 16,
+    "num_hidden_layers": 2,
+    "conv_kernel": 4,
+    "expand": 2,
+    "use_bias": false,
+    "use_conv_bias": true,
+    "bos_token_id": 0,
+    "eos_token_id": 0,
+    "pad_token_id": 0,
+    "time_step_rank": "auto",
+    "time_step_scale": 1.0,
+    "time_step_min": 0.001,
+    "time_step_max": 0.1,
+    "time_step_init_scheme": "random",
+    "time_step_floor": 0.0001,
+    "layer_norm_epsilon": 1e-05,
+    "hidden_act": "silu",
+    "initializer_range": 0.1,
+    "residual_in_fp32": true,
+    "rescale_prenorm_residual": false,
+    "use_cache": true,
+    "tie_word_embeddings": true
+  }
+}
