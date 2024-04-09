@@ -8,7 +8,7 @@ from tqdm.auto import tqdm, trange
 from transformers import LlamaTokenizerFast
 from tokenizers import SentencePieceBPETokenizer
 
-from delphi.train.tokenizer import train_vocab, get_tokenizer_model_path
+from delphi.train.tokenizer import train_vocab
 
 
 def main(
@@ -16,7 +16,6 @@ def main(
     dataset_name: str,
     column: str,
     train_size: float,
-    username: str,
     repo_id: str,
     token: str,
     seed: int,
@@ -33,8 +32,9 @@ def main(
     - repo_id: Hugging Face repository ID
     - token: Hugging Face API token
     """
+    print("repo id", repo_id)
     train_ds = load_dataset(dataset_name)["train"]
-    if train_size < 1.0:
+    if (isinstance(train_size, int) and train_size > 1) or (isinstance(train_size, float) and train_size < 1.0):
         train_ds = train_ds.train_test_split(
             train_size=train_size,
             seed=seed
@@ -85,10 +85,12 @@ def main(
     print("Converted tokenizer to huggingface tokenizer.")
     
     # push tokenizer to the hub
-    tokenizer.push_to_hub(
-        repo_id=repo_id,
-    )
-    print("Pushed tokenizer to huggingface hub.")
+    if repo_id:
+        tokenizer.push_to_hub(
+            repo_id=repo_id,
+            #token=args.token,
+        )
+        print("Pushed tokenizer to huggingface hub.")
 
 
 if __name__ == "__main__":
@@ -116,14 +118,9 @@ if __name__ == "__main__":
         default=1.0,
     )
     parser.add_argument(
-        "--username",
+        "--repo-id",
         type=str,
-        help="Hugging Face API username",
-    )
-    parser.add_argument(
-        "--repo-name",
-        type=str,
-        help="Hugging Face API username",
+        help="Hugging Face repository ID",
     )
     parser.add_argument(
         "--token",
@@ -134,19 +131,18 @@ if __name__ == "__main__":
         "--seed",
         type=int,
         help="Seed",
+        default=42
     )
     parser.add_argument(
         "--test-funct", action="store_true", help="Enable test function mode"
     )
 
     args = parser.parse_args()
-
     main(
         args.vocab_size,
         args.dataset_name,
-        args.train_size,
         args.column,
-        args.username,
+        args.train_size,
         args.repo_id,
         args.token,
         args.seed,

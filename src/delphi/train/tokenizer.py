@@ -9,16 +9,12 @@ def train_vocab(
     vocab_size: int, 
     dataset: Dataset,
     column: str,
-    cache_dir: str = "cache"
 ) -> None:
     """
     Trains a custom SentencePiece tokenizer.
     """
     assert vocab_size > 0, "Vocab size must be positive"
     
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-
     with tempfile.NamedTemporaryFile(mode='w+', suffix='.json') as tmpfile:
         
         # export text as a single text file
@@ -30,7 +26,8 @@ def train_vocab(
         print(f"Size is: {os.path.getsize(tmpfile.name) / 1024 / 1024:.2f} MB")
 
         # train the tokenizer
-        prefix = os.path.join(cache_dir, f"tok{vocab_size}")
+        prefix = f"tok{vocab_size}"
+        
         spm.SentencePieceTrainer.train(
             input=tmpfile.name,
             model_prefix=prefix,
