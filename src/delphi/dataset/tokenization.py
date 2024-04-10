@@ -110,7 +110,6 @@ def tokenize_dataset(
         pbar.update(doc_idx - old_idx)
         old_idx = doc_idx
 
-        print(f"{(len(text_documents) / doc_idx):.1%}", end=" ")
     pbar.close()
 
     # We discard the last chunk, so no processing on the remainder of the deque here
