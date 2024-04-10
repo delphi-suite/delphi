@@ -98,15 +98,20 @@ def tokenize_dataset(
     doc_idx = 0
     samples = []
 
-    with tqdm(total=len(text_documents), desc="Tokenizing text documents") as pbar:
-        # iterate through the text documents and tokenize them
-        while doc_idx < len(text_documents):
-            doc_idx = extend_deque(
-                dq, context_size, text_documents, doc_idx, tokenizer, batch_size
-            )
-            samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
-            # update the tqdm bar
-            pbar.update(len(text_documents) - doc_idx)
+    pbar = tqdm(total=len(text_documents), desc="Tokenizing text documents", leave=True)
+    old_idx = 0
+    # iterate through the text documents and tokenize them
+    while doc_idx < len(text_documents):
+        doc_idx = extend_deque(
+            dq, context_size, text_documents, doc_idx, tokenizer, batch_size
+        )
+        samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
+        # update the tqdm bar
+        pbar.update(doc_idx - old_idx)
+        old_idx = doc_idx
+
+        print(f"{(len(text_documents) / doc_idx):.1%}", end=" ")
+    pbar.close()
 
     # We discard the last chunk, so no processing on the remainder of the deque here
     return samples

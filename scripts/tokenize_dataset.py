@@ -3,7 +3,7 @@
 import argparse
 from typing import cast
 
-from datasets import Dataset, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 from transformers import AutoTokenizer
 
 from delphi.dataset.tokenization import tokenize_dataset
@@ -55,27 +55,41 @@ if __name__ == "__main__":
     input_dataset = cast(Dataset, input_dataset)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
 
-    if args.column_name:
-        text_docs = input_dataset[args.column_name]
-    else:
-        if len(input_dataset.column_names) > 1:
-            raise ValueError("There is more than one column in the specified dataset")
-        text_docs = input_dataset[input_dataset.column_names[0]]
+    splits = list(input_dataset.keys())
+    tokenized_datasets = {}  # dict that will hold tokenized vers. of each dataset split
 
-    tokenized_dataset = tokenize_dataset(
-        text_docs,
-        tokenizer,
-        context_size=args.context_size,
-        batch_size=args.batch_size,
-    )
-    output_dataset = Dataset.from_dict(
-        {
-            "tokens": tokenized_dataset,
-        }
-    )
+    for i, split in enumerate(splits):
+        print(f"Tokenizing {split = }", flush=True)
+        text_docs = input_dataset[split]
+
+        if args.column_name:
+            text_docs = text_docs[args.column_name]
+        else:
+            if len(input_dataset.column_names) > 1:
+                raise ValueError(
+                    "There is more than one column in the specified dataset"
+                )
+            print(f"Using column {input_dataset.column_names[0]}")
+            text_docs = input_dataset[input_dataset.column_names[0]]
+
+        tokenized_dataset = tokenize_dataset(
+            text_docs,
+            tokenizer,
+            context_size=args.context_size,
+            batch_size=args.batch_size,
+        )
+        # Store the tokenized data in a new dataset for this split
+        tokenized_datasets[split] = Dataset.from_dict({"tokens": tokenized_dataset})
+
+    # Create a new dataset with the same structure (splits) as the original dataset, but with tokenized data
+    output_dataset = DatasetDict(tokenized_datasets)
+
+    print("Tokenizaton completed. Uploading dataset to Huggingface.", flush=True)
 
     output_dataset.push_to_hub(
         repo_id=args.output_dataset_name,
         private=False,
         token=args.token,
     )
+
+    print("Done.", flush=True)
