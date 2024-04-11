@@ -7,28 +7,34 @@ from datasets import Dataset, DatasetDict, load_dataset
 from transformers import AutoTokenizer
 
 from delphi.dataset.tokenization import tokenize_dataset
-from delphi.eval.utils import load_validation_dataset
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
 
     parser.add_argument(
-        "--input-dataset-name",
+        "-i",
+        "--input-dataset",
         type=str,
         help="Text dataset from huggingface to tokenize",
     )
     parser.add_argument(
-        "--output-dataset-name",
+        "--column-name",
+        type=str,
+        help="Name of the column containing text documents in the input dataset",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dataset",
         type=str,
         help="Name of the tokenized dataset to upload to huggingface",
     )
     parser.add_argument(
-        "--tokenizer-name",
+        "--tokenizer",
         type=str,
         help="Name of the tokenizer from huggingface",
     )
     parser.add_argument(
-        "--token",
+        "--hf-token",
         type=str,
         help="Hugging Face API token",
     )
@@ -44,36 +50,29 @@ if __name__ == "__main__":
         default=50,
         help="Batch size of text inputs into the tokenizer",
     )
-    parser.add_argument(
-        "--column-name",
-        type=str,
-        help="Name of the column containing text documents in the input dataset",
-    )
     args = parser.parse_args()
 
-    input_dataset = load_dataset(args.input_dataset_name)
-    input_dataset = cast(Dataset, input_dataset)
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
+    print(f"Loading dataset '{args.input_dataset}'...")
+    input_dataset = load_dataset(args.input_dataset)
+    input_dataset = cast(DatasetDict, input_dataset)
+    print(f"Loading tokenizer '{args.tokenizer}'...")
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
+    assert tokenizer.bos_token_id is not None, "Tokenizer must have a bos_token_id"
+    assert tokenizer.eos_token_id is not None, "Tokenizer must have a eos_token_id"
 
     splits = list(input_dataset.keys())
     tokenized_datasets = {}  # dict that will hold tokenized vers. of each dataset split
+    print(f"{splits=}")
 
     for i, split in enumerate(splits):
-        print(f"Tokenizing {split = }", flush=True)
         text_docs = input_dataset[split]
-
-        if args.column_name:
-            text_docs = text_docs[args.column_name]
-        else:
-            if len(input_dataset.column_names) > 1:
-                raise ValueError(
-                    "There is more than one column in the specified dataset"
-                )
-            print(f"Using column {input_dataset.column_names[0]}")
-            text_docs = input_dataset[input_dataset.column_names[0]]
-
+        assert (
+            args.column_name or len(text_docs.column_names) == 1
+        ), "--column-name required when dataset has multiple columns"
+        column_name = args.column_name or text_docs.column_names[0]
+        print(f"Tokenizing {split=} {column_name=}")
         tokenized_dataset = tokenize_dataset(
-            text_docs,
+            text_docs[column_name],
             tokenizer,
             context_size=args.context_size,
             batch_size=args.batch_size,
@@ -84,12 +83,12 @@ if __name__ == "__main__":
     # Create a new dataset with the same structure (splits) as the original dataset, but with tokenized data
     output_dataset = DatasetDict(tokenized_datasets)
 
-    print("Tokenizaton completed. Uploading dataset to Huggingface.", flush=True)
+    print("Tokenizaton completed. Uploading dataset to Huggingface.")
 
     output_dataset.push_to_hub(
-        repo_id=args.output_dataset_name,
+        repo_id=args.output_dataset,
         private=False,
-        token=args.token,
+        token=args.hf_token,
     )
 
     print("Done.", flush=True)

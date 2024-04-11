@@ -1,5 +1,4 @@
 from collections import deque
-from typing import Optional
 
 from tqdm.auto import tqdm
 from transformers import PreTrainedTokenizerBase
@@ -34,7 +33,7 @@ def extend_deque(
         batch_input_ids = tokenizer(
             text_doc, return_attention_mask=False, add_special_tokens=False
         )["input_ids"]
-        for input_ids in batch_input_ids:
+        for input_ids in batch_input_ids:  # type: ignore
             dq.extend(input_ids + [tokenizer.eos_token_id])
         doc_idx += batch_size
     return doc_idx
@@ -93,13 +92,13 @@ def tokenize_dataset(
     Returns:
         list[list[int]]: List of token sequences of length equal to context_size.
     """
-
+    assert tokenizer.bos_token_id is not None
     dq = deque()
     doc_idx = 0
     samples = []
 
     pbar = tqdm(total=len(text_documents), desc="Tokenizing text documents", leave=True)
-    old_idx = 0
+    prev_doc_idx = 0
     # iterate through the text documents and tokenize them
     while doc_idx < len(text_documents):
         doc_idx = extend_deque(
@@ -107,8 +106,8 @@ def tokenize_dataset(
         )
         samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
         # update the tqdm bar
-        pbar.update(doc_idx - old_idx)
-        old_idx = doc_idx
+        pbar.update(doc_idx - prev_doc_idx)
+        prev_doc_idx = doc_idx
 
     pbar.close()
 
