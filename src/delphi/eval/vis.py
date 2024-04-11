@@ -3,6 +3,7 @@ import random
 import uuid
 from typing import cast
 
+import numpy as np
 import panel as pn
 import torch
 from IPython.core.display import HTML
@@ -97,7 +98,20 @@ _token_style = {
     "margin": "1px 0px 1px 1px",
     "padding": "0px 1px 1px 1px",
 }
+_token_emphasized_style = {
+    "border": "3px solid #888",
+    "display": "inline-block",
+    "font-family": "monospace",
+    "font-size": "14px",
+    "color": "black",
+    "background-color": "white",
+    "margin": "1px 0px 1px 1px",
+    "padding": "0px 1px 1px 1px",
+}
 _token_style_str = " ".join([f"{k}: {v};" for k, v in _token_style.items()])
+_token_emphasized_style_str = " ".join(
+    [f"{k}: {v};" for k, v in _token_emphasized_style.items()]
+)
 
 
 def vis_sample_prediction_probs(
@@ -165,7 +179,8 @@ def vis_sample_prediction_probs(
 
 
 def vis_pos_map(
-    pos_map: dict[tuple[int, int], float | int],
+    pos_list: list[tuple[int, int]],
+    metrics: Float[torch.Tensor, "prompt pos"],
     token_ids: Int[torch.Tensor, "prompt pos"],
     tokenizer: PreTrainedTokenizerBase,
     sample: int = 3,
@@ -176,11 +191,12 @@ def vis_pos_map(
 
     token_htmls = []
     unique_id = str(uuid.uuid4())
+    pretoken_class = f"pretoken_{unique_id}"
     token_class = f"token_{unique_id}"
     hover_div_id = f"hover_info_{unique_id}"
 
     # choose n random keys from pos_map
-    keys = random.sample(list(pos_map.keys()), k=sample)
+    keys = random.sample(pos_list, k=sample)
 
     for key in keys:
         prompt, pos = key
@@ -192,14 +208,20 @@ def vis_pos_map(
 
         for i in range(pre_toks.shape[0]):
             pre_tok = cast(int, pre_toks[i].item())
+            value = metrics[prompt][i].item()
             token_htmls.append(
-                token_to_html(pre_tok, tokenizer, bg_color="white", data={}).replace(
-                    "class='token'", f"class='{token_class}'"
-                )
+                token_to_html(
+                    pre_tok,
+                    tokenizer,
+                    bg_color="white"
+                    if np.isnan(value)
+                    else single_loss_diff_to_color(value),
+                    data={"loss-diff": f"{value:.2f}"},
+                ).replace("class='token'", f"class='{pretoken_class}' ")
             )
 
         tok = cast(int, token_ids[prompt][pos].item())
-        value = cast(float, pos_map[key])
+        value = metrics[prompt][pos].item()
 
         token_htmls.append(
             token_to_html(
@@ -214,11 +236,12 @@ def vis_pos_map(
         token_htmls.append("<br><br>")
 
     html_str = f"""
-    <style>.{token_class} {{ {_token_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
+    <style>.{pretoken_class} {{ {_token_style_str}}} .{token_class} {{ {_token_emphasized_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
     {"".join(token_htmls)} <div id='{hover_div_id}'></div>
     <script>
         (function() {{
-            var token_divs = document.querySelectorAll('.{token_class}');
+            var token_divs = document.querySelectorAll('.{pretoken_class}');
+            token_divs = Array.from(token_divs).concat(Array.from(document.querySelectorAll('.{token_class}')));
             var hover_info = document.getElementById('{hover_div_id}');
 
 
