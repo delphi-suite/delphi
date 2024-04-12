@@ -55,6 +55,7 @@ def token_to_html(
     tokenizer: PreTrainedTokenizerBase,
     bg_color: str,
     data: dict,
+    class_name: str = "token",
 ) -> str:
     data = data or {}  # equivalent to if not data: data = {}
     # non-breakable space, w/o it leading spaces wouldn't be displayed
@@ -84,7 +85,7 @@ def token_to_html(
         data_str = "".join(
             f" data-{k}='{v.replace(' ', '&nbsp;')}'" for k, v in data.items()
         )
-    return f"<div class='token'{style_str}{data_str}>{str_token}</div>{br}"
+    return f"<div class='{class_name}'{style_str}{data_str}>{str_token}</div>{br}"
 
 
 _token_style = {
@@ -144,8 +145,8 @@ def vis_sample_prediction_probs(
                 data[f"top{j}"] = to_tok_prob_str(top_tok, top_prob, tokenizer)
 
         token_htmls.append(
-            token_to_html(tok, tokenizer, bg_color=colors[i], data=data).replace(
-                "class='token'", f"class='{token_class}'"
+            token_to_html(
+                tok, tokenizer, bg_color=colors[i], data=data, class_name=token_class
             )
         )
 
@@ -180,6 +181,7 @@ def vis_sample_prediction_probs(
 
 def vis_pos_map(
     pos_list: list[tuple[int, int]],
+    selected_tokens: list[int],
     metrics: Float[torch.Tensor, "prompt pos"],
     token_ids: Int[torch.Tensor, "prompt pos"],
     tokenizer: PreTrainedTokenizerBase,
@@ -191,8 +193,8 @@ def vis_pos_map(
 
     token_htmls = []
     unique_id = str(uuid.uuid4())
-    pretoken_class = f"pretoken_{unique_id}"
-    token_class = f"token_{unique_id}"
+    token_class = f"pretoken_{unique_id}"
+    selected_token_class = f"token_{unique_id}"
     hover_div_id = f"hover_info_{unique_id}"
 
     # choose n random keys from pos_map
@@ -200,48 +202,51 @@ def vis_pos_map(
 
     for key in keys:
         prompt, pos = key
-        pre_toks = token_ids[prompt][:pos]
-        mask = torch.isin(pre_toks, torch.tensor([0, 1], dtype=torch.int8))
-        pre_toks = pre_toks[
+        all_toks = token_ids[prompt][: pos + 1]
+        mask = torch.isin(all_toks, torch.tensor([0, 1], dtype=torch.int8))
+        all_toks = all_toks[
             ~mask
         ]  # remove <unk> and <s> tokens, <s> cause strikethrough in html
 
-        for i in range(pre_toks.shape[0]):
-            pre_tok = cast(int, pre_toks[i].item())
+        for i in range(all_toks.shape[0]):
+            token_id = cast(int, all_toks[i].item())
             value = metrics[prompt][i].item()
             token_htmls.append(
                 token_to_html(
-                    pre_tok,
+                    token_id,
                     tokenizer,
                     bg_color="white"
                     if np.isnan(value)
                     else single_loss_diff_to_color(value),
                     data={"loss-diff": f"{value:.2f}"},
-                ).replace("class='token'", f"class='{pretoken_class}' ")
+                    class_name=token_class
+                    if token_id not in selected_tokens
+                    else selected_token_class,
+                )
             )
 
-        tok = cast(int, token_ids[prompt][pos].item())
-        value = metrics[prompt][pos].item()
+        # tok = cast(int, token_ids[prompt][pos].item())
+        # value = metrics[prompt][pos].item()
 
-        token_htmls.append(
-            token_to_html(
-                tok,
-                tokenizer,
-                bg_color=single_loss_diff_to_color(value),
-                data={"loss-diff": f"{value:.2f}"},
-            ).replace("class='token'", f"class='{token_class}'")
-        )
+        # token_htmls.append(
+        #     token_to_html(
+        #         tok,
+        #         tokenizer,
+        #         bg_color=single_loss_diff_to_color(value),
+        #         data={"loss-diff": f"{value:.2f}"},
+        #     ).replace("class='token'", f"class='{token_class}'")
+        # )
 
         # add break line
         token_htmls.append("<br><br>")
 
     html_str = f"""
-    <style>.{pretoken_class} {{ {_token_style_str}}} .{token_class} {{ {_token_emphasized_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
+    <style>.{token_class} {{ {_token_style_str}}} .{selected_token_class} {{ {_token_emphasized_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
     {"".join(token_htmls)} <div id='{hover_div_id}'></div>
     <script>
         (function() {{
-            var token_divs = document.querySelectorAll('.{pretoken_class}');
-            token_divs = Array.from(token_divs).concat(Array.from(document.querySelectorAll('.{token_class}')));
+            var token_divs = document.querySelectorAll('.{token_class}');
+            token_divs = Array.from(token_divs).concat(Array.from(document.querySelectorAll('.{selected_token_class}')));
             var hover_info = document.getElementById('{hover_div_id}');
 
 
