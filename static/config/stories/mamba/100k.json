@@ -1,0 +1,6 @@
+{
+  "model_config": {
+    "hidden_size": 24,
+    "num_hidden_layers": 2
+  }
+}
