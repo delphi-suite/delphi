@@ -1,6 +1,6 @@
 {
-    "run_name": "run",
-    "output_dir": "output",
+    "run_name": " ",
+    "output_dir": " ",
     "device": "auto",
     "eval_interval": 2000,
     "log_interval": 1,
@@ -10,15 +10,27 @@
     "init_from": "scratch",
     "wandb_config": {
         "log": false,
-        "project": "delphi",
-        "entity": "set_wandb.entity_to_your_wandb_username_to_make_wandb_logging_work"
+        "project": " ",
+        "entity": " "
+    },
+    "model_config": {
+        "model_class": "MambaForCausalLM",
+        "vocab_size": 4096,
+        "conv_kernel": 4,
+        "expand": 2,
+        "use_bias": false,
+        "use_conv_bias": true,
+        "hidden_act": "silu",
+        "initializer_range": 0.1,
+        "residual_in_fp32": true,
+        "tie_word_embeddings": true
     },
     "batch_size": 64,
     "max_seq_len": 512,
     "max_epochs": 10,
     "grad_clip": 1.0,
     "optimizer": {
-        "gradient_accumulation_steps": 4,
+        "gradient_accumulation_steps": 1,
         "learning_rate": 0.0005,
         "weight_decay": 0.1,
         "beta1": 0.9,

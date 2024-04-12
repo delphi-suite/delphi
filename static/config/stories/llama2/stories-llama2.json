@@ -1,0 +1,47 @@
+{
+    "run_name": " ",
+    "output_dir": " ",
+    "device": "auto",
+    "eval_interval": 2000,
+    "log_interval": 1,
+    "eval_iters": 100,
+    "eval_only": false,
+    "always_save_checkpoint": false,
+    "init_from": "scratch",
+    "wandb_config": {
+        "log": false,
+        "project": " ",
+        "entity": " "
+    },
+    "model_config": {
+        "model_class": "LlamaForCausalLM",
+        "attention_bias": false,
+        "attention_dropout": 0.0,
+        "bos_token_id": -1,
+        "eos_token_id": -2,
+        "hidden_act": "silu",
+        "initializer_range": 0.02,
+        "max_position_embeddings": 512,
+        "rms_norm_eps": 1e-06,
+        "rope_scaling": null,
+        "rope_theta": 10000.0,
+        "tie_word_embeddings": false,
+        "use_cache": true,
+        "vocab_size": 4096
+    },
+    "batch_size": 64,
+    "max_seq_len": 512,
+    "max_epochs": 10,
+    "grad_clip": 1.0,
+    "optimizer": {
+        "gradient_accumulation_steps": 1,
+        "learning_rate": 0.0005,
+        "weight_decay": 0.1,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "grad_clip": 1.0,
+        "decay_lr": true,
+        "warmup_iters": 1000,
+        "min_lr": 0.0
+    }
+}
