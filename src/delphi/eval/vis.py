@@ -186,7 +186,7 @@ def vis_pos_map(
     metrics: Float[torch.Tensor, "prompt pos"],
     token_ids: Int[torch.Tensor, "prompt pos"],
     tokenizer: PreTrainedTokenizerBase,
-    sample: int = 3,
+    display_html: bool = False,
 ):
     """
     Randomly sample from pos_map and visualize the loss diff at the corresponding position.
@@ -198,32 +198,31 @@ def vis_pos_map(
     selected_token_class = f"token_{unique_id}"
     hover_div_id = f"hover_info_{unique_id}"
 
-    # choose n random keys from pos_map
-    keys = random.sample(pos_list, k=sample)
+    # choose a random keys from pos_map
+    key = random.choice(pos_list)
 
-    for key in keys:
-        prompt, pos = key
-        all_toks = token_ids[prompt][: pos + 1]
+    prompt, pos = key
+    all_toks = token_ids[prompt][: pos + 1]
 
-        for i in range(all_toks.shape[0]):
-            token_id = cast(int, all_toks[i].item())
-            value = metrics[prompt][i].item()
-            token_htmls.append(
-                token_to_html(
-                    token_id,
-                    tokenizer,
-                    bg_color="white"
-                    if np.isnan(value)
-                    else single_loss_diff_to_color(value),
-                    data={"loss-diff": f"{value:.2f}"},
-                    class_name=token_class
-                    if token_id not in selected_tokens
-                    else selected_token_class,
-                )
+    for i in range(all_toks.shape[0]):
+        token_id = cast(int, all_toks[i].item())
+        value = metrics[prompt][i].item()
+        token_htmls.append(
+            token_to_html(
+                token_id,
+                tokenizer,
+                bg_color="white"
+                if np.isnan(value)
+                else single_loss_diff_to_color(value),
+                data={"loss-diff": f"{value:.2f}"},
+                class_name=token_class
+                if token_id not in selected_tokens
+                else selected_token_class,
             )
+        )
 
-        # add break line
-        token_htmls.append("<br><br>")
+    # add break line
+    token_htmls.append("<br><br>")
 
     html_str = f"""
     <style>.{token_class} {{ {_token_style_str}}} .{selected_token_class} {{ {_token_emphasized_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
