@@ -16,6 +16,8 @@
     "model_config": {
         "model_class": "MambaForCausalLM",
         "vocab_size": 4096,
+        "bos_token_id": 1,
+        "eos_token_id": 2,
         "conv_kernel": 4,
         "expand": 2,
         "use_bias": false,

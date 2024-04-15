@@ -15,10 +15,11 @@
     },
     "model_config": {
         "model_class": "LlamaForCausalLM",
+        "vocab_size": 4096,
+        "bos_token_id": 1,
+        "eos_token_id": 2,
         "attention_bias": false,
         "attention_dropout": 0.0,
-        "bos_token_id": -1,
-        "eos_token_id": -2,
         "hidden_act": "silu",
         "initializer_range": 0.02,
         "max_position_embeddings": 512,
@@ -26,8 +27,7 @@
         "rope_scaling": null,
         "rope_theta": 10000.0,
         "tie_word_embeddings": false,
-        "use_cache": true,
-        "vocab_size": 4096
+        "use_cache": true
     },
     "batch_size": 64,
     "max_seq_len": 512,
