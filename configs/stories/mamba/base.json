@@ -16,28 +16,29 @@
     "model_config": {
         "model_class": "MambaForCausalLM",
         "vocab_size": 4096,
+        "state_size": 16,
+        "layer_norm_epsilon": 1e-5,
         "bos_token_id": 1,
         "eos_token_id": 2,
-        "conv_kernel": 4,
         "expand": 2,
+        "conv_kernel": 4,
         "use_bias": false,
         "use_conv_bias": true,
         "hidden_act": "silu",
         "initializer_range": 0.1,
         "residual_in_fp32": true,
-        "tie_word_embeddings": true
+        "rescale_prenorm_residual": true
     },
-    "batch_size": 64,
+    "batch_size": 256,
     "max_seq_len": 512,
     "max_epochs": 10,
     "grad_clip": 1.0,
-    "optimizer": {
+    "adam": {
         "gradient_accumulation_steps": 1,
         "learning_rate": 0.0005,
         "weight_decay": 0.1,
         "beta1": 0.9,
         "beta2": 0.95,
-        "grad_clip": 1.0,
         "decay_lr": true,
         "warmup_iters": 1000,
         "min_lr": 0.0
