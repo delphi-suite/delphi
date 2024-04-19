@@ -1,96 +1,48 @@
+#!/usr/bin/env python3
 import argparse
-import os
-import sentencepiece as spm
 import tempfile
 
-from datasets import load_dataset
-from tqdm.auto import tqdm, trange
-from transformers import LlamaTokenizerFast
-from tokenizers import SentencePieceBPETokenizer
-
-from delphi.train.tokenizer import train_vocab
+from delphi.train.tokenizer import (
+    hf_bpe_tokenizer_to_llama_tokenizer,
+    hf_dataset_to_text,
+    sp_processor_to_hf_bpe_tokenizer,
+    train_sentence_piece,
+)
 
 
 def main(
+    *,
     vocab_size: int,
     dataset_name: str,
+    split: str,
     column: str,
-    train_size: float,
     repo_id: str,
-    token: str,
-    seed: int,
-    funct_test: bool = False,
+    hf_token: str,
 ):
-    """
-    Trains a SentencePiece tokenizer on a dataset.
-    And uploads the resulting tokenizer to huggingface.
-    Args:
-    - vocab_size: The vocabulary size of the resulting tokenizer
-    - dataset_name: The name of the dataset from which validation set will be loaded
-    - train_size: The amount of the dataset that should be used for training
-    - username: Hugging Face API username
-    - repo_id: Hugging Face repository ID
-    - token: Hugging Face API token
-    """
-    print("repo id", repo_id)
-    train_ds = load_dataset(dataset_name)["train"]
-    if (isinstance(train_size, int) and train_size > 1) or (isinstance(train_size, float) and train_size < 1.0):
-        train_ds = train_ds.train_test_split(
-            train_size=train_size,
-            seed=seed
-        )["train"]
-    
-    assert vocab_size > 0, "vocab_size should be greater than 0"
-    tokenizer_model_path = f"tok{vocab_size}.model"
-    if not os.path.isfile(tokenizer_model_path):
-        train_vocab(
+    """Trains a SentencePiece tokenizer, converts it to LlamaTokenizerFast and pushes it to the Hugging Face Hub."""
+    with tempfile.TemporaryFile(mode="w+") as text_file:
+        print("Loading and writing dataset to text file...")
+        hf_dataset_to_text(
+            dataset_name=dataset_name,
+            split=split,
+            column=column,
+            text_file=text_file,
+        )
+        text_file.seek(0)
+        print("Training SentencePiece tokenizer...\n")
+        sp_processor = train_sentence_piece(
             vocab_size=vocab_size,
-            dataset=train_ds,
-            column=column
+            sentence_iterator=text_file,
         )
-        
-    sp_model = spm.SentencePieceProcessor(model_file=tokenizer_model_path)
-    
-    # export 'vocab' and 'merges'
-    vocab = {sp_model.id_to_piece(index): index for index in trange(sp_model.GetPieceSize())}
-    merges = []
-    for piece_l in tqdm(vocab.keys(), total=sp_model.GetPieceSize()):
-        for piece_r in vocab.keys():
-            merge = f"{piece_l}{piece_r}"
-            piece_id = vocab.get(merge, None)
-            if piece_id:
-                merges += [(piece_l, piece_r, piece_id)]
-    merges = sorted(merges, key=lambda val: val[2])
-    merges = [(val[0], val[1]) for val in merges]
-    
-    # convert to BPE tokenizer
-    bpe_tokenizer = SentencePieceBPETokenizer(vocab, merges)
-
-    # Convert to LLaMA Tokenizer
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.json') as tmpfile:
-        bpe_tokenizer.save(tmpfile.name, pretty=True)
-        tmpfile.seek(0)
-        tokenizer = LlamaTokenizerFast(
-            tokenizer_file=tmpfile.name,
-            unk_token="<unk>",
-            unk_token_id=0,
-            bos_token="<s>",
-            bos_token_id=1,
-            eos_token="</s>",
-            eos_token_id=2,
-            pad_token="<pad>",
-            pad_token_id=3,
-            padding_side="right",
-        )
-    print("Converted tokenizer to huggingface tokenizer.")
-    
-    # push tokenizer to the hub
-    if repo_id:
-        tokenizer.push_to_hub(
-            repo_id=repo_id,
-            #token=args.token,
-        )
-        print("Pushed tokenizer to huggingface hub.")
+    print("\nConverting SentencePiece tokenizer Llama tokenizer...")
+    hf_bpe_tokenizer = sp_processor_to_hf_bpe_tokenizer(sp_processor)
+    llama_tokenizer = hf_bpe_tokenizer_to_llama_tokenizer(hf_bpe_tokenizer)
+    print("Pushing Llama tokenizer to Hugging Face Hub...")
+    llama_tokenizer.push_to_hub(
+        repo_id=repo_id,
+        token=hf_token,
+    )
+    print("Done.")
 
 
 if __name__ == "__main__":
@@ -99,52 +51,47 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--vocab-size",
+        "-v",
         type=int,
         help="Vocabulary size of the tokenizer",
     )
     parser.add_argument(
         "--dataset-name",
+        "-d",
         type=str,
         help="Dataset name with or without delphi-suite/ prefix",
     )
     parser.add_argument(
+        "--split",
+        "-s",
+        type=str,
+        default="train",
+        help="Split of the dataset to be used for training, supports slicing like 'train[:10%%]'",
+    )
+    parser.add_argument(
         "--column",
+        "-c",
         type=str,
         help="Column of the dataset to be used for training",
     )
     parser.add_argument(
-        "--train-size",
-        help="Subset of the dataset to be used for training",
-        default=1.0,
-    )
-    parser.add_argument(
         "--repo-id",
+        "-r",
         type=str,
         help="Hugging Face repository ID",
     )
     parser.add_argument(
-        "--token",
+        "--hf-token",
+        "-t",
         type=str,
         help="Hugging Face API token",
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        help="Seed",
-        default=42
-    )
-    parser.add_argument(
-        "--test-funct", action="store_true", help="Enable test function mode"
-    )
-
     args = parser.parse_args()
     main(
-        args.vocab_size,
-        args.dataset_name,
-        args.column,
-        args.train_size,
-        args.repo_id,
-        args.token,
-        args.seed,
-        args.test_funct,
+        vocab_size=args.vocab_size,
+        dataset_name=args.dataset_name,
+        split=args.split,
+        column=args.column,
+        repo_id=args.repo_id,
+        hf_token=args.hf_token,
     )
