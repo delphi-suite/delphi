@@ -5,7 +5,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     package_data={
-        "delphi": ["static/**/*"],
+        "delphi": ["test_configs/**/*"],
     },
     include_package_data=True,
 )

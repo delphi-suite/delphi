@@ -6,8 +6,9 @@ import torch
 from datasets import Dataset
 from jaxtyping import Float
 
+from delphi.constants import TEST_CONFIGS_DIR
 from delphi.train.config import TrainingConfig
-from delphi.train.config.utils import load_preset
+from delphi.train.config.utils import build_config_from_files_and_overrides
 from delphi.train.train_step import accumulate_gradients, train_step
 from delphi.train.utils import (
     ModelTrainingState,
@@ -15,6 +16,12 @@ from delphi.train.utils import (
     init_model,
     setup_determinism,
 )
+
+
+def load_test_config(preset_name: str) -> TrainingConfig:
+    """Load a test config by name, e.g. `load_preset("debug")`."""
+    preset_path = TEST_CONFIGS_DIR / f"{preset_name}.json"
+    return build_config_from_files_and_overrides([preset_path], {})
 
 
 @pytest.fixture
@@ -71,7 +78,9 @@ def test_basic_reproducibility(dataset, model):
     )
     device = torch.device("cpu")
     indices = list(range(len(dataset)))
-    train_step(model_training_state, dataset, load_preset("debug"), device, indices)
+    train_step(
+        model_training_state, dataset, load_test_config("debug"), device, indices
+    )
 
     params = get_params(model)
 
@@ -230,7 +239,7 @@ def test_train_step_no_training(dataset, model):
     Test train_step when no_training is set to True
     """
     # setup
-    config_dict = asdict(load_preset("debug"))
+    config_dict = asdict(load_test_config("debug"))
     config_dict["debug_config"] = {"no_training": True}
     config = dacite.from_dict(TrainingConfig, config_dict)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
@@ -252,7 +261,7 @@ def test_train_step_with_training(dataset, model):
     Test train_step when training is performed
     """
     # setup
-    config_dict = asdict(load_preset("debug"))
+    config_dict = asdict(load_test_config("debug"))
     config_dict["debug_config"] = {"no_training": False}
     config_dict["batch_size"] = 16
     config_dict["optimizer"] = {"gradient_accumulation_steps": 4}

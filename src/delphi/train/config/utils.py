@@ -2,7 +2,6 @@ import ast
 import json
 import logging
 import os
-from collections.abc import Iterable
 from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
@@ -11,8 +10,6 @@ from typing import Any, Type, TypeVar, Union
 
 import platformdirs
 from dacite import from_dict
-
-from delphi.constants import CONFIG_PRESETS_DIR
 
 from .training_config import TrainingConfig
 
@@ -40,11 +37,6 @@ def merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
     for d in dicts:
         merge_two_dicts(merged, d)
     return merged
-
-
-def get_preset_paths() -> Iterable[Path]:
-    """This gets all the paths to the preset config files in the static preset config dir."""
-    return CONFIG_PRESETS_DIR.glob("*.json")
 
 
 def get_user_config_path() -> Path:
@@ -133,12 +125,6 @@ def build_config_from_files_and_overrides(
     merge_two_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
     return from_dict(TrainingConfig, combined_config)
-
-
-def load_preset(preset_name: str) -> TrainingConfig:
-    """Load a preset config by name, e.g. `load_preset("debug")`."""
-    preset_path = CONFIG_PRESETS_DIR / f"{preset_name}.json"
-    return build_config_from_files_and_overrides([preset_path], {})
 
 
 def dot_notation_to_dict(vars: dict[str, Any]) -> dict[str, Any]:
