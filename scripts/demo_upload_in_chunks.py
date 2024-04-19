@@ -28,7 +28,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     api = HfApi(token=args.hf_token)
-    # api.create_repo(repo_id=args.output_dataset, repo_type="dataset")
+    api.create_repo(repo_id=args.output_dataset, repo_type="dataset")
 
     n_chunks = 0
     CHUNK_SIZE = 200000

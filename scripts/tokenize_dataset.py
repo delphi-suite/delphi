@@ -61,7 +61,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     api = HfApi(token=args.hf_token)
-    # api.create_repo(repo_id=args.output_dataset, repo_type="dataset")
+    api.create_repo(repo_id=args.output_dataset, repo_type="dataset")
 
     print(f"Loading dataset '{args.input_dataset}'...")
     input_dataset = load_dataset(args.input_dataset)
