@@ -38,7 +38,7 @@ def train_step(
             num_minibatches=config.gradient_accumulation_steps,
             step=model_training_state.step,
             device=device,
-            feature_name=config.data_config.train_feature,
+            feature_name=config.dataset.feature,
         )
         total_loss = accumulate_gradients(
             model=model,

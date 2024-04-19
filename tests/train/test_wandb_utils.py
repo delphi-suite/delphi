@@ -7,37 +7,25 @@ import torch
 import transformers
 from dacite import from_dict
 
+from delphi.constants import TEST_CONFIGS_DIR
 from delphi.train.config import TrainingConfig
+from delphi.train.config.utils import build_config_from_files_and_overrides
 from delphi.train.utils import ModelTrainingState, initialize_model_training_state
 from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
 
 
 @pytest.fixture
-def mock_training_config():
-    config = from_dict(
-        TrainingConfig,
-        {
-            "run_name": "test_run",
-            "device": "cpu",
-            "model_config": {
-                "model_type": "LlamaForCausalLM",
-                "model_params": {
-                    "hidden_size": 48,
-                    "intermediate_size": 48,
-                    "num_attention_heads": 2,
-                    "num_hidden_layers": 2,
-                    "num_key_value_heads": 2,
-                    "vocab_size": 4096,
-                },
-            },
-            "wandb_config": {
-                "log": True,
-                "entity": "test_entity",
-                "project": "test_project",
-            },
+def mock_training_config() -> TrainingConfig:
+    preset_path = TEST_CONFIGS_DIR / "debug.json"
+    overrides = {
+        "run_name": "test_run",
+        "wandb": {
+            "log": True,
+            "entity": "test_entity",
+            "project": "test_project",
         },
-    )
-    return config
+    }
+    return build_config_from_files_and_overrides([preset_path], overrides)
 
 
 @pytest.fixture

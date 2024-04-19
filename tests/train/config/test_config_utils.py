@@ -42,7 +42,7 @@ def test_build_config_from_files_and_overrides():
     assert config.eval_iters == 5
     # check base values
     assert config.max_epochs == 2
-    assert config.data_config.train_sample_limit == 256
+    assert config.dataset.name == "delphi-suite/stories-tokenized"
 
 
 def test_unoptionalize():

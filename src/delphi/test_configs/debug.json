@@ -4,9 +4,11 @@
     "max_epochs": 2,
     "eval_interval": 1,
     "eval_iters": 1,
-    "data_config": {
-        "train_sample_limit": 256
+    "dataset": {
+        "name": "delphi-suite/stories-tokenized"
     },
+    "batch_ordering_seed": 42,
+    "torch_seed": 1337,
     "batch_size": 64,
     "model_config": {
         "model_class": "LlamaForCausalLM",

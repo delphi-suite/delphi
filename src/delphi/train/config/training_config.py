@@ -7,20 +7,21 @@ import platformdirs
 from beartype import beartype
 
 from .adam_config import AdamConfig
-from .data_config import DataConfig
+from .dataset_config import DatasetConfig
 from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
 from .wandb_config import WandbConfig
 
 
 @beartype
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TrainingConfig:
     model_config: dict[str, Any] = field(
         metadata={
             "help": "model config; class_name=name of model class in transformers, everything else is kwargs for the corresponding model config"
         },
     )
+    max_seq_len: int = field(metadata={"help": "max sequence length"})
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_dir: str = field(
@@ -60,9 +61,6 @@ class TrainingConfig:
         },
     )
 
-    # model config
-    max_seq_len: int = field(default=512, metadata={"help": "max sequence length"})
-
     # training
     max_epochs: int = field(
         default=10, metadata={"help": "total number of training epochs"}
@@ -77,20 +75,18 @@ class TrainingConfig:
 
     # reproducibility
     batch_ordering_seed: int = field(
-        default=1337,
         metadata={"help": "seed used for pseudorandomly sampling data during training"},
     )
-    torch_seed: int = field(default=42, metadata={"help": "seed used for torch"})
+    torch_seed: int = field(metadata={"help": "seed used for torch"})
 
     # data
-    data_config: DataConfig = field(
-        default_factory=DataConfig,
+    dataset: DatasetConfig = field(
         metadata={"help": "specify training and validation data"},
     )
 
     # third party
-    wandb_config: WandbConfig = field(default_factory=WandbConfig)
-    huggingface: HuggingfaceConfig = field(default_factory=HuggingfaceConfig)
+    wandb: Optional[WandbConfig] = None
+    hf: Optional[HuggingfaceConfig] = None
 
     # debug
     debug_config: DebugConfig = field(default_factory=DebugConfig)

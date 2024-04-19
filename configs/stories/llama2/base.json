@@ -1,18 +1,4 @@
 {
-    "run_name": " ",
-    "output_dir": " ",
-    "device": "auto",
-    "eval_interval": 2000,
-    "log_interval": 1,
-    "eval_iters": 100,
-    "eval_only": false,
-    "always_save_checkpoint": false,
-    "init_from": "scratch",
-    "wandb_config": {
-        "log": false,
-        "project": " ",
-        "entity": " "
-    },
     "model_config": {
         "model_class": "LlamaForCausalLM",
         "vocab_size": 4096,
@@ -28,8 +14,16 @@
         "attention_bias": false,
         "attention_dropout": 0.0
     },
-    "batch_size": 256,
     "max_seq_len": 512,
+    "device": "auto",
+    "checkpoint_interval": -1000,
+    "extra_checkpoint_iters": [
+        -1000,
+        -2000
+    ],
+    "log_interval": -1000,
+    "eval_iters": 100,
+    "batch_size": 256,
     "max_epochs": 10,
     "grad_clip": 1.0,
     "adam": {
@@ -41,5 +35,10 @@
         "decay_lr": true,
         "warmup_iters": 1000,
         "min_lr": 0.0
+    },
+    "batch_ordering_seed": 1337,
+    "torch_seed": 42,
+    "dataset": {
+        "name": "delphi-suite/stories-tokenized"
     }
 }
