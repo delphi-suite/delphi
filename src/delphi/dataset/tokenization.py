@@ -25,6 +25,7 @@ def extend_deque(
         text_documents: List of (untokenized) text documents to be tokenized.
         doc_idx: Index of the current text story.
         tokenizer: Tokenizer to encode the text strings.
+        batch_size: The size of input into batched tokenization.
     Returns:
         int: Updated index in the text documents dataset.
     """
@@ -88,6 +89,7 @@ def tokenize_dataset(
         text_documents: List[str],
         tokenizer,
         context_size,
+        batch_size: The size of input into batched tokenization.
 
     Returns:
         list[list[int]]: List of token sequences of length equal to context_size.
