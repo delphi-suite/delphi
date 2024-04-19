@@ -6,7 +6,6 @@ import pandas as pd
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
-from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval import spacy_token_labelling
 
 

@@ -2,7 +2,7 @@ from typing import Optional
 
 import pytest
 
-from delphi.constants import CONFIG_PRESETS_DIR
+from delphi.constants import TEST_CONFIGS_DIR
 from delphi.train.config.utils import (
     _unoptionalize,
     build_config_from_files_and_overrides,
@@ -34,7 +34,7 @@ def test_dot_notation_to_dict():
 
 
 def test_build_config_from_files_and_overrides():
-    config_files = [CONFIG_PRESETS_DIR / "debug.json"]
+    config_files = [TEST_CONFIGS_DIR / "debug.json"]
     overrides = {"model_config": {"hidden_size": 128}, "eval_iters": 5}
     config = build_config_from_files_and_overrides(config_files, overrides)
     # check overrides
