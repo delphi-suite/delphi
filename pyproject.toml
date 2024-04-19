@@ -23,7 +23,7 @@ dependencies = [
     "dacite==1.8.1",
     "panel==1.4.0",
     "jupyter_bokeh==4.0.1",
-    "transformers==4.39.2",
+    "transformers==4.40.0",
 ]
 
 [project.optional-dependencies]
