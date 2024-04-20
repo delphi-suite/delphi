@@ -20,7 +20,6 @@ def mock_training_config() -> TrainingConfig:
     overrides = {
         "run_name": "test_run",
         "wandb": {
-            "log": True,
             "entity": "test_entity",
             "project": "test_project",
         },
