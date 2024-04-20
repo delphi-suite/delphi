@@ -129,7 +129,9 @@ def tokenize_and_upload_split(
     api: HfApi,
 ):
     print(f"Tokenizing {split_name=}...")
+    # FIXME: this line copies all of the text dataset to memory
     documents = dataset_split[dataset_split.column_names[0]]
+    # FIXME: we should use a generator to avoid loading all the data into memory
     tokenized_documents = tokenize_documents(
         documents,
         tokenizer,
