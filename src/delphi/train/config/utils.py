@@ -9,6 +9,7 @@ from typing import _GenericAlias  # type: ignore
 from typing import Any, Type, TypeVar, Union
 
 import platformdirs
+from dacite import Config as dacite_config
 from dacite import from_dict
 
 from .training_config import TrainingConfig
@@ -124,7 +125,7 @@ def build_config_from_files_and_overrides(
     cast_types(overrides, TrainingConfig)
     merge_two_dicts(merge_into=combined_config, merge_from=overrides)
     set_backup_vals(combined_config, config_files)
-    return from_dict(TrainingConfig, combined_config)
+    return from_dict(TrainingConfig, combined_config, config=dacite_config(strict=True))
 
 
 def dot_notation_to_dict(vars: dict[str, Any]) -> dict[str, Any]:
