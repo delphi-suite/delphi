@@ -27,8 +27,8 @@
     "batch_size": 256,
     "max_epochs": 10,
     "grad_clip": 1.0,
+    "gradient_accumulation_steps": 1,
     "adam": {
-        "gradient_accumulation_steps": 1,
         "learning_rate": 0.0005,
         "weight_decay": 0.1,
         "beta1": 0.9,
