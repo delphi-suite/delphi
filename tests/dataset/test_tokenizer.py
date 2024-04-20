@@ -4,7 +4,11 @@ import random
 import pytest
 from transformers import AutoTokenizer
 
-from delphi.dataset.tokenization import extend_deque, make_new_samples, tokenize_dataset
+from delphi.dataset.tokenization import (
+    extend_deque,
+    make_new_samples,
+    tokenize_documents,
+)
 
 
 @pytest.fixture
@@ -83,6 +87,6 @@ def test_tokenize_dataset(tokenizer):
         [1, 4037, 311, 519, 268, 326, 317, 264, 525, 4037, 2],
     ]
     assert (
-        tokenize_dataset(text_stories, tokenizer, CTX_SIZE, BATCH_SIZE)
+        tokenize_documents(text_stories, tokenizer, CTX_SIZE, BATCH_SIZE)
         == correct_batches
     )

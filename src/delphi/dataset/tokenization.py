@@ -1,5 +1,9 @@
+import io
+import math
 from collections import deque
 
+from datasets import Dataset
+from huggingface_hub import HfApi
 from tqdm.auto import tqdm
 from transformers import PreTrainedTokenizerBase
 
@@ -75,10 +79,10 @@ def make_new_samples(
     return samples
 
 
-def tokenize_dataset(
-    text_documents: list[str],
+def tokenize_documents(
+    documents: list[str],
     tokenizer: PreTrainedTokenizerBase,
-    context_size: int,
+    seq_len: int,
     batch_size: int,
 ) -> list[list[int]]:
     """
@@ -99,19 +103,60 @@ def tokenize_dataset(
     doc_idx = 0
     samples = []
 
-    pbar = tqdm(total=len(text_documents), desc="Tokenizing text documents", leave=True)
+    prog_bar = tqdm(total=len(documents), desc="Tokenizing text documents", leave=True)
     prev_doc_idx = 0
     # iterate through the text documents and tokenize them
-    while doc_idx < len(text_documents):
-        doc_idx = extend_deque(
-            dq, context_size, text_documents, doc_idx, tokenizer, batch_size
-        )
-        samples.extend(make_new_samples(dq, context_size, tokenizer.bos_token_id))
+    while doc_idx < len(documents):
+        doc_idx = extend_deque(dq, seq_len, documents, doc_idx, tokenizer, batch_size)
+        samples.extend(make_new_samples(dq, seq_len, tokenizer.bos_token_id))
         # update the tqdm bar
-        pbar.update(doc_idx - prev_doc_idx)
+        prog_bar.update(doc_idx - prev_doc_idx)
         prev_doc_idx = doc_idx
-
-    pbar.close()
+    prog_bar.close()
 
     # We discard the last chunk, so no processing on the remainder of the deque here
     return samples
+
+
+def tokenize_and_upload_split(
+    dataset_split: Dataset,
+    split_name: str,
+    tokenizer: PreTrainedTokenizerBase,
+    seq_len: int,
+    batch_size: int,
+    chunk_size: int,
+    out_repo_id: str,
+    api: HfApi,
+):
+    print(f"Tokenizing {split_name=}...")
+    documents = dataset_split[dataset_split.column_names[0]]
+    tokenized_documents = tokenize_documents(
+        documents,
+        tokenizer,
+        seq_len=seq_len,
+        batch_size=batch_size,
+    )
+    print(f"Done, produced {len(tokenized_documents)} token sequences.")
+
+    n_chunks = math.ceil(len(tokenized_documents) / chunk_size)
+    print(f"Uploading {n_chunks} chunks to HuggingFace...")
+    for chunk_idx in range(n_chunks):
+        ds_chunk = Dataset.from_dict(
+            {
+                "tokens": tokenized_documents[
+                    chunk_idx * chunk_size : (chunk_idx + 1) * chunk_size
+                ]
+            }
+        )
+
+        ds_parquet_chunk = io.BytesIO()
+        ds_chunk.to_parquet(ds_parquet_chunk)
+        chunk_name = f"{split_name}-{chunk_idx:05}-of-{n_chunks-1:05}.parquet"
+        api.upload_file(
+            path_or_fileobj=ds_parquet_chunk,
+            path_in_repo=f"data/{chunk_name}",
+            repo_id=out_repo_id,
+            repo_type="dataset",
+        )
+        print(f"Chunk {chunk_name} done.")
+    print("Done.")
