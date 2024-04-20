@@ -1,8 +1,6 @@
 {
-    "vocab_size": 4096,
     "max_seq_len": 512,
     "max_epochs": 2,
-    "eval_interval": 1,
     "eval_iters": 1,
     "dataset": {
         "name": "delphi-suite/stories-tokenized"
