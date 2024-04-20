@@ -1,14 +1,13 @@
 {
   "run_name": "2024_03_15_17_28_14",
   "output_dir": "/Users/jaidhyani/Library/Application Support/delphi",
+  "dataset": {
+    "name": "delphi-suite/v0-tinystories-v2-clean-tokenized"
+  },
   "device": "auto",
   "log_interval": 1,
   "eval_iters": 100,
-  "eval_only": false,
-  "always_save_checkpoint": false,
-  "init_from": "scratch",
-  "wandb_config": {
-    "log": false,
+  "wandb": {
     "project": "delphi",
     "entity": "set_wandb.entity_to_your_wandb_username_to_make_wandb_logging_work"
   },
@@ -37,16 +36,17 @@
     "vocab_size": 4096
   },
   "max_epochs": 10,
+  "gradient_accumulation_steps": 1,
   "grad_clip": 1.0,
-  "optimizer": {
-    "gradient_accumulation_steps": 4,
+  "adam": {
     "learning_rate": 0.0005,
     "weight_decay": 0.1,
     "beta1": 0.9,
     "beta2": 0.95,
-    "grad_clip": 1.0,
     "decay_lr": true,
     "warmup_iters": 1000,
     "min_lr": 0.0
-  }
+  },
+  "batch_ordering_seed": 42,
+  "torch_seed": 1337
 }
