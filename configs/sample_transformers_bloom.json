@@ -1,8 +1,6 @@
 {
-    "vocab_size": 4096,
     "max_seq_len": 512,
     "max_epochs": 10,
-    "eval_interval": 10,
     "eval_iters": 8,
     "batch_size": 64,
     "model_config": {

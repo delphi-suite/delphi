@@ -12,6 +12,12 @@ from delphi.train.config.utils import (
 )
 
 
+def test_configs():
+    test_configs = list(TEST_CONFIGS_DIR.glob("*.json"))
+    for config in test_configs:
+        build_config_from_files_and_overrides([config], {})
+
+
 def test_merge_two_dicts():
     dict1 = {"a": 1, "b": 2, "c": {"d": 3, "e": 4}}
     dict2 = {"a": 5, "c": {"d": 6}}

@@ -1,4 +1,5 @@
 {
+  "max_seq_len": 512,
   "model_config": {
     "model_class": "LlamaForCausalLM",
     "attention_bias": false,
@@ -20,5 +21,10 @@
     "tie_word_embeddings": true,
     "use_cache": true,
     "vocab_size": 4096
+  },
+  "batch_ordering_seed": 42,
+  "torch_seed": 1337,
+  "dataset": {
+    "name": "delphi-suite/v0-tinystories-v2-clean-tokenized"
   }
 }
