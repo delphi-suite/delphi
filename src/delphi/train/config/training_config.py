@@ -57,7 +57,7 @@ class TrainingConfig:
     batch_size: int = field(
         default=64,
         metadata={
-            "help": "if gradient_accumulation_steps > 1, this is the micro-batch size"
+            "help": "number of samples used to compute the gradient for a single optimizer step"
         },
     )
 
@@ -69,7 +69,12 @@ class TrainingConfig:
         default=1.0,
         metadata={"help": "clip gradients at this value, or disable if == 0.0"},
     )
-    gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
+    gradient_accumulation_steps: int = field(
+        default=1,
+        metadata={
+            "help": "if > 1 reduces memory usage by computing gradient in microbatches"
+        },
+    )
     # (adamw) optimizer
     adam: AdamConfig = field(default_factory=AdamConfig)
 

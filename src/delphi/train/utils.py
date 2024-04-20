@@ -287,10 +287,7 @@ def save_results(
 
 
 def count_tokens_so_far(config: TrainingConfig, mts: ModelTrainingState) -> int:
-    tokens_per_iter = (
-        config.batch_size * config.gradient_accumulation_steps * config.max_seq_len
-    )
-
+    tokens_per_iter = config.batch_size * config.max_seq_len
     return mts.iter_num * tokens_per_iter
 
 
