@@ -182,9 +182,6 @@ def gen_minibatches(
     """
     Generate minibatches from a dataset given a step and indices
     """
-    assert (
-        batch_size % num_minibatches == 0
-    ), "batch_size must be divisible by num_minibatches"
     minibatch_size = batch_size // num_minibatches
     first_minibatch_num = num_minibatches * step
     for i in range(num_minibatches):
