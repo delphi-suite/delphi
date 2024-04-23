@@ -60,6 +60,8 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
     logging.info("Loading data...")
     train_ds = config.dataset.load_train()
     validation_ds = config.dataset.load_validation()
+    logging.info(f"Train dataset: {len(train_ds)} samples")
+    logging.info(f"Validation dataset: {len(validation_ds)} samples")
 
     # derive iteration params
     steps_per_epoch = len(train_ds) // config.batch_size
