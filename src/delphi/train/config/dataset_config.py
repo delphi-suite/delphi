@@ -19,8 +19,8 @@ class DatasetConfig:
         },
     )
     train_split: str = field(
-        default="validation",
-        metadata={"help": "split of the validation dataset to use for validation"},
+        default="train",
+        metadata={"help": "split of the train dataset to use for validation"},
     )
     validation_split: str = field(
         default="validation",
