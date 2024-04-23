@@ -229,7 +229,7 @@ def estimate_loss(
         for k, (X, Y) in enumerate(minibatches):
             loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
-        out[split] = losses.mean()
+        out[split] = losses.mean().item()
     model.train()
     return out
 
