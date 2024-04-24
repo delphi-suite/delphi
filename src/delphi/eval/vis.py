@@ -75,6 +75,7 @@ def token_to_html(
         br += "<br>"
         # this is so we can copy the prompt without "\n"s
         specific_styles["user-select"] = "none"
+    str_token = str_token.replace("<", "&lt;").replace(">", "&gt;")
 
     style_str = data_str = ""
     # converting style dict into the style attribute
@@ -203,10 +204,6 @@ def vis_pos_map(
     for key in keys:
         prompt, pos = key
         all_toks = token_ids[prompt][: pos + 1]
-        mask = torch.isin(all_toks, torch.tensor([0, 1], dtype=torch.int8))
-        all_toks = all_toks[
-            ~mask
-        ]  # remove <unk> and <s> tokens, <s> cause strikethrough in html
 
         for i in range(all_toks.shape[0]):
             token_id = cast(int, all_toks[i].item())
@@ -224,18 +221,6 @@ def vis_pos_map(
                     else selected_token_class,
                 )
             )
-
-        # tok = cast(int, token_ids[prompt][pos].item())
-        # value = metrics[prompt][pos].item()
-
-        # token_htmls.append(
-        #     token_to_html(
-        #         tok,
-        #         tokenizer,
-        #         bg_color=single_loss_diff_to_color(value),
-        #         data={"loss-diff": f"{value:.2f}"},
-        #     ).replace("class='token'", f"class='{token_class}'")
-        # )
 
         # add break line
         token_htmls.append("<br><br>")

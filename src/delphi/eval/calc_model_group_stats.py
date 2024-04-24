@@ -1,9 +1,10 @@
 import numpy as np
+from datasets import Dataset
 from jaxtyping import Float
 
 
 def calc_model_group_stats(
-    tokenized_corpus_dataset: list,
+    tokenized_corpus_dataset: Dataset,
     logprobs_by_dataset: dict[str, list[list[float]]],
     selected_tokens: list[int],
 ) -> dict[str, dict[str, float]]:

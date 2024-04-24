@@ -24,6 +24,7 @@ def test_get_all_tok_metrics_in_label(mock_data):
         selected_tokens,
         metrics,
     )
+    # key: (prompt_pos, tok_pos), value: logprob
     expected = {
         (0, 1): 0.2,
         (1, 0): 0.4,

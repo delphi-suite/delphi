@@ -1,12 +1,11 @@
 from typing import Union
 
-import ipywidgets
 import numpy as np
 import plotly.graph_objects as go
 
 
 def visualize_selected_tokens(
-    input: dict[Union[str, int], dict[str, float]],
+    input: dict[Union[str, int], tuple[float, float, float]],
     log_scale=False,
     line_metric="Means",
     checkpoint_mode=True,

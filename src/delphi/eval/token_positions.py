@@ -1,8 +1,6 @@
-from numbers import Number
-from typing import Optional, cast
+from typing import Optional
 
 import torch
-from datasets import Dataset
 from jaxtyping import Int
 
 from delphi.eval.utils import dict_filter_quantile
