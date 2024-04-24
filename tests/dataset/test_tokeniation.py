@@ -2,9 +2,10 @@ import collections
 import random
 
 import pytest
+from datasets import Dataset
 from transformers import AutoTokenizer
 
-from delphi.dataset.tokenization import extend_deque, make_new_samples, tokenize_dataset
+from delphi.dataset.tokenization import extend_deque, make_new_sample, tokenize_dataset
 
 
 @pytest.fixture
@@ -12,32 +13,38 @@ def tokenizer():
     return AutoTokenizer.from_pretrained("delphi-suite/stories-tokenizer")
 
 
+def make_random_document(tokenizer):
+    all_token_ids = range(2, tokenizer.vocab_size)
+    n_tokens = random.randint(100, 800)
+    random_tokens = random.choices(all_token_ids, k=n_tokens)
+    return tokenizer.decode(random_tokens)
+
+
+def get_random_feature_name():
+    return "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+
+
 def test_extend_deque(tokenizer):
     CTX_SIZE = 10
     BATCH_SIZE = 2
     # generate 100 random stories
-    text_stories = [
-        " ".join(
-            [
-                tokenizer.decode(random.randint(3, tokenizer.vocab_size))
-                for _ in range(random.randint(100, 800))
-            ]
-        )
-        for _ in range(100)
-    ]
-    prompt_idx = 0
-    dq = collections.deque()
+    documents = [make_random_document(tokenizer) for _ in range(100)]
+    feature_name = get_random_feature_name()
+    dataset = Dataset.from_dict({feature_name: documents})
 
-    while prompt_idx < len(text_stories):
+    prompt_idx = 0
+    deq = collections.deque()
+
+    while prompt_idx < len(dataset):
         prompt_idx = extend_deque(
-            dq, CTX_SIZE, text_stories, prompt_idx, tokenizer, BATCH_SIZE
+            deq, CTX_SIZE, dataset, prompt_idx, tokenizer, BATCH_SIZE
         )
-        if prompt_idx < len(text_stories) - 1:
+        if prompt_idx < len(dataset) - 1:
             # assert that the deque has grown large enough in each round
-            assert len(dq) >= CTX_SIZE
-        while len(dq) >= CTX_SIZE:
+            assert len(deq) >= CTX_SIZE
+        while len(deq) >= CTX_SIZE:
             for _ in range(CTX_SIZE - 1):
-                dq.popleft()
+                deq.popleft()
 
 
 def test_make_new_sample(tokenizer):
@@ -45,7 +52,9 @@ def test_make_new_sample(tokenizer):
         total_tokens = random.randint(100, 1000)
         context_size = random.randint(5, total_tokens // 2)
         dq = collections.deque(random.choices(range(3, 1000), k=total_tokens))
-        samples = make_new_samples(dq, context_size, tokenizer.bos_token_id)
+        samples = []
+        while len(dq) >= context_size:
+            samples.append(make_new_sample(dq, context_size, tokenizer.bos_token_id))
         tokens_cnt = 0
         for i, sample in enumerate(samples):
             assert sample[0] == tokenizer.bos_token_id
@@ -67,22 +76,21 @@ def test_tokenize_dataset(tokenizer):
     CTX_SIZE = 10
     BATCH_SIZE = 2
 
-    text_stories = [
+    documents = [
         "Once upon a",
         "Mother woke up alert. She put on her coat",
         "Once upon a time, in a small town, there was a weird",
         "Once upon a time, there was a",
         "Sara and Tom are friends. They like to play in the park.",
     ]
-    correct_batches = [
-        [1, 432, 440, 261, 2, 367, 501, 1917, 372, 3398, 4037],
-        [1, 4037, 341, 577, 359, 342, 1854, 2, 432, 440, 261],
-        [1, 261, 403, 4045, 317, 261, 560, 1000, 4045, 406, 286],
-        [1, 286, 261, 2567, 2, 432, 440, 261, 403, 4045, 406],
-        [1, 406, 286, 261, 2, 787, 269, 396, 484, 415, 4037],
-        [1, 4037, 311, 519, 268, 326, 317, 264, 525, 4037, 2],
+    feature_name = get_random_feature_name()
+    dataset = Dataset.from_dict({feature_name: documents})
+    expected = [
+        [0, 431, 440, 260, 1, 46, 499, 1945, 368, 3443, 15],
+        [0, 15, 340, 576, 355, 337, 1887, 1, 431, 440, 260],
+        [0, 260, 399, 13, 314, 260, 560, 1005, 13, 402, 284],
+        [0, 284, 260, 2606, 1, 431, 440, 260, 399, 13, 402],
+        [0, 402, 284, 260, 1, 1370, 268, 415, 484, 412, 15],
     ]
-    assert (
-        tokenize_dataset(text_stories, tokenizer, CTX_SIZE, BATCH_SIZE)
-        == correct_batches
-    )
+    actual = [x for x in tokenize_dataset(dataset, tokenizer, CTX_SIZE, BATCH_SIZE)]
+    assert actual == expected
