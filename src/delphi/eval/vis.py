@@ -186,7 +186,6 @@ def vis_pos_map(
     metrics: Float[torch.Tensor, "prompt pos"],
     token_ids: Int[torch.Tensor, "prompt pos"],
     tokenizer: PreTrainedTokenizerBase,
-    display_html: bool = False,
 ):
     """
     Randomly sample from pos_map and visualize the loss diff at the corresponding position.
@@ -251,7 +250,6 @@ def vis_pos_map(
     </script>
     """
     display(HTML(html_str))
-    return html_str
 
 
 def token_selector(
