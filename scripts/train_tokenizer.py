@@ -1,84 +1,68 @@
 #!/usr/bin/env python3
 import argparse
-import tempfile
 
-from delphi.train.tokenizer import (
-    hf_bpe_tokenizer_to_llama_tokenizer,
-    hf_dataset_to_text,
-    sp_processor_to_hf_bpe_tokenizer,
-    train_sentence_piece,
-)
+from datasets import Dataset, Features, Value, load_dataset
+from tokenizers import ByteLevelBPETokenizer  # type: ignore
+from tqdm.auto import tqdm
+from transformers import PreTrainedTokenizerFast
 
 
-def main(
-    *,
-    vocab_size: int,
-    dataset_name: str,
-    split: str,
-    column: str,
-    repo_id: str,
-    hf_token: str,
-):
-    """Trains a SentencePiece tokenizer, converts it to LlamaTokenizerFast and pushes it to the Hugging Face Hub."""
-    with tempfile.TemporaryFile(mode="w+") as text_file:
-        print("Loading and writing dataset to text file...")
-        hf_dataset_to_text(
-            dataset_name=dataset_name,
-            split=split,
-            column=column,
-            text_file=text_file,
-        )
-        text_file.seek(0)
-        print("Training SentencePiece tokenizer...\n")
-        sp_processor = train_sentence_piece(
-            vocab_size=vocab_size,
-            sentence_iterator=text_file,
-        )
-    print("\nConverting SentencePiece tokenizer Llama tokenizer...")
-    hf_bpe_tokenizer = sp_processor_to_hf_bpe_tokenizer(sp_processor)
-    llama_tokenizer = hf_bpe_tokenizer_to_llama_tokenizer(hf_bpe_tokenizer)
-    print("Pushing Llama tokenizer to Hugging Face Hub...")
-    llama_tokenizer.push_to_hub(
-        repo_id=repo_id,
-        token=hf_token,
+def train_byte_level_bpe(
+    dataset: Dataset, feature: str, vocab_size: int
+) -> PreTrainedTokenizerFast:
+    tokenizer = ByteLevelBPETokenizer()
+    text_generator = (example[feature] for example in dataset)  # type: ignore
+    tokenizer.train_from_iterator(
+        text_generator,
+        vocab_size=vocab_size,
+        special_tokens=["<bos>", "<eos>"],
+        show_progress=True,
+        length=len(dataset),
     )
-    print("Done.")
+    return PreTrainedTokenizerFast(
+        tokenizer_object=tokenizer,
+        bos_token="<bos>",
+        eos_token="<eos>",
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Train a SentencePiece tokenizer and convert to HF"
-    )
+    parser = argparse.ArgumentParser(description="", allow_abbrev=False)
+
     parser.add_argument(
-        "--vocab-size",
-        "-v",
-        type=int,
-        help="Vocabulary size of the tokenizer",
-    )
-    parser.add_argument(
-        "--dataset-name",
-        "-d",
+        "--in-repo-id",
+        "-i",
         type=str,
-        help="Dataset name with or without delphi-suite/ prefix",
+        required=True,
+        help="Input dataset",
+    )
+    parser.add_argument(
+        "--feature",
+        "-f",
+        type=str,
+        required=True,
+        help="Name of the feature (column) containing text documents in the input dataset",
     )
     parser.add_argument(
         "--split",
         "-s",
         type=str,
-        default="train",
-        help="Split of the dataset to be used for training, supports slicing like 'train[:10%%]'",
+        required=True,
+        help="Split of the dataset to be used for tokenizer training, supports slicing like 'train[:10%%]'",
     )
     parser.add_argument(
-        "--column",
-        "-c",
-        type=str,
-        help="Column of the dataset to be used for training",
+        "--vocab-size",
+        "-v",
+        type=int,
+        required=True,
+        help="Vocabulary size of the tokenizer",
     )
     parser.add_argument(
-        "--repo-id",
-        "-r",
+        "--out-repo-id",
+        "-o",
         type=str,
-        help="Hugging Face repository ID",
+        required=True,
+        help="Where to push the resulting tokenizer",
     )
     parser.add_argument(
         "--hf-token",
@@ -87,11 +71,20 @@ if __name__ == "__main__":
         help="Hugging Face API token",
     )
     args = parser.parse_args()
-    main(
-        vocab_size=args.vocab_size,
-        dataset_name=args.dataset_name,
+
+    print(f"Loading dataset '{args.in_repo_id}'...")
+    in_dataset_split = load_dataset(
+        args.in_repo_id,
         split=args.split,
-        column=args.column,
-        repo_id=args.repo_id,
-        hf_token=args.hf_token,
+        features=Features({args.feature: Value("string")}),
+    )
+    assert isinstance(in_dataset_split, Dataset)
+    tokenizer = train_byte_level_bpe(
+        dataset=in_dataset_split,
+        feature=args.feature,
+        vocab_size=args.vocab_size,
+    )
+    tokenizer.push_to_hub(
+        repo_id=args.out_repo_id,
+        token=args.hf_token,
     )
