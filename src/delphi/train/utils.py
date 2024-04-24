@@ -6,13 +6,12 @@ import time
 from collections.abc import Generator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Type, cast
+from typing import Any, Type, cast
 
-import datasets
 import safetensors.torch as st
 import torch
 import transformers
-from datasets import Dataset, load_dataset
+from datasets import Dataset
 from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
@@ -163,11 +162,7 @@ def get_xy_batch(
     feature_name: str,
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Get a batch of data from a dataset given a batch number and indices
-
-    Args:
-    """
+    """Get a batch of data from a dataset given a batch number and indices"""
     start = batch_num * batch_size
     end = (batch_num + 1) * batch_size
     batch_indices = indices[start:end]
@@ -187,9 +182,6 @@ def gen_minibatches(
     """
     Generate minibatches from a dataset given a step and indices
     """
-    assert (
-        batch_size % num_minibatches == 0
-    ), "batch_size must be divisible by num_minibatches"
     minibatch_size = batch_size // num_minibatches
     first_minibatch_num = num_minibatches * step
     for i in range(num_minibatches):
@@ -211,7 +203,7 @@ def estimate_loss(
     split_to_ds: dict[str, Dataset],
     device: torch.device,
     epoch: int,
-    feature_names: dict[str, str],
+    feature_name: str,
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
@@ -232,12 +224,12 @@ def estimate_loss(
             step=0,
             indices=indices,
             device=device,
-            feature_name=feature_names[split],
+            feature_name=feature_name,
         )
         for k, (X, Y) in enumerate(minibatches):
             loss = model(X, labels=Y, return_dict=True).loss
             losses[k] = loss.item()
-        out[split] = losses.mean()
+        out[split] = losses.mean().item()
     model.train()
     return out
 
@@ -282,50 +274,17 @@ def save_results(
         run_context_dict = asdict(run_context)
         run_context_dict["device"] = str(run_context.device)
         json.dump(run_context_dict, file, indent=2)
-    if config.huggingface.push_checkpoints_to_hub:
-        api = HfApi()
+    if config.hf and config.hf.push_checkpoints_to_hub:
+        api = HfApi(token=config.hf.token)
         api.upload_folder(
             folder_path=results_path,
-            repo_id=str(config.huggingface.repo_id),
+            repo_id=str(config.hf.repo_id),
             revision=f"iter_{train_results.iter_num}",
         )
 
 
-def load_tokens_dataset_from_huggingface(
-    hf_dataset_id: str,
-    split: str,
-    tokens_feature: str,
-    limit: Optional[int] = None,
-) -> Dataset:
-    """Load a dataset from huggingface
-
-    Args:
-        hf_dataset_id (str): huggingface dataset id e.g. "delphi-suite/v0-tinystories-v2-clean-tokenized"
-        split (str): split to load, e.g. "train" or "validation"
-        tokens_feature (str): feature name for tokens, e.g. "tokens"
-        limit (Optional[int], optional): limit the number of samples. None (default) means no limit (use full dataset split)
-    """
-    ds = cast(
-        Dataset,
-        load_dataset(
-            hf_dataset_id,
-            split=split,
-            features=datasets.Features(
-                {tokens_feature: datasets.Sequence(datasets.Value("int32"))}
-            ),
-        ),
-    )
-    if limit is not None and limit > 0:
-        ds = ds.select(range(limit))
-    ds.set_format("torch")
-    return ds
-
-
 def count_tokens_so_far(config: TrainingConfig, mts: ModelTrainingState) -> int:
-    tokens_per_iter = (
-        config.batch_size * config.gradient_accumulation_steps * config.max_seq_len
-    )
-
+    tokens_per_iter = config.batch_size * config.max_seq_len
     return mts.iter_num * tokens_per_iter
 
 

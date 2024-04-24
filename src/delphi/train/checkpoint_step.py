@@ -39,13 +39,7 @@ def log_and_save_checkpoint(
             split_to_ds={"train": train_ds, "val": validation_ds},
             device=run_context.device,
             epoch=mts.epoch,
-            feature_names={
-                "train": config.data_config.train_feature,
-                "val": (
-                    config.data_config.validation_feature
-                    or config.data_config.train_feature
-                ),
-            },
+            feature_name=config.dataset.feature,
         )
     logging.info(
         f"step {mts.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
@@ -58,7 +52,7 @@ def log_and_save_checkpoint(
         run_context=run_context,
         results_path=results_path,
     )
-    if config.wandb_config.log:
+    if config.wandb:
         log_to_wandb(
             mts=mts,
             losses=losses,

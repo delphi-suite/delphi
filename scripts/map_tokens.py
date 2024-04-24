@@ -5,7 +5,6 @@ import argparse
 import pandas as pd
 from datasets import Dataset
 
-from delphi.constants import STATIC_ASSETS_DIR
 from delphi.eval.token_map import token_map
 from delphi.eval.utils import load_validation_dataset
 

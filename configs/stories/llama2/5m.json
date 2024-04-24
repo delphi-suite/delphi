@@ -1,0 +1,9 @@
+{
+  "model_config": {
+    "hidden_size": 232,
+    "intermediate_size": 512,
+    "num_attention_heads": 12,
+    "num_hidden_layers": 6,
+    "num_key_value_heads": 6
+  }
+}

@@ -1,9 +1,7 @@
 {
-    "vocab_size": 4096,
     "max_seq_len": 512,
-    "max_epochs": 10,
-    "eval_interval": 10,
-    "eval_iters": 8,
+    "max_epochs": 2,
+    "eval_iters": 1,
     "batch_size": 64,
     "model_config": {
         "model_class": "BloomForCausalLM",
@@ -12,14 +10,19 @@
         "bos_token_id": 1,
         "eos_token_id": 2,
         "hidden_dropout": 0.0,
-        "hidden_size": 64,
+        "hidden_size": 8,
         "initializer_range": 0.02,
         "layer_norm_epsilon": 1e-05,
-        "n_head": 8,
-        "n_layer": 10,
+        "n_head": 2,
+        "n_layer": 2,
         "pretraining_tp": 1,
         "slow_but_exact": false,
         "use_cache": true,
         "vocab_size": 4096
+    },
+    "batch_ordering_seed": 42,
+    "torch_seed": 1337,
+    "dataset": {
+        "name": "delphi-suite/v0-tinystories-v2-clean-tokenized"
     }
 }

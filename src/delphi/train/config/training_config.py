@@ -7,20 +7,21 @@ import platformdirs
 from beartype import beartype
 
 from .adam_config import AdamConfig
-from .data_config import DataConfig
+from .dataset_config import DatasetConfig
 from .debug_config import DebugConfig
 from .huggingface_config import HuggingfaceConfig
 from .wandb_config import WandbConfig
 
 
 @beartype
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TrainingConfig:
     model_config: dict[str, Any] = field(
         metadata={
             "help": "model config; class_name=name of model class in transformers, everything else is kwargs for the corresponding model config"
         },
     )
+    max_seq_len: int = field(metadata={"help": "max sequence length"})
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_dir: str = field(
@@ -56,12 +57,9 @@ class TrainingConfig:
     batch_size: int = field(
         default=64,
         metadata={
-            "help": "if gradient_accumulation_steps > 1, this is the micro-batch size"
+            "help": "number of samples used to compute the gradient for a single optimizer step"
         },
     )
-
-    # model config
-    max_seq_len: int = field(default=512, metadata={"help": "max sequence length"})
 
     # training
     max_epochs: int = field(
@@ -71,26 +69,29 @@ class TrainingConfig:
         default=1.0,
         metadata={"help": "clip gradients at this value, or disable if == 0.0"},
     )
-    gradient_accumulation_steps: int = 4  # used to simulate larger batch sizes
+    gradient_accumulation_steps: int = field(
+        default=1,
+        metadata={
+            "help": "if > 1 reduces memory usage by computing gradient in microbatches"
+        },
+    )
     # (adamw) optimizer
     adam: AdamConfig = field(default_factory=AdamConfig)
 
     # reproducibility
     batch_ordering_seed: int = field(
-        default=1337,
         metadata={"help": "seed used for pseudorandomly sampling data during training"},
     )
-    torch_seed: int = field(default=42, metadata={"help": "seed used for torch"})
+    torch_seed: int = field(metadata={"help": "seed used for torch"})
 
     # data
-    data_config: DataConfig = field(
-        default_factory=DataConfig,
+    dataset: DatasetConfig = field(
         metadata={"help": "specify training and validation data"},
     )
 
     # third party
-    wandb_config: WandbConfig = field(default_factory=WandbConfig)
-    huggingface: HuggingfaceConfig = field(default_factory=HuggingfaceConfig)
+    wandb: Optional[WandbConfig] = None
+    hf: Optional[HuggingfaceConfig] = None
 
     # debug
     debug_config: DebugConfig = field(default_factory=DebugConfig)

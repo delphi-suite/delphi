@@ -1,0 +1,52 @@
+{
+    "model_config": {
+        "model_class": "LlamaForCausalLM",
+        "vocab_size": 4096,
+        "hidden_act": "silu",
+        "max_position_embeddings": 512,
+        "initializer_range": 0.02,
+        "rms_norm_eps": 1e-06,
+        "bos_token_id": 0,
+        "eos_token_id": 1,
+        "tie_word_embeddings": false,
+        "rope_theta": 10000.0,
+        "rope_scaling": null,
+        "attention_bias": false,
+        "attention_dropout": 0.0
+    },
+    "max_seq_len": 512,
+    "device": "auto",
+    "checkpoint_interval": 400,
+    "extra_checkpoint_iters": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        512
+    ],
+    "log_interval": 40,
+    "eval_iters": 10,
+    "batch_size": 256,
+    "max_epochs": 10,
+    "grad_clip": 1.0,
+    "gradient_accumulation_steps": 1,
+    "adam": {
+        "learning_rate": 0.0005,
+        "weight_decay": 0.1,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "decay_lr": true,
+        "warmup_iters": 1000,
+        "min_lr": 0.0
+    },
+    "batch_ordering_seed": 1337,
+    "torch_seed": 42,
+    "dataset": {
+        "name": "delphi-suite/stories-tokenized"
+    }
+}

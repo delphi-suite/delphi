@@ -15,11 +15,12 @@ def silence_wandb():
 
 def init_wandb(config: TrainingConfig):
     # if log level < debug, silence wandb
-    if logging.getLogger().level > logging.INFO or config.wandb_config.silence:
+    assert config.wandb is not None
+    if logging.getLogger().level > logging.INFO or config.wandb.silence:
         silence_wandb()
     wandb.init(
-        entity=config.wandb_config.entity,
-        project=config.wandb_config.project,
+        entity=config.wandb.entity,
+        project=config.wandb.project,
         name=config.run_name,
         config=asdict(config),
     )

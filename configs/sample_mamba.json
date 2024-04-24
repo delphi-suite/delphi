@@ -1,13 +1,8 @@
 {
-  "vocab_size": 4096,
   "max_seq_len": 512,
   "max_epochs": 2,
-  "eval_interval": 1,
   "log_interval": 1,
   "eval_iters": 10,
-  "data_config": {
-    "train_sample_limit": 64
-  },
   "batch_size": 8,
   "model_config": {
     "model_class": "MambaForCausalLM",
@@ -18,5 +13,10 @@
     "conv_kernel": 2,
     "expand": 2,
     "time_step_rank": 2
+  },
+  "batch_ordering_seed": 42,
+  "torch_seed": 1337,
+  "dataset": {
+    "name": "delphi-suite/v0-tinystories-v2-clean-tokenized"
   }
 }

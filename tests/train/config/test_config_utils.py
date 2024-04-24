@@ -2,7 +2,7 @@ from typing import Optional
 
 import pytest
 
-from delphi.constants import CONFIG_PRESETS_DIR
+from delphi.constants import TEST_CONFIGS_DIR
 from delphi.train.config.utils import (
     _unoptionalize,
     build_config_from_files_and_overrides,
@@ -10,6 +10,12 @@ from delphi.train.config.utils import (
     merge_dicts,
     merge_two_dicts,
 )
+
+
+def test_configs():
+    test_configs = list(TEST_CONFIGS_DIR.glob("*.json"))
+    for config in test_configs:
+        build_config_from_files_and_overrides([config], {})
 
 
 def test_merge_two_dicts():
@@ -34,7 +40,7 @@ def test_dot_notation_to_dict():
 
 
 def test_build_config_from_files_and_overrides():
-    config_files = [CONFIG_PRESETS_DIR / "debug.json"]
+    config_files = [TEST_CONFIGS_DIR / "debug.json"]
     overrides = {"model_config": {"hidden_size": 128}, "eval_iters": 5}
     config = build_config_from_files_and_overrides(config_files, overrides)
     # check overrides
@@ -42,7 +48,7 @@ def test_build_config_from_files_and_overrides():
     assert config.eval_iters == 5
     # check base values
     assert config.max_epochs == 2
-    assert config.data_config.train_sample_limit == 256
+    assert config.dataset.name == "delphi-suite/v0-tinystories-v2-clean-tokenized"
 
 
 def test_unoptionalize():

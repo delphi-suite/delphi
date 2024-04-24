@@ -18,7 +18,6 @@ from .utils import (
     get_device,
     get_indices_for_epoch,
     initialize_model_training_state,
-    load_tokens_dataset_from_huggingface,
     set_lr,
     setup_determinism,
 )
@@ -37,7 +36,7 @@ def setup_training(config: TrainingConfig):
     setup_determinism(config.torch_seed)
 
     # wandb setup
-    if config.wandb_config.log:
+    if config.wandb:
         init_wandb(config=config)
 
 
@@ -59,22 +58,10 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
 
     # load data
     logging.info("Loading data...")
-    train_ds = load_tokens_dataset_from_huggingface(
-        hf_dataset_id=config.data_config.train_dataset,
-        split=config.data_config.train_split,
-        tokens_feature=config.data_config.train_feature,
-        limit=config.data_config.train_sample_limit,
-    )
-    validation_ds = load_tokens_dataset_from_huggingface(
-        hf_dataset_id=(
-            config.data_config.validation_dataset or config.data_config.train_dataset
-        ),
-        split=config.data_config.validation_split,
-        tokens_feature=(
-            config.data_config.validation_feature or config.data_config.train_feature
-        ),
-        limit=config.data_config.validation_sample_limit,
-    )
+    train_ds = config.dataset.load_train()
+    validation_ds = config.dataset.load_validation()
+    logging.info(f"Train dataset: {len(train_ds)} samples")
+    logging.info(f"Validation dataset: {len(validation_ds)} samples")
 
     # derive iteration params
     steps_per_epoch = len(train_ds) // config.batch_size
