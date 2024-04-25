@@ -64,12 +64,6 @@ if __name__ == "__main__":
         required=True,
         help="Where to push the resulting tokenizer",
     )
-    parser.add_argument(
-        "--hf-token",
-        "-t",
-        type=str,
-        help="Hugging Face API token",
-    )
     args = parser.parse_args()
 
     print(f"Loading dataset '{args.in_repo_id}'...")
@@ -86,5 +80,4 @@ if __name__ == "__main__":
     )
     tokenizer.push_to_hub(
         repo_id=args.out_repo_id,
-        token=args.hf_token,
     )

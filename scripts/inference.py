@@ -19,7 +19,6 @@ def main(
     batch_size: Int,
     dataset_name: str,
     username: str,
-    token: str,
     funct_test: bool = False,
 ):
     """
@@ -30,7 +29,6 @@ def main(
     - batch_size: The batch size for processing. 80 worked well in CPU.
     - dataset_name: The name of the dataset from which validation set will be loaded
     - username: Hugging Face API username
-    - token: Hugging Face API token
     """
     val_ds = load_validation_dataset(dataset_name)
 
@@ -63,7 +61,6 @@ def main(
         repo_id=repo_id,
         split="validation",
         private=False,
-        token=token,
     )
 
 
@@ -91,11 +88,6 @@ if __name__ == "__main__":
         help="Hugging Face API username",
     )
     parser.add_argument(
-        "--token",
-        type=str,
-        help="Hugging Face API token",
-    )
-    parser.add_argument(
         "--test-funct", action="store_true", help="Enable test function mode"
     )
 
@@ -109,6 +101,5 @@ if __name__ == "__main__":
         args.batch_size,
         args.dataset_name,
         args.username,
-        args.token,
         args.test_funct,
     )

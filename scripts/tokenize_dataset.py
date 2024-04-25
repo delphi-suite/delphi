@@ -53,12 +53,6 @@ if __name__ == "__main__":
         help="Context size of the tokenized dataset as input of the model",
     )
     parser.add_argument(
-        "--hf-token",
-        "-t",
-        type=str,
-        help="Hugging Face API token",
-    )
-    parser.add_argument(
         "--batch-size",
         "-b",
         type=int,
@@ -86,7 +80,7 @@ if __name__ == "__main__":
     assert tokenizer.bos_token_id is not None, "Tokenizer must have a bos_token_id"
     assert tokenizer.eos_token_id is not None, "Tokenizer must have a eos_token_id"
 
-    api = HfApi(token=args.hf_token)
+    api = HfApi()
     api.create_repo(repo_id=args.out_repo_id, repo_type="dataset", exist_ok=True)
     tokenize_and_upload_split(
         dataset_split=in_dataset_split,

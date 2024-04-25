@@ -239,6 +239,7 @@ def save_results(
     train_results: ModelTrainingState,
     run_context: RunContext,
     results_path: str,
+    final: bool = False,
 ):
     """
     save results to disk, and to huggingface if configured to do so.
@@ -247,21 +248,21 @@ def save_results(
     config, context (e.g. hardware), training step, etc
     """
     os.makedirs(results_path, exist_ok=True)
-    with open(os.path.join(results_path, "config.json"), "w") as file:
+    with open(os.path.join(results_path, "training_config.json"), "w") as file:
         json.dump(asdict(config), file, indent=2)
     model = train_results.model
     if isinstance(model, PreTrainedModel):
-        model = cast(PreTrainedModel, model)
         model.save_pretrained(
-            save_directory=os.path.join(results_path, "model"),
+            save_directory=results_path,
         )
     else:
         st.save_model(
-            train_results.model,
-            os.path.join(results_path, "model", "model.safetensors"),
+            model,
+            os.path.join(results_path, "model.safetensors"),
         )
-    with open(os.path.join(results_path, "opt.pt"), "wb") as f:
-        torch.save(train_results.optimizer.state_dict(), f)
+    if config.save_optimizer:
+        with open(os.path.join(results_path, "optimizer.pt"), "wb") as f:
+            torch.save(train_results.optimizer.state_dict(), f)
     with open(os.path.join(results_path, "training_state.json"), "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
@@ -274,13 +275,22 @@ def save_results(
         run_context_dict = asdict(run_context)
         run_context_dict["device"] = str(run_context.device)
         json.dump(run_context_dict, file, indent=2)
-    if config.hf and config.hf.push_checkpoints_to_hub:
-        api = HfApi(token=config.hf.token)
+    if config.out_repo_id:
+        api = HfApi()
+        api.create_repo(config.out_repo_id, exist_ok=True)
+        branch_name = f"iter{train_results.iter_num}"
+        api.create_branch(config.out_repo_id, branch=branch_name)
         api.upload_folder(
             folder_path=results_path,
-            repo_id=str(config.hf.repo_id),
-            revision=f"iter_{train_results.iter_num}",
+            repo_id=config.out_repo_id,
+            revision=branch_name,
         )
+        if final:
+            api.upload_folder(
+                folder_path=results_path,
+                repo_id=config.out_repo_id,
+                revision="main",
+            )
 
 
 def count_tokens_so_far(config: TrainingConfig, mts: ModelTrainingState) -> int:

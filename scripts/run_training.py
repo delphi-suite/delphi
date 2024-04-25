@@ -100,7 +100,7 @@ def main():
     # run training
     results, run_context = run_training(config)
     final_out_dir = os.path.join(config.output_dir, "final")
-    save_results(config, results, run_context, final_out_dir)
+    save_results(config, results, run_context, final_out_dir, final=True)
     print(f"Saved results to {final_out_dir}")
 
 
