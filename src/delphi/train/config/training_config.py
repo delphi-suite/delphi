@@ -9,7 +9,6 @@ from beartype import beartype
 from .adam_config import AdamConfig
 from .dataset_config import DatasetConfig
 from .debug_config import DebugConfig
-from .huggingface_config import HuggingfaceConfig
 from .wandb_config import WandbConfig
 
 
@@ -83,6 +82,7 @@ class TrainingConfig:
         metadata={"help": "seed used for pseudorandomly sampling data during training"},
     )
     torch_seed: int = field(metadata={"help": "seed used for torch"})
+    save_optimizer: bool = True
 
     # data
     dataset: DatasetConfig = field(
@@ -91,7 +91,7 @@ class TrainingConfig:
 
     # third party
     wandb: Optional[WandbConfig] = None
-    hf: Optional[HuggingfaceConfig] = None
+    out_repo_id: str
 
     # debug
     debug_config: DebugConfig = field(default_factory=DebugConfig)
