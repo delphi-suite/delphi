@@ -48,3 +48,11 @@ def load_dataset_split_sequence_int32_feature(
         split,
         Features({feature_name: Sequence(Value("int32"))}),
     )
+
+
+def get_all_hf_branch_names(repo_id: str) -> list[str]:
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    refs = api.list_repo_refs(repo_id)
+    return [branch.name for branch in refs.branches]
