@@ -161,14 +161,13 @@ def get_xy_batch(
     batch_num: int,
     feature_name: str,
     device: torch.device,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> torch.Tensor:
     """Get a batch of data from a dataset given a batch number and indices"""
     start = batch_num * batch_size
     end = (batch_num + 1) * batch_size
     batch_indices = indices[start:end]
     data = dataset[batch_indices][feature_name].to(device)
-    # *ForCausalLM models do shifting internally, so input and labels are the same
-    return data, data
+    return data
 
 
 def gen_minibatches(
@@ -179,7 +178,7 @@ def gen_minibatches(
     indices: list[int],
     device: torch.device,
     feature_name: str,
-) -> Generator[tuple[torch.Tensor, torch.Tensor], None, None]:
+) -> Generator[torch.Tensor, None, None]:
     """
     Generate minibatches from a dataset given a step and indices
     """
@@ -227,8 +226,8 @@ def estimate_loss(
             device=device,
             feature_name=feature_name,
         )
-        for k, (X, Y) in enumerate(minibatches):
-            loss = model(X, labels=Y, return_dict=True).loss
+        for k, X in enumerate(minibatches):
+            loss = model(X, labels=X, return_dict=True).loss
             losses[k] = loss.item()
         out[split] = losses.mean().item()
     model.train()
