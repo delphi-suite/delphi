@@ -167,7 +167,8 @@ def get_xy_batch(
     end = (batch_num + 1) * batch_size
     batch_indices = indices[start:end]
     data = dataset[batch_indices][feature_name].to(device)
-    return data[:, :-1], data[:, 1:]
+    # *ForCausalLM models do shifting internally, so input and labels are the same
+    return data, data
 
 
 def gen_minibatches(
