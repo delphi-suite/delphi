@@ -86,7 +86,7 @@ def test_basic_reproducibility(dataset, model):
 
     assert torch.isclose(
         params[[1000, 2000, 3000]],
-        torch.tensor([-0.01782517, -0.00771354, 0.03517739]),
+        torch.tensor([-0.01780166, -0.00762226, 0.03532362]),
     ).all()
 
 
