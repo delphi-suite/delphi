@@ -56,15 +56,15 @@ def train_step(
 
 def accumulate_gradients(
     model: PreTrainedModel,
-    batches: Iterable[tuple[torch.Tensor, torch.Tensor]],
+    batches: Iterable[torch.Tensor],
     num_batches: int,
 ) -> float:
     """
     Accumulate gradients over multiple batches as if they were a single batch
     """
     total_loss = 0.0
-    for X, Y in batches:
-        loss = model(X, labels=Y, return_dict=True).loss / num_batches
+    for X in batches:
+        loss = model(X, labels=X, return_dict=True).loss / num_batches
         total_loss += loss.item()
         loss.backward()
     return total_loss
