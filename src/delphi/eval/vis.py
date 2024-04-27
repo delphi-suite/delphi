@@ -256,12 +256,12 @@ def token_selector(
     vocab_map: dict[str, int]
 ) -> tuple[pn.widgets.MultiChoice, list[int]]:
     tokens = list(vocab_map.keys())
-    token_selector = pn.widgets.MultiChoice(name="Tokens", options=tokens)
-    token_ids = [vocab_map[token] for token in cast(list[str], token_selector.value)]
+    token_selector_ = pn.widgets.MultiChoice(name="Tokens", options=tokens)
+    token_ids = [vocab_map[token] for token in cast(list[str], token_selector_.value)]
 
     def update_tokens(event):
         token_ids.clear()
         token_ids.extend([vocab_map[token] for token in event.new])
 
-    token_selector.param.watch(update_tokens, "value")
-    return token_selector, token_ids
+    token_selector_.param.watch(update_tokens, "value")
+    return token_selector_, token_ids
