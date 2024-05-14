@@ -3,7 +3,6 @@ import argparse
 
 from datasets import Dataset, Features, Value, load_dataset
 from tokenizers import ByteLevelBPETokenizer  # type: ignore
-from tqdm.auto import tqdm
 from transformers import PreTrainedTokenizerFast
 
 
@@ -15,7 +14,7 @@ def train_byte_level_bpe(
     tokenizer.train_from_iterator(
         text_generator,
         vocab_size=vocab_size,
-        special_tokens=["<bos>", "<eos>"],
+        special_tokens=["<bos>", "<eos>", "<pad>"],
         show_progress=True,
         length=len(dataset),
     )
@@ -23,6 +22,7 @@ def train_byte_level_bpe(
         tokenizer_object=tokenizer,
         bos_token="<bos>",
         eos_token="<eos>",
+        pad_token="<pad>",
     )
 
 
