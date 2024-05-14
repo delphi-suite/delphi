@@ -2,11 +2,8 @@ import io
 import itertools
 from collections import deque
 from collections.abc import Iterator
-from pathlib import Path
 
 from datasets import Dataset
-from huggingface_hub import HfApi
-from tqdm.auto import trange
 from transformers import PreTrainedTokenizerBase
 
 
@@ -47,7 +44,7 @@ def extend_deque(
     return doc_idx
 
 
-def make_new_sample(deq: deque[int], context_size: int, bos_token_id: int) -> list[int]:
+def make_new_sample(deq: deque[int], seq_len: int, bos_token_id: int) -> list[int]:
     """
     Generates new sample for training by creating sequence of tokens
     from the deque until the deque.
@@ -64,10 +61,10 @@ def make_new_sample(deq: deque[int], context_size: int, bos_token_id: int) -> li
         list[int]: token sequence.
     """
     sample = [bos_token_id]
-    # For the first (n-1) elements, pop from the left of the deque
-    # and add to the new sample, the n-th element will be retained
+    # For the first n-2 elements, pop from the left of the deque
+    # and add to the new sample, the (n-1)-th element will be retained
     # in the deque for making the next sample.
-    for _ in range(context_size - 1):
+    for _ in range(seq_len - 2):
         sample.append(deq.popleft())
     sample.append(deq[0])
     return sample

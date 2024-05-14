@@ -73,7 +73,7 @@ def test_make_new_sample(tokenizer):
 
 
 def test_tokenize_dataset(tokenizer):
-    CTX_SIZE = 10
+    SEQ_LEN = 11
     BATCH_SIZE = 2
 
     documents = [
@@ -92,5 +92,5 @@ def test_tokenize_dataset(tokenizer):
         [0, 284, 260, 2606, 1, 431, 440, 260, 399, 13, 402],
         [0, 402, 284, 260, 1, 1370, 268, 415, 484, 412, 15],
     ]
-    actual = [x for x in tokenize_dataset(dataset, tokenizer, CTX_SIZE, BATCH_SIZE)]
+    actual = [x for x in tokenize_dataset(dataset, tokenizer, SEQ_LEN, BATCH_SIZE)]
     assert actual == expected
