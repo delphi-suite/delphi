@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import argparse
+import io
+import os
+from pathlib import Path
 
 from datasets import Dataset, Features, Value, load_dataset
 from huggingface_hub import HfApi
 from transformers import AutoTokenizer
 
-from delphi.dataset.tokenization import tokenize_and_upload_split
+from delphi.dataset.tokenization import get_tokenized_chunks
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="", allow_abbrev=False)
@@ -32,18 +35,23 @@ if __name__ == "__main__":
         help="Split of the dataset to be tokenized, supports slicing like 'train[:10%%]'",
     )
     parser.add_argument(
-        "--out-repo-id",
-        "-o",
+        "--out-dir",
         type=str,
-        required=True,
-        help="Name of the tokenized dataset to upload to huggingface",
+        required=False,
+        help="Local directory to save the resulting dataset",
+    )
+    parser.add_argument(
+        "--out-repo-id",
+        type=str,
+        required=False,
+        help="HF repo id to upload the resulting dataset",
     )
     parser.add_argument(
         "--tokenizer",
-        "-r",
+        "-t",
         type=str,
         required=True,
-        help="Name of the tokenizer from huggingface",
+        help="HF repo id or local directory containing the tokenizer",
     )
     parser.add_argument(
         "--seq-len",
@@ -67,6 +75,9 @@ if __name__ == "__main__":
         help="Size of the parquet chunks uploaded to HuggingFace",
     )
     args = parser.parse_args()
+    assert (
+        args.out_repo_id or args.out_dir
+    ), "You need to provide --out-repo-id or --out-dir"
 
     print(f"Loading dataset '{args.in_repo_id}'...")
     in_dataset_split = load_dataset(
@@ -75,20 +86,43 @@ if __name__ == "__main__":
         features=Features({args.feature: Value("string")}),
     )
     assert isinstance(in_dataset_split, Dataset)
-    print(f"Loading tokenizer '{args.tokenizer}'...")
+    print(f"Loading tokenizer from '{args.tokenizer}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     assert tokenizer.bos_token_id is not None, "Tokenizer must have a bos_token_id"
     assert tokenizer.eos_token_id is not None, "Tokenizer must have a eos_token_id"
 
-    api = HfApi()
-    api.create_repo(repo_id=args.out_repo_id, repo_type="dataset", exist_ok=True)
-    tokenize_and_upload_split(
+    api = None
+    if args.out_repo_id:
+        api = HfApi()
+        api.create_repo(repo_id=args.out_repo_id, repo_type="dataset", exist_ok=True)
+    if args.out_dir:
+        os.makedirs(args.out_dir, exist_ok=True)
+
+    ds_chunks_it = get_tokenized_chunks(
         dataset_split=in_dataset_split,
-        split_name=args.split.split("[")[0],
         tokenizer=tokenizer,
         seq_len=args.seq_len,
         batch_size=args.batch_size,
         chunk_size=args.chunk_size,
-        out_repo_id=args.out_repo_id,
-        api=api,
     )
+
+    print(f"Tokenizing split='{args.split}'...")
+    split_name = args.split.split("[")[0]
+    for chunk_idx, ds_chunk in enumerate(ds_chunks_it):
+        print(f"Processing chunk {chunk_idx}...")
+        chunk_name = f"{split_name}-{chunk_idx:05}.parquet"
+        if args.out_dir:
+            ds_parquet_chunk = Path(args.out_dir) / chunk_name
+            print(f"Saving '{ds_parquet_chunk}'...")
+        else:
+            ds_parquet_chunk = io.BytesIO()
+        ds_chunk.to_parquet(ds_parquet_chunk)
+        if api:
+            print(f"Uploading '{chunk_name}' to '{args.out_repo_id}'...")
+            api.upload_file(
+                path_or_fileobj=ds_parquet_chunk,
+                path_in_repo=f"data/{chunk_name}",
+                repo_id=args.out_repo_id,
+                repo_type="dataset",
+            )
+        print("Done.")
