@@ -5,6 +5,7 @@ import pytest
 import torch
 from datasets import Dataset
 from jaxtyping import Float
+from transformers import PreTrainedModel
 
 from delphi.constants import TEST_CONFIGS_DIR
 from delphi.train.config import TrainingConfig
@@ -12,7 +13,7 @@ from delphi.train.config.utils import build_config_from_files_and_overrides
 from delphi.train.train_step import accumulate_gradients, train_step
 from delphi.train.utils import (
     ModelTrainingState,
-    get_xy_batch,
+    gen_minibatches,
     init_model,
     setup_determinism,
 )
@@ -90,69 +91,44 @@ def test_basic_reproducibility(dataset, model):
     ).all()
 
 
+def get_grads(model: PreTrainedModel) -> Float[torch.Tensor, "grads"]:
+    grads = [
+        param.grad.flatten() for param in model.parameters() if param.grad is not None
+    ]
+    return torch.cat(grads)
+
+
 def test_accumulate_gradients_accumulates(dataset, model):
     """
     check that gradient accumulation works as expected and doesn't reset on each microstep
     """
-    # setup
-    indices_set_a = [
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 9],
-    ]
-    # different batch but idential last batch;
-    indices_set_a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    # different batch but idential last batch (with batches of 3);
-    # this should result in a different accumulated gradient
-    indices_set_b = [7, 8, 9, 7, 8, 9, 7, 8, 9]
     batch_size = 3
-    num_batches = len(indices_set_a) // batch_size
+    num_batches = 3
+    # first 2 mini-batches different, last mini-batch the same
+    indices_set_a = [1, 2, 3] + [4, 5, 6] + [7, 8, 9]
+    indices_set_b = [7, 8, 9] * 3
 
-    batches_a = [
-        get_xy_batch(
-            dataset=dataset,
-            indices=indices_set_a,
-            batch_size=3,
-            batch_num=microstep,
-            feature_name="tokens",
-            device=torch.device("cpu"),
-        )
-        for microstep in range(num_batches)
-    ]
-    batches_b = [
-        get_xy_batch(
-            dataset=dataset,
-            indices=indices_set_b,
-            batch_size=3,
-            batch_num=microstep,
-            feature_name="tokens",
-            device=torch.device("cpu"),
-        )
-        for microstep in range(num_batches)
-    ]
+    kwargs = dict(
+        dataset=dataset,
+        batch_size=batch_size,
+        num_minibatches=num_batches,
+        step=0,
+        device=torch.device("cpu"),
+        feature_name="tokens",
+    )
+    batches_a = gen_minibatches(indices=indices_set_a, **kwargs)  # type: ignore
+    batches_b = gen_minibatches(indices=indices_set_b, **kwargs)  # type: ignore
 
     # accumulate
-    _total_loss = accumulate_gradients(model, batches_a, len(batches_a))
+    _total_loss = accumulate_gradients(model, batches_a, num_batches)
 
-    grads_a = torch.cat(
-        [
-            param.grad.clone().detach().flatten()
-            for param in model.parameters()
-            if param.grad is not None
-        ]
-    )
+    grads_a = get_grads(model)
 
     # reset grad on model
     model.zero_grad()
 
-    _total_loss = accumulate_gradients(model, batches_b, len(batches_b))
-    grads_b = torch.cat(
-        [
-            param.grad.clone().detach().flatten()
-            for param in model.parameters()
-            if param.grad is not None
-        ]
-    )
+    _total_loss = accumulate_gradients(model, batches_b, num_batches)
+    grads_b = get_grads(model)
 
     # test
     assert not torch.isclose(grads_a, grads_b).all()
@@ -163,59 +139,30 @@ def test_accumulate_gradients_consistent(dataset, model):
     Validate that the gradients are consistent when the same batch is passed to accumulate_gradients
     """
     # setup
-    indices_set = [
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 9],
-    ]
-    indices_set = list(range(1, 10))
     num_batches = 3
     batch_size = 3
-    batches_a = [
-        get_xy_batch(
-            dataset=dataset,
-            indices=indices_set,
-            batch_size=batch_size,
-            batch_num=microstep,
-            feature_name="tokens",
-            device=torch.device("cpu"),
-        )
-        for microstep in range(num_batches)
-    ]
-    batches_aa = [
-        get_xy_batch(
-            dataset=dataset,
-            indices=indices_set,
-            batch_size=batch_size,
-            batch_num=microstep,
-            feature_name="tokens",
-            device=torch.device("cpu"),
-        )
-        for microstep in range(num_batches)
-    ]
+    kwargs = dict(
+        indices=list(range(1, 10)),
+        dataset=dataset,
+        batch_size=batch_size,
+        num_minibatches=num_batches,
+        step=0,
+        device=torch.device("cpu"),
+        feature_name="tokens",
+    )
+    batches_a = gen_minibatches(**kwargs)  # type: ignore
+    batches_aa = gen_minibatches(**kwargs)  # type: ignore
 
     # accumulate
-    total_loss = accumulate_gradients(model, batches_a, num_batches)
+    _total_loss = accumulate_gradients(model, batches_a, num_batches)
 
-    grads_a = torch.cat(
-        [
-            param.grad.clone().detach().flatten()
-            for param in model.parameters()
-            if param.grad is not None
-        ]
-    )
+    grads_a = get_grads(model)
 
     # reset grad on model
     model.zero_grad()
 
-    total_loss = accumulate_gradients(model, batches_aa, num_batches)
-    grads_aa = torch.cat(
-        [
-            param.grad.clone().detach().flatten()
-            for param in model.parameters()
-            if param.grad is not None
-        ]
-    )
+    _total_loss = accumulate_gradients(model, batches_aa, num_batches)
+    grads_aa = get_grads(model)
 
     # test
     assert torch.isclose(grads_a, grads_aa).all()
