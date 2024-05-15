@@ -109,7 +109,6 @@ if __name__ == "__main__":
     print(f"Tokenizing split='{args.split}'...")
     split_name = args.split.split("[")[0]
     for chunk_idx, ds_chunk in enumerate(ds_chunks_it):
-        print(f"Processing chunk {chunk_idx}...")
         chunk_name = f"{split_name}-{chunk_idx:05}.parquet"
         if args.out_dir:
             ds_parquet_chunk = Path(args.out_dir) / chunk_name
@@ -125,4 +124,4 @@ if __name__ == "__main__":
                 repo_id=args.out_repo_id,
                 repo_type="dataset",
             )
-        print("Done.")
+        print(f"Done saving/uploading '{chunk_name}'")

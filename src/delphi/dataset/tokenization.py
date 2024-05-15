@@ -1,4 +1,3 @@
-import io
 import itertools
 from collections import deque
 from collections.abc import Iterator
