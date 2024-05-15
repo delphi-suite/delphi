@@ -92,6 +92,10 @@ class TrainingConfig:
     # third party
     wandb: Optional[WandbConfig] = None
     out_repo_id: str
+    readme_path: str = field(
+        default="",
+        metadata={"help": "for HF model card"},
+    )
 
     # debug
     debug_config: DebugConfig = field(default_factory=DebugConfig)
