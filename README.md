@@ -83,3 +83,17 @@ When you save a file vscode should automatically format it. Otherwise, pre-commi
 
 ## Incrementing Versions
 When making a new release, increment the version in `delphi/__init__.py`
+
+# Citation
+
+If you use `delphi` in your research, please cite using the following
+
+```bibtex
+@software{delphi,
+  title = {delphi: small language models training made easy},
+  author = {Jett Janiak, Jai Dhyani, Jannik Brinkmann, Gonçalo Paulo, Joshua Wendland, Víctor Abia Alonso, Siwei Li, Rai (Phan Anh Duong), Alice Rigg},
+  year = 2024,
+  url = {https://github.com/delphi-suite/delphi},
+  license = {apache-2.0}
+}
+```
