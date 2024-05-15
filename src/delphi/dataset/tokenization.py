@@ -1,10 +1,8 @@
-import io
+import itertools
 from collections import deque
-from collections.abc import Generator
+from collections.abc import Iterator
 
 from datasets import Dataset
-from huggingface_hub import HfApi
-from tqdm.auto import trange
 from transformers import PreTrainedTokenizerBase
 
 
@@ -45,7 +43,7 @@ def extend_deque(
     return doc_idx
 
 
-def make_new_sample(deq: deque[int], context_size: int, bos_token_id: int) -> list[int]:
+def make_new_sample(deq: deque[int], seq_len: int, bos_token_id: int) -> list[int]:
     """
     Generates new sample for training by creating sequence of tokens
     from the deque until the deque.
@@ -62,10 +60,10 @@ def make_new_sample(deq: deque[int], context_size: int, bos_token_id: int) -> li
         list[int]: token sequence.
     """
     sample = [bos_token_id]
-    # For the first (n-1) elements, pop from the left of the deque
-    # and add to the new sample, the n-th element will be retained
+    # For the first n-2 elements, pop from the left of the deque
+    # and add to the new sample, the (n-1)-th element will be retained
     # in the deque for making the next sample.
-    for _ in range(context_size - 1):
+    for _ in range(seq_len - 2):
         sample.append(deq.popleft())
     sample.append(deq[0])
     return sample
@@ -76,7 +74,7 @@ def tokenize_dataset(
     tokenizer: PreTrainedTokenizerBase,
     seq_len: int,
     batch_size: int,
-) -> Generator[list[int], None, None]:
+) -> Iterator[list[int]]:
     """
     Tokenizes the input text documents using the provided tokenizer and
     generates token sequences of the specified length.
@@ -100,45 +98,18 @@ def tokenize_dataset(
     # We discard the last chunk, so no processing on the remainder of the deque here
 
 
-def tokenize_and_upload_split(
+def get_tokenized_chunks(
     dataset_split: Dataset,
-    split_name: str,
     tokenizer: PreTrainedTokenizerBase,
     seq_len: int,
     batch_size: int,
     chunk_size: int,
-    out_repo_id: str,
-    api: HfApi,
-):
-    seq_gen = tokenize_dataset(
+) -> Iterator[Dataset]:
+    seq_it = tokenize_dataset(
         dataset_split,
         tokenizer,
         seq_len=seq_len,
         batch_size=batch_size,
     )
-    seq_it = iter(seq_gen)
-    print(f"Tokenizing {split_name=}...")
-    chunk_idx = 0
-    done = False
-    while not done:
-        tokens = []
-        print(f"Processing chunk {chunk_idx}...")
-        for _ in trange(chunk_size):
-            try:
-                tokens.append(next(seq_it))
-            except StopIteration:
-                done = True
-                break
-        ds_chunk = Dataset.from_dict({"tokens": tokens})
-        ds_parquet_chunk = io.BytesIO()
-        ds_chunk.to_parquet(ds_parquet_chunk)
-        chunk_name = f"{split_name}-{chunk_idx:05}.parquet"
-        print(f"Uploading {chunk_name}...")
-        api.upload_file(
-            path_or_fileobj=ds_parquet_chunk,
-            path_in_repo=f"data/{chunk_name}",
-            repo_id=out_repo_id,
-            repo_type="dataset",
-        )
-        chunk_idx += 1
-    print("Done.")
+    while tokens_chunk := tuple(itertools.islice(seq_it, chunk_size)):
+        yield Dataset.from_dict({"tokens": tokens_chunk})

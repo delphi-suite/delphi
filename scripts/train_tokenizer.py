@@ -3,7 +3,6 @@ import argparse
 
 from datasets import Dataset, Features, Value, load_dataset
 from tokenizers import ByteLevelBPETokenizer  # type: ignore
-from tqdm.auto import tqdm
 from transformers import PreTrainedTokenizerFast
 
 
@@ -15,7 +14,7 @@ def train_byte_level_bpe(
     tokenizer.train_from_iterator(
         text_generator,
         vocab_size=vocab_size,
-        special_tokens=["<bos>", "<eos>"],
+        special_tokens=["<bos>", "<eos>", "<pad>"],
         show_progress=True,
         length=len(dataset),
     )
@@ -23,6 +22,7 @@ def train_byte_level_bpe(
         tokenizer_object=tokenizer,
         bos_token="<bos>",
         eos_token="<eos>",
+        pad_token="<pad>",
     )
 
 
@@ -58,13 +58,21 @@ if __name__ == "__main__":
         help="Vocabulary size of the tokenizer",
     )
     parser.add_argument(
-        "--out-repo-id",
-        "-o",
+        "--out-dir",
         type=str,
-        required=True,
-        help="Where to push the resulting tokenizer",
+        required=False,
+        help="Local directory to save the resulting tokenizer",
+    )
+    parser.add_argument(
+        "--out-repo-id",
+        type=str,
+        required=False,
+        help="HF repo id to upload the resulting tokenizer",
     )
     args = parser.parse_args()
+    assert (
+        args.out_repo_id or args.out_dir
+    ), "You need to provide out_repo_id or out_dir"
 
     print(f"Loading dataset '{args.in_repo_id}'...")
     in_dataset_split = load_dataset(
@@ -78,6 +86,13 @@ if __name__ == "__main__":
         feature=args.feature,
         vocab_size=args.vocab_size,
     )
-    tokenizer.push_to_hub(
-        repo_id=args.out_repo_id,
-    )
+    if args.out_dir:
+        print(f"Saving tokenizer to '{args.out_dir}' directory...")
+        tokenizer.save_pretrained(args.out_dir)
+        print("Done.")
+    if args.out_repo_id:
+        print(f"Pushing tokenizer to HF repo '{args.out_repo_id}'...")
+        tokenizer.push_to_hub(
+            repo_id=args.out_repo_id,
+        )
+        print("Done.")

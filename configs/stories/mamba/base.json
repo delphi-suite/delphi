@@ -6,6 +6,7 @@
         "layer_norm_epsilon": 1e-5,
         "bos_token_id": 0,
         "eos_token_id": 1,
+        "pad_token_id": 2,
         "expand": 2,
         "conv_kernel": 4,
         "use_bias": false,
