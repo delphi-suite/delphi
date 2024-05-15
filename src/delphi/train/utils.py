@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import shutil
 import time
 from collections.abc import Generator
 from dataclasses import asdict, dataclass, field
@@ -275,6 +276,8 @@ def save_results(
         run_context_dict = asdict(run_context)
         run_context_dict["device"] = str(run_context.device)
         json.dump(run_context_dict, file, indent=2)
+    if config.readme_path:
+        shutil.copy(config.readme_path, os.path.join(results_path, "README.md"))
     if config.out_repo_id:
         api = HfApi()
         api.create_repo(config.out_repo_id, exist_ok=True)
