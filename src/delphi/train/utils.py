@@ -3,7 +3,7 @@ import logging
 import math
 import os
 import time
-from collections.abc import Generator
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Type, cast
@@ -139,22 +139,6 @@ def get_indices_for_epoch(
     return indices
 
 
-def get_xy_batch(
-    dataset: Dataset,
-    indices: list[int],
-    batch_size: int,
-    batch_num: int,
-    feature_name: str,
-    device: torch.device,
-) -> torch.Tensor:
-    """Get a batch of data from a dataset given a batch number and indices"""
-    start = batch_num * batch_size
-    end = (batch_num + 1) * batch_size
-    batch_indices = indices[start:end]
-    data = dataset[batch_indices][feature_name].to(device)
-    return data
-
-
 def gen_minibatches(
     dataset: Dataset,
     batch_size: int,
@@ -163,21 +147,17 @@ def gen_minibatches(
     indices: list[int],
     device: torch.device,
     feature_name: str,
-) -> Generator[torch.Tensor, None, None]:
+) -> Iterator[torch.Tensor]:
     """
     Generate minibatches from a dataset given a step and indices
     """
     minibatch_size = batch_size // num_minibatches
     first_minibatch_num = num_minibatches * step
-    for i in range(num_minibatches):
-        yield get_xy_batch(
-            dataset=dataset,
-            indices=indices,
-            batch_num=first_minibatch_num + i,
-            batch_size=minibatch_size,
-            feature_name=feature_name,
-            device=device,
-        )
+    for batch_num in range(first_minibatch_num, first_minibatch_num + num_minibatches):
+        start = batch_num * minibatch_size
+        end = (batch_num + 1) * minibatch_size
+        batch_indices = indices[start:end]
+        yield dataset[batch_indices][feature_name].to(device)
 
 
 @torch.no_grad()
