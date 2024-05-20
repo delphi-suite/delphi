@@ -203,7 +203,6 @@ def save_results(
     config: TrainingConfig,
     train_results: ModelTrainingState,
     run_context: RunContext,
-    results_path: str,
     final: bool = False,
 ):
     """
@@ -212,6 +211,9 @@ def save_results(
     Saves everything required to replicate the current state of training, including optimizer state,
     config, context (e.g. hardware), training step, etc
     """
+    iter_name = "main" if final else f"iter{train_results.iter_num}"
+    results_path = os.path.join(config.output_dir, iter_name)
+    logging.info(f"saving checkpoint to {results_path}")
     os.makedirs(results_path, exist_ok=True)
     with open(os.path.join(results_path, "training_config.json"), "w") as file:
         json.dump(asdict(config), file, indent=2)
@@ -239,21 +241,17 @@ def save_results(
     with open(os.path.join(results_path, "run_context.json"), "w") as file:
         json.dump(run_context.asdict(), file, indent=2)
     if config.out_repo_id:
-        api = HfApi()
-        api.create_repo(config.out_repo_id, exist_ok=True)
-        branch_name = f"iter{train_results.iter_num}"
-        api.create_branch(config.out_repo_id, branch=branch_name)
-        api.upload_folder(
-            folder_path=results_path,
-            repo_id=config.out_repo_id,
-            revision=branch_name,
-        )
-        if final:
+        try:
+            api = HfApi()
+            api.create_repo(config.out_repo_id, exist_ok=True)
+            api.create_branch(config.out_repo_id, branch=iter_name, exist_ok=True)
             api.upload_folder(
                 folder_path=results_path,
                 repo_id=config.out_repo_id,
-                revision="main",
+                revision=iter_name,
             )
+        except Exception as e:
+            logging.error(f"Failed to upload to huggingface: {e}")
 
 
 def count_tokens_so_far(config: TrainingConfig, mts: ModelTrainingState) -> int:

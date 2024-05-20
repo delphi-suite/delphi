@@ -44,14 +44,7 @@ def log_and_save_checkpoint(
     logging.info(
         f"step {mts.iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
     )
-    results_path = os.path.join(config.output_dir, f"iter_{mts.iter_num:06d}")
-    logging.info(f"saving checkpoint to {results_path}")
-    save_results(
-        config=config,
-        train_results=mts,
-        run_context=run_context,
-        results_path=results_path,
-    )
+    save_results(config=config, train_results=mts, run_context=run_context)
     if config.wandb:
         log_to_wandb(
             mts=mts,

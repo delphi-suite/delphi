@@ -99,9 +99,10 @@ def main():
     config = build_config_from_files_and_overrides(config_files, args_dict)
     # run training
     results, run_context = run_training(config)
-    final_out_dir = os.path.join(config.output_dir, "final")
-    save_results(config, results, run_context, final_out_dir, final=True)
-    print(f"Saved results to {final_out_dir}")
+    # to save & upload to iterX folder/branch
+    save_results(config, results, run_context, final=False)
+    # to save & upload to main folder/branch
+    save_results(config, results, run_context, final=True)
 
 
 if __name__ == "__main__":
