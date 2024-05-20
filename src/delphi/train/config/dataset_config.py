@@ -20,11 +20,11 @@ class DatasetConfig:
     )
     train_split: str = field(
         default="train",
-        metadata={"help": "split of the train dataset to use for validation"},
+        metadata={"help": "split of the dataset to use for training"},
     )
     validation_split: str = field(
         default="validation",
-        metadata={"help": "split of the validation dataset to use for validation"},
+        metadata={"help": "split of the dataset to use for validation"},
     )
 
     def _load(self, split) -> Dataset:
