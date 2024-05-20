@@ -5,9 +5,6 @@ from dataclasses import fields
 
 import torch
 from tqdm import tqdm
-from transformers import __version__ as transformers_version
-
-from delphi import __version__ as delphi_version
 
 from .checkpoint_step import log_and_save_checkpoint, should_save_checkpoint
 from .config import TrainingConfig
@@ -15,7 +12,6 @@ from .run_context import RunContext
 from .train_step import train_step
 from .utils import (
     ModelTrainingState,
-    get_device,
     get_indices_for_epoch,
     initialize_model_training_state,
     set_lr,
@@ -46,15 +42,8 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
     logging.info("Config:")
     for field in fields(config):
         logging.info(f"  {field.name}: {getattr(config, field.name)}")
-    # system
-    run_context = RunContext(
-        device=get_device(config.device),
-        torch_version=torch.__version__,
-        delphi_version=delphi_version,
-        transformers_version=transformers_version,
-        os=os.uname().version,
-    )
-    logging.debug(f"Run context: {run_context}")
+    run_context = RunContext(config.device)
+    logging.debug(f"Run context: {run_context.asdict()}")
 
     # load data
     logging.info("Loading data...")

@@ -48,21 +48,6 @@ def setup_determinism(seed: int):
     torch.manual_seed(seed)
 
 
-def get_device(device_str: str = "auto") -> torch.device:
-    """
-    Get torch device specified by device_str. May pass "auto" to set torch device automatically.
-    """
-    # cuda if available; else mps if apple silicon; else cpu
-    if device_str == "auto":
-        if torch.cuda.is_available():
-            device_str = "cuda"
-        elif torch.backends.mps.is_available():
-            device_str = "mps"
-        else:
-            device_str = "cpu"
-    return torch.device(device_str)
-
-
 def get_lr(
     iter_num: int,
     warmup_iters: int,
@@ -272,9 +257,7 @@ def save_results(
         }
         json.dump(training_state_dict, file, indent=2)
     with open(os.path.join(results_path, "run_context.json"), "w") as file:
-        run_context_dict = asdict(run_context)
-        run_context_dict["device"] = str(run_context.device)
-        json.dump(run_context_dict, file, indent=2)
+        json.dump(run_context.asdict(), file, indent=2)
     if config.out_repo_id:
         api = HfApi()
         api.create_repo(config.out_repo_id, exist_ok=True)
