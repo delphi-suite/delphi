@@ -36,7 +36,25 @@ def setup_training(config: TrainingConfig):
         init_wandb(config=config)
 
 
+def check_set_env_cublas_workspace_config():
+    expected_val = ":4096:8"
+    actual_val = os.getenv("CUBLAS_WORKSPACE_CONFIG")
+    if actual_val is None:
+        logging.info(
+            f"Environment variable CUBLAS_WORKSPACE_CONFIG not set. Setting to '{expected_val}' to ensure reproducibility."
+        )
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = expected_val
+    correct_values = [expected_val, ":16:8"]
+    assert actual_val in correct_values, (
+        f"Environment variable CUBLAS_WORKSPACE_CONFIG is set to {actual_val}, which is incompatibe with reproducible training. "
+        f"Please set it to one of the following values: {correct_values}. "
+        f"See https://docs.nvidia.com/cuda/archive/12.4.0/cublas/index.html#results-reproducibility for more information."
+    )
+
+
 def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext]:
+    if torch.cuda.is_available():
+        check_set_env_cublas_workspace_config()
     setup_training(config)
     logging.info("Starting training...")
     logging.info("Config:")
