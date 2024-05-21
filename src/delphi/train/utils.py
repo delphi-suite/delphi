@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import shutil
 import time
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
@@ -212,25 +213,19 @@ def save_results(
     config, context (e.g. hardware), training step, etc
     """
     iter_name = "main" if final else f"iter{train_results.iter_num}"
-    results_path = os.path.join(config.output_dir, iter_name)
+    output_dir = Path(config.output_dir)
+    results_path = output_dir / iter_name
     logging.info(f"saving checkpoint to {results_path}")
-    os.makedirs(results_path, exist_ok=True)
-    with open(os.path.join(results_path, "training_config.json"), "w") as file:
+    results_path.mkdir(parents=True, exist_ok=True)
+    with open(results_path / "training_config.json", "w") as file:
         json.dump(asdict(config), file, indent=2)
-    model = train_results.model
-    if isinstance(model, PreTrainedModel):
-        model.save_pretrained(
-            save_directory=results_path,
-        )
-    else:
-        st.save_model(
-            model,
-            os.path.join(results_path, "model.safetensors"),
-        )
+    train_results.model.save_pretrained(
+        save_directory=results_path,
+    )
     if config.save_optimizer:
-        with open(os.path.join(results_path, "optimizer.pt"), "wb") as f:
+        with open(results_path / "optimizer.pt", "wb") as f:
             torch.save(train_results.optimizer.state_dict(), f)
-    with open(os.path.join(results_path, "training_state.json"), "w") as file:
+    with open(results_path / "training_state.json", "w") as file:
         training_state_dict = {
             "iter_num": train_results.iter_num,
             "lr": train_results.lr,
@@ -238,8 +233,13 @@ def save_results(
             "step": train_results.step,
         }
         json.dump(training_state_dict, file, indent=2)
-    with open(os.path.join(results_path, "run_context.json"), "w") as file:
+    with open(results_path / "run_context.json", "w") as file:
         json.dump(run_context.asdict(), file, indent=2)
+    if (tokenizer_dir := output_dir / "tokenizer").exists():
+        for src_file in tokenizer_dir.iterdir():
+            if src_file.is_file():
+                dest_file = results_path / src_file.name
+                shutil.copy2(src_file, dest_file)
     if config.out_repo_id:
         try:
             api = HfApi()

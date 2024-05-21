@@ -2,9 +2,11 @@ import logging
 import os
 import time
 from dataclasses import fields
+from pathlib import Path
 
 import torch
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 from .checkpoint_step import log_and_save_checkpoint, should_save_checkpoint
 from .config import TrainingConfig
@@ -34,6 +36,10 @@ def setup_training(config: TrainingConfig):
     # wandb setup
     if config.wandb:
         init_wandb(config=config)
+
+    if config.tokenizer:
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+        tokenizer.save_pretrained(Path(config.output_dir) / "tokenizer")
 
 
 def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext]:

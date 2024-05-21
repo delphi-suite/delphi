@@ -89,9 +89,18 @@ class TrainingConfig:
         metadata={"help": "specify training and validation data"},
     )
 
+    tokenizer: str = field(
+        default="",
+        metadata={
+            "help": "HF repo id or local directory containing the tokenizer. Used only to upload it to HF with the model, not for training"
+        },
+    )
+
     # third party
     wandb: Optional[WandbConfig] = None
-    out_repo_id: str
+    out_repo_id: str = field(
+        metadata={"help": "set to empty string to not push to repo"},
+    )
 
     # debug
     debug_config: DebugConfig = field(default_factory=DebugConfig)

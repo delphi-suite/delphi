@@ -49,5 +49,6 @@
     "torch_seed": 42,
     "dataset": {
         "name": "delphi-suite/stories-tokenized"
-    }
+    },
+    "tokenizer": "delphi-suite/stories-tokenizer"
 }
