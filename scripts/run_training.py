@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any
