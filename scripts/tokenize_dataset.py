@@ -8,6 +8,7 @@ from datasets import Dataset, Features, Value, load_dataset
 from huggingface_hub import HfApi
 from transformers import AutoTokenizer
 
+from delphi import utils
 from delphi.dataset.tokenization import get_tokenized_chunks
 
 if __name__ == "__main__":
@@ -107,7 +108,7 @@ if __name__ == "__main__":
     )
 
     print(f"Tokenizing split='{args.split}'...")
-    split_name = args.split.split("[")[0]
+    split_name = utils.hf_split_to_split_name(args.split)
     for chunk_idx, ds_chunk in enumerate(ds_chunks_it):
         chunk_name = f"{split_name}-{chunk_idx:05}.parquet"
         if args.out_dir:
