@@ -1,14 +1,10 @@
-import logging
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import torch
-from datasets import Dataset, load_dataset
 from jaxtyping import Float, Int
-from transformers import PreTrainedModel, PreTrainedTokenizerBase
-
-from delphi.eval import constants
+from transformers import PreTrainedModel
 
 
 def get_all_logprobs(
@@ -66,59 +62,6 @@ def get_next_and_top_k_probs(
     next_probs = torch.exp(next_logprobs)
     top_k = torch.topk(all_probs, k, dim=-1)
     return next_probs, top_k
-
-
-def load_delphi_dataset(dataset_name: str, split: str, slice: str = "") -> Dataset:
-    # check that split is either "train" or "validation"
-    if split not in ["train", "validation"]:
-        raise ValueError(f"Split must be either 'train' or 'validation', not {split}")
-    if "/" not in dataset_name:
-        dataset_name = f"delphi-suite/{dataset_name}"
-    data_files_str = f"data/{split}-*.parquet"
-    dataset = load_dataset(
-        dataset_name,
-        data_files=data_files_str,
-        verification_mode="no_checks",
-        # Currently, load_dataset returns a dataset dict *unless* a split is specified,
-        # EVEN IF NO SPLIT WITHIN THE DATA FILES SPECIFIED. If there's no split arg,
-        # huggingface just just says everything is in the "train" split and returns {"train": dataset}.
-        # In our case the data_files glob already specifies just the validation files, so we
-        # shouldn't need to specify a split. But we do need to specify a split to get a dataset object,
-        # or we'd get a Dataset dict. See https://github.com/huggingface/datasets/issues/5189
-        split=f"train{slice}",
-    )
-    dataset = cast(Dataset, dataset)
-    logging.info(f" Loaded {data_files_str} ({len(dataset)} entries)")
-    return dataset
-
-
-def load_validation_dataset(dataset_name: str, slice: str = "") -> Dataset:
-    return load_delphi_dataset(dataset_name, "validation", slice)
-
-
-def load_train_dataset(dataset_name: str, slice: str = "") -> Dataset:
-    return load_delphi_dataset(dataset_name, "train", slice)
-
-
-def tokenize(
-    tokenizer: PreTrainedTokenizerBase, sample_txt: str
-) -> Int[torch.Tensor, "seq"]:
-    # supposedly this can be different than prepending the bos token id
-    return cast(
-        Int[torch.Tensor, "seq"],
-        tokenizer.encode(tokenizer.bos_token + sample_txt, return_tensors="pt")[0],
-    )
-
-
-def load_logprob_dataset(model: str):
-    return load_dataset(f"transcendingvictor/{model}-validation-logprobs")
-
-
-def load_logprob_datasets(split: str = "validation") -> dict[str, list[list[float]]]:
-    return {
-        model: cast(dict, load_logprob_dataset(model)[split])["logprobs"]  # type: ignore
-        for model in constants.LLAMA2_MODELS
-    }
 
 
 def dict_filter_quantile(

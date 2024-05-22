@@ -3,11 +3,7 @@ from math import isclose
 import pytest
 import torch
 
-from delphi.eval.utils import (
-    dict_filter_quantile,
-    gather_logprobs,
-    load_validation_dataset,
-)
+from delphi.eval.utils import dict_filter_quantile, gather_logprobs
 
 
 def test_gather_logprobs():
@@ -48,11 +44,6 @@ def test_gather_logprobs():
     )
     result = gather_logprobs(logprobs, tokens)
     assert torch.allclose(result, expected_output)
-
-
-def test_load_validation_dataset():
-    text = load_validation_dataset("tinystories-v2-clean")
-    tokenized = load_validation_dataset("tinystories-v2-clean-tokenized-v0")
 
 
 @pytest.mark.filterwarnings(

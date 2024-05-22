@@ -12,17 +12,6 @@ from jaxtyping import Float, Int
 from transformers import PreTrainedTokenizerBase
 
 
-def probs_to_colors(probs: Float[torch.Tensor, "next_pos"]) -> list[str]:
-    # for the endoftext token
-    # no prediction, no color
-    colors = ["white"]
-    for p in probs.tolist():
-        red_gap = 150  # the higher it is, the less red the tokens will be
-        green_blue_val = red_gap + int((255 - red_gap) * (1 - p))
-        colors.append(f"rgb(255, {green_blue_val}, {green_blue_val})")
-    return colors
-
-
 def single_loss_diff_to_color(loss_diff: float) -> str:
     # if loss_diff is negative, we want the color to be red
     # if loss_diff is positive, we want the color to be green
@@ -114,70 +103,6 @@ _token_style_str = " ".join([f"{k}: {v};" for k, v in _token_style.items()])
 _token_emphasized_style_str = " ".join(
     [f"{k}: {v};" for k, v in _token_emphasized_style.items()]
 )
-
-
-def vis_sample_prediction_probs(
-    sample_tok: Int[torch.Tensor, "pos"],
-    correct_probs: Float[torch.Tensor, "pos"],
-    top_k_probs: torch.return_types.topk,
-    tokenizer: PreTrainedTokenizerBase,
-) -> str:
-    colors = probs_to_colors(correct_probs)
-    token_htmls = []
-
-    # Generate a unique ID for this instance (so we can have multiple instances on the same page)
-    unique_id = str(uuid.uuid4())
-
-    token_class = f"token_{unique_id}"
-    hover_div_id = f"hover_info_{unique_id}"
-
-    for i in range(sample_tok.shape[0]):
-        tok = cast(int, sample_tok[i].item())
-        data = {}
-        if i > 0:
-            correct_prob = correct_probs[i - 1].item()
-            data["next"] = to_tok_prob_str(tok, correct_prob, tokenizer)
-            top_k_probs_tokens = top_k_probs.indices[i - 1]
-            top_k_probs_values = top_k_probs.values[i - 1]
-            for j in range(top_k_probs_tokens.shape[0]):
-                top_tok = top_k_probs_tokens[j].item()
-                top_tok = cast(int, top_tok)
-                top_prob = top_k_probs_values[j].item()
-                data[f"top{j}"] = to_tok_prob_str(top_tok, top_prob, tokenizer)
-
-        token_htmls.append(
-            token_to_html(
-                tok, tokenizer, bg_color=colors[i], data=data, class_name=token_class
-            )
-        )
-
-    html_str = f"""
-    <style>.{token_class} {{ {_token_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
-    {"".join(token_htmls)} <div id='{hover_div_id}'></div>
-    <script>
-        (function() {{
-            var token_divs = document.querySelectorAll('.{token_class}');
-            var hover_info = document.getElementById('{hover_div_id}');
-
-
-            token_divs.forEach(function(token_div) {{
-                token_div.addEventListener('mousemove', function(e) {{
-                    hover_info.innerHTML = ""
-                    for( var d in this.dataset) {{
-                        hover_info.innerHTML += "<b>" + d + "</b> ";
-                        hover_info.innerHTML += this.dataset[d] + "<br>";
-                    }}
-                }});
-
-                token_div.addEventListener('mouseout', function(e) {{
-                    hover_info.innerHTML = ""
-                }});
-            }});
-        }})();
-    </script>
-    """
-    display(HTML(html_str))
-    return html_str
 
 
 def vis_pos_map(
