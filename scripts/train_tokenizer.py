@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 
-from datasets import Dataset, Features, Value, load_dataset
+from datasets import Dataset, Features, Value
 from tokenizers import ByteLevelBPETokenizer  # type: ignore
 from transformers import PreTrainedTokenizerFast
+
+from delphi import utils
 
 
 def train_byte_level_bpe(
@@ -75,10 +77,8 @@ if __name__ == "__main__":
     ), "You need to provide out_repo_id or out_dir"
 
     print(f"Loading dataset '{args.in_repo_id}'...")
-    in_dataset_split = load_dataset(
-        args.in_repo_id,
-        split=args.split,
-        features=Features({args.feature: Value("string")}),
+    in_dataset_split = utils.load_dataset_split_string_feature(
+        args.repo_id, args.split, args.feature
     )
     assert isinstance(in_dataset_split, Dataset)
     tokenizer = train_byte_level_bpe(

@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
-from typing import cast
 
-import datasets
 from beartype import beartype
-from datasets import Dataset, load_dataset
+from datasets import Dataset
+
+from delphi import utils
 
 
 @beartype
@@ -28,14 +28,9 @@ class DatasetConfig:
     )
 
     def _load(self, split) -> Dataset:
-        ds = load_dataset(
-            self.name,
-            split=split,
-            features=datasets.Features(
-                {self.feature: datasets.Sequence(datasets.Value("int32"))}
-            ),
+        ds = utils.load_dataset_split_sequence_int32_feature(
+            self.name, split, self.feature
         )
-        ds = cast(Dataset, ds)
         ds.set_format("torch")
         return ds
 

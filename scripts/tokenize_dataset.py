@@ -4,7 +4,7 @@ import io
 import os
 from pathlib import Path
 
-from datasets import Dataset, Features, Value, load_dataset
+from datasets import Dataset
 from huggingface_hub import HfApi
 from transformers import AutoTokenizer
 
@@ -81,10 +81,8 @@ if __name__ == "__main__":
     ), "You need to provide --out-repo-id or --out-dir"
 
     print(f"Loading dataset '{args.in_repo_id}'...")
-    in_dataset_split = load_dataset(
-        args.in_repo_id,
-        split=args.split,
-        features=Features({args.feature: Value("string")}),
+    in_dataset_split = utils.load_dataset_split_string_feature(
+        args.in_repo_id, args.split, args.feature
     )
     assert isinstance(in_dataset_split, Dataset)
     print(f"Loading tokenizer from '{args.tokenizer}'...")
