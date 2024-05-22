@@ -38,7 +38,6 @@ def log_and_save_checkpoint(
             batch_size=config.batch_size,
             split_to_ds={"train": train_ds, "val": validation_ds},
             device=run_context.device,
-            epoch=mts.epoch,
             feature_name=config.dataset.feature,
         )
     logging.info(

@@ -8,13 +8,14 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
+from delphi.train.shuffle import shuffle_epoch
+
 from .checkpoint_step import log_and_save_checkpoint, should_save_checkpoint
 from .config import TrainingConfig
 from .run_context import RunContext
 from .train_step import train_step
 from .utils import (
     ModelTrainingState,
-    get_indices_for_epoch,
     initialize_model_training_state,
     set_lr,
     setup_determinism,
@@ -70,12 +71,10 @@ def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext
     # training loop
     logging.info("Starting training...")
     for epoch in range(config.max_epochs):
-        logging.info(f"Epoch: {epoch} / {config.max_epochs - 1}")
-        train_data_indices = get_indices_for_epoch(
-            dataset_size=len(train_ds),
-            batch_size=config.batch_size,
-            epoch=epoch,
-            ordering_seed=config.batch_ordering_seed,
+        logging.info(f"Epoch: {epoch+1} / {config.max_epochs}")
+        train_data_indices = list(range(len(train_ds)))
+        shuffle_epoch(
+            train_data_indices, seed=config.batch_ordering_seed, epoch_nr=epoch
         )
         model_training_state.epoch = epoch
         for step in tqdm(range(steps_per_epoch)):

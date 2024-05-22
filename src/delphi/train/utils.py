@@ -131,15 +131,6 @@ def initialize_model_training_state(
     )
 
 
-def get_indices_for_epoch(
-    dataset_size: int, batch_size: int, epoch: int, ordering_seed: int
-) -> list[int]:
-    """ """
-    indices = list(range(dataset_size))
-    shuffle_list(indices, seed=ordering_seed + epoch)
-    return indices
-
-
 def gen_minibatches(
     dataset: Dataset,
     batch_size: int,
@@ -168,19 +159,13 @@ def estimate_loss(
     batch_size: int,
     split_to_ds: dict[str, Dataset],
     device: torch.device,
-    epoch: int,
     feature_name: str,
 ) -> dict[str, float]:
     """helps estimate an arbitrarily accurate loss over either split using many batches"""
     out = {}
     model.eval()
     for split, ds in split_to_ds.items():
-        indices = get_indices_for_epoch(
-            dataset_size=len(ds),
-            batch_size=batch_size,
-            epoch=epoch,
-            ordering_seed=1234,
-        )
+        indices = list(range(len(ds)))
         eval_iters = min(eval_iters, len(ds) // batch_size)
         losses = torch.zeros(eval_iters)  # keep on CPU
         minibatches = gen_minibatches(
