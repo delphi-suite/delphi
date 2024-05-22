@@ -2,7 +2,7 @@ from typing import Optional
 
 import pytest
 
-from delphi.constants import TEST_CONFIGS_DIR
+from delphi import TEST_CONFIGS_DIR
 from delphi.train.config.utils import (
     _unoptionalize,
     build_config_from_files_and_overrides,

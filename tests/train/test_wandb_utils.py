@@ -7,7 +7,7 @@ import torch
 import transformers
 from dacite import from_dict
 
-from delphi.constants import TEST_CONFIGS_DIR
+from delphi import TEST_CONFIGS_DIR
 from delphi.train.config import TrainingConfig
 from delphi.train.config.utils import build_config_from_files_and_overrides
 from delphi.train.utils import ModelTrainingState, initialize_model_training_state

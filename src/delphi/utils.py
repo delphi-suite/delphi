@@ -7,7 +7,6 @@ def hf_split_to_split_name(split: str) -> str:
     return split.split("[")[0]
 
 
-# TODO: test load_dataset functions
 def load_dataset_split_features(
     repo_id: str,
     split: str,

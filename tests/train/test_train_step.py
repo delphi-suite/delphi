@@ -7,7 +7,7 @@ from datasets import Dataset
 from jaxtyping import Float
 from transformers import PreTrainedModel
 
-from delphi.constants import TEST_CONFIGS_DIR
+from delphi import TEST_CONFIGS_DIR
 from delphi.eval.utils import get_all_and_next_logprobs
 from delphi.train.config import TrainingConfig
 from delphi.train.config.utils import build_config_from_files_and_overrides
