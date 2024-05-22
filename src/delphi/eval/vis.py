@@ -3,6 +3,7 @@ import random
 import uuid
 from typing import cast
 
+import numpy as np
 import panel as pn
 import torch
 from IPython.core.display import HTML
@@ -54,6 +55,7 @@ def token_to_html(
     tokenizer: PreTrainedTokenizerBase,
     bg_color: str,
     data: dict,
+    class_name: str = "token",
 ) -> str:
     data = data or {}  # equivalent to if not data: data = {}
     # non-breakable space, w/o it leading spaces wouldn't be displayed
@@ -73,6 +75,7 @@ def token_to_html(
         br += "<br>"
         # this is so we can copy the prompt without "\n"s
         specific_styles["user-select"] = "none"
+    str_token = str_token.replace("<", "&lt;").replace(">", "&gt;")
 
     style_str = data_str = ""
     # converting style dict into the style attribute
@@ -83,7 +86,7 @@ def token_to_html(
         data_str = "".join(
             f" data-{k}='{v.replace(' ', '&nbsp;')}'" for k, v in data.items()
         )
-    return f"<div class='token'{style_str}{data_str}>{str_token}</div>{br}"
+    return f"<div class='{class_name}'{style_str}{data_str}>{str_token}</div>{br}"
 
 
 _token_style = {
@@ -97,7 +100,20 @@ _token_style = {
     "margin": "1px 0px 1px 1px",
     "padding": "0px 1px 1px 1px",
 }
+_token_emphasized_style = {
+    "border": "3px solid #888",
+    "display": "inline-block",
+    "font-family": "monospace",
+    "font-size": "14px",
+    "color": "black",
+    "background-color": "white",
+    "margin": "1px 0px 1px 1px",
+    "padding": "0px 1px 1px 1px",
+}
 _token_style_str = " ".join([f"{k}: {v};" for k, v in _token_style.items()])
+_token_emphasized_style_str = " ".join(
+    [f"{k}: {v};" for k, v in _token_emphasized_style.items()]
+)
 
 
 def vis_sample_prediction_probs(
@@ -130,8 +146,8 @@ def vis_sample_prediction_probs(
                 data[f"top{j}"] = to_tok_prob_str(top_tok, top_prob, tokenizer)
 
         token_htmls.append(
-            token_to_html(tok, tokenizer, bg_color=colors[i], data=data).replace(
-                "class='token'", f"class='{token_class}'"
+            token_to_html(
+                tok, tokenizer, bg_color=colors[i], data=data, class_name=token_class
             )
         )
 
@@ -165,10 +181,11 @@ def vis_sample_prediction_probs(
 
 
 def vis_pos_map(
-    pos_map: dict[tuple[int, int], float | int],
+    pos_list: list[tuple[int, int]],
+    selected_tokens: list[int],
+    metrics: Float[torch.Tensor, "prompt pos"],
     token_ids: Int[torch.Tensor, "prompt pos"],
     tokenizer: PreTrainedTokenizerBase,
-    sample: int = 3,
 ):
     """
     Randomly sample from pos_map and visualize the loss diff at the corresponding position.
@@ -176,49 +193,43 @@ def vis_pos_map(
 
     token_htmls = []
     unique_id = str(uuid.uuid4())
-    token_class = f"token_{unique_id}"
+    token_class = f"pretoken_{unique_id}"
+    selected_token_class = f"token_{unique_id}"
     hover_div_id = f"hover_info_{unique_id}"
 
-    # choose n random keys from pos_map
-    keys = random.sample(list(pos_map.keys()), k=sample)
+    # choose a random keys from pos_map
+    key = random.choice(pos_list)
 
-    for key in keys:
-        prompt, pos = key
-        pre_toks = token_ids[prompt][:pos]
-        mask = torch.isin(pre_toks, torch.tensor([0, 1], dtype=torch.int8))
-        pre_toks = pre_toks[
-            ~mask
-        ]  # remove <unk> and <s> tokens, <s> cause strikethrough in html
+    prompt, pos = key
+    all_toks = token_ids[prompt][: pos + 1]
 
-        for i in range(pre_toks.shape[0]):
-            pre_tok = cast(int, pre_toks[i].item())
-            token_htmls.append(
-                token_to_html(pre_tok, tokenizer, bg_color="white", data={}).replace(
-                    "class='token'", f"class='{token_class}'"
-                )
-            )
-
-        tok = cast(int, token_ids[prompt][pos].item())
-        value = cast(float, pos_map[key])
-
+    for i in range(all_toks.shape[0]):
+        token_id = cast(int, all_toks[i].item())
+        value = metrics[prompt][i].item()
         token_htmls.append(
             token_to_html(
-                tok,
+                token_id,
                 tokenizer,
-                bg_color=single_loss_diff_to_color(value),
+                bg_color="white"
+                if np.isnan(value)
+                else single_loss_diff_to_color(value),
                 data={"loss-diff": f"{value:.2f}"},
-            ).replace("class='token'", f"class='{token_class}'")
+                class_name=token_class
+                if token_id not in selected_tokens
+                else selected_token_class,
+            )
         )
 
-        # add break line
-        token_htmls.append("<br><br>")
+    # add break line
+    token_htmls.append("<br><br>")
 
     html_str = f"""
-    <style>.{token_class} {{ {_token_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
+    <style>.{token_class} {{ {_token_style_str}}} .{selected_token_class} {{ {_token_emphasized_style_str} }} #{hover_div_id} {{ height: 100px; font-family: monospace; }}</style>
     {"".join(token_htmls)} <div id='{hover_div_id}'></div>
     <script>
         (function() {{
             var token_divs = document.querySelectorAll('.{token_class}');
+            token_divs = Array.from(token_divs).concat(Array.from(document.querySelectorAll('.{selected_token_class}')));
             var hover_info = document.getElementById('{hover_div_id}');
 
 
@@ -239,19 +250,18 @@ def vis_pos_map(
     </script>
     """
     display(HTML(html_str))
-    return html_str
 
 
 def token_selector(
     vocab_map: dict[str, int]
 ) -> tuple[pn.widgets.MultiChoice, list[int]]:
     tokens = list(vocab_map.keys())
-    token_selector = pn.widgets.MultiChoice(name="Tokens", options=tokens)
-    token_ids = [vocab_map[token] for token in cast(list[str], token_selector.value)]
+    token_selector_ = pn.widgets.MultiChoice(name="Tokens", options=tokens)
+    token_ids = [vocab_map[token] for token in cast(list[str], token_selector_.value)]
 
     def update_tokens(event):
         token_ids.clear()
         token_ids.extend([vocab_map[token] for token in event.new])
 
-    token_selector.param.watch(update_tokens, "value")
-    return token_selector, token_ids
+    token_selector_.param.watch(update_tokens, "value")
+    return token_selector_, token_ids

@@ -1,8 +1,6 @@
-from numbers import Number
-from typing import Optional, cast
+from typing import Optional
 
 import torch
-from datasets import Dataset
 from jaxtyping import Int
 
 from delphi.eval.utils import dict_filter_quantile
@@ -10,9 +8,8 @@ from delphi.eval.utils import dict_filter_quantile
 
 def get_all_tok_metrics_in_label(
     token_ids: Int[torch.Tensor, "prompt pos"],
-    token_labels: dict[int, dict[str, bool]],
+    selected_tokens: list[int],
     metrics: torch.Tensor,
-    label: str,
     q_start: Optional[float] = None,
     q_end: Optional[float] = None,
 ) -> dict[tuple[int, int], float]:
@@ -23,9 +20,8 @@ def get_all_tok_metrics_in_label(
 
     Args:
     - token_ids (Dataset): token_ids dataset e.g. token_ids[0] = {"tokens": [[1, 2, ...], [2, 5, ...], ...]}
-    - token_labels (dict[int, dict[str, bool]]): dictionary of token labels e.g. { 0: {"Is Noun": True, "Is Verb": False}, ...}
+    - selected_tokens (list[int]): list of token IDs to search for e.g. [46, 402, ...]
     - metrics (torch.Tensor): tensor of metrics to search through e.g. torch.tensor([[0.1, 0.2, ...], [0.3, 0.4, ...], ...])
-    - label (str): the label to search for
     - q_start (float): the start of the quantile range to filter the metrics e.g. 0.1
     - q_end (float): the end of the quantile range to filter the metrics e.g. 0.9
 
@@ -42,7 +38,7 @@ def get_all_tok_metrics_in_label(
     tok_positions = {}
     for prompt_pos, prompt in enumerate(token_ids.numpy()):
         for tok_pos, tok in enumerate(prompt):
-            if token_labels[tok][label]:
+            if tok in selected_tokens:
                 tok_positions[(prompt_pos, tok_pos)] = metrics[
                     prompt_pos, tok_pos
                 ].item()

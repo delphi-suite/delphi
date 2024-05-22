@@ -61,7 +61,22 @@ def test_load_validation_dataset():
 def test_dict_filter_quantile():
     d = {1: 0.1, 2: 0.2, 3: 0.3, 4: 0.4, 5: 0.5}
     result = dict_filter_quantile(d, 0.2, 0.6)
-    expected = {2: 0.2, 3: 0.3, 4: 0.4}
+    expected = {2: 0.2, 3: 0.3}
+
+    # compare keys
+    assert result.keys() == expected.keys()
+    # compare values
+    for k in result:
+        assert isclose(result[k], expected[k], rel_tol=1e-6)
+
+    # test with negative values
+    d = {1: -0.1, 2: -0.2, 3: -0.3, 4: -0.4, 5: -0.5}
+    result = dict_filter_quantile(d, 0.2, 0.6)
+    expected = {3: -0.3, 4: -0.4}
+
+    # compare keys
+    assert result.keys() == expected.keys()
+    # compare values
     for k in result:
         assert isclose(result[k], expected[k], rel_tol=1e-6)
 
