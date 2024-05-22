@@ -9,7 +9,7 @@ from huggingface_hub import HfApi
 from transformers import AutoTokenizer
 
 from delphi import utils
-from delphi.dataset.tokenization import get_tokenized_chunks
+from delphi.tokenization import get_tokenized_chunks
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="", allow_abbrev=False)

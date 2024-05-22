@@ -9,7 +9,6 @@ from tqdm.auto import trange
 from transformers import AutoModelForCausalLM
 
 from delphi import utils
-from delphi.eval.utils import get_all_and_next_logprobs
 
 torch.set_grad_enabled(False)
 
@@ -61,7 +60,7 @@ def get_logprobs_single_model(
     for i in trange(0, n_seq, batch_size):
         batch_tokens = dataset[i : i + batch_size][feature]
         logprobs[i : i + batch_size, 1:] = (
-            get_all_and_next_logprobs(model, batch_tokens)[1].cpu().numpy()  # type: ignore
+            utils.get_all_and_next_logprobs(model, batch_tokens)[1].cpu().numpy()  # type: ignore
         )
     return Dataset.from_dict({"logprobs": [row for row in logprobs]})
 

@@ -5,7 +5,7 @@ import pytest
 from datasets import Dataset
 from transformers import AutoTokenizer
 
-from delphi.dataset.tokenization import extend_deque, make_new_sample, tokenize_dataset
+from delphi.tokenization import extend_deque, make_new_sample, tokenize_dataset
 
 
 @pytest.fixture
