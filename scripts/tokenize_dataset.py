@@ -80,7 +80,6 @@ if __name__ == "__main__":
         args.out_repo_id or args.out_dir
     ), "You need to provide --out-repo-id or --out-dir"
 
-    print(f"Loading dataset '{args.in_repo_id}'...")
     in_dataset_split = utils.load_dataset_split_string_feature(
         args.in_repo_id, args.split, args.feature
     )
