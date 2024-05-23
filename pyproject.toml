@@ -12,6 +12,7 @@ dependencies = [
     "wandb==0.16.3",
     "dacite==1.8.1",
     "transformers==4.40.0",
+    "platformdirs==4.2.2"
 ]
 
 [project.optional-dependencies]
