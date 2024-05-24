@@ -51,23 +51,21 @@ def set_logging(args: argparse.Namespace):
 
 def setup_parser() -> argparse.ArgumentParser:
     # Setup argparse
-    parser = argparse.ArgumentParser(description="Train a delphi model")
+    parser = argparse.ArgumentParser(
+        description="Train a delphi model", allow_abbrev=False
+    )
     parser.add_argument(
-        "--config_files",
-        "--config_file",
-        "-c",
+        "config_files",
         help=(
-            "Path to json file(s) containing config values. Specific values can be overridden with --overrides. "
-            "e.g. `--config_files primary_config.json secondary_config.json"
+            "Path to json file(s) containing config values, e.g. 'primary_config.json secondary_config.json'."
         ),
         type=str,
-        required=False,
         nargs="*",
     )
     parser.add_argument(
         "--overrides",
         help=(
-            "Override config values with comma-separated declarations. "
+            "Override config values with space-separated declarations. "
             "e.g. `--overrides model_config.hidden_size=42 run_name=foo`"
         ),
         type=str,

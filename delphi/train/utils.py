@@ -198,8 +198,8 @@ def save_results(
     config, context (e.g. hardware), training step, etc
     """
     iter_name = "main" if final else f"iter{train_results.iter_num}"
-    output_dir = Path(config.output_dir)
-    results_path = output_dir / iter_name
+    out_dir = Path(config.out_dir)
+    results_path = out_dir / iter_name
     logging.info(f"saving checkpoint to {results_path}")
     results_path.mkdir(parents=True, exist_ok=True)
     with open(results_path / "training_config.json", "w") as file:
@@ -220,19 +220,19 @@ def save_results(
         json.dump(training_state_dict, file, indent=2)
     with open(results_path / "run_context.json", "w") as file:
         json.dump(run_context.asdict(), file, indent=2)
-    if (tokenizer_dir := output_dir / "tokenizer").exists():
+    if (tokenizer_dir := out_dir / "tokenizer").exists():
         for src_file in tokenizer_dir.iterdir():
             if src_file.is_file():
                 dest_file = results_path / src_file.name
                 shutil.copy2(src_file, dest_file)
-    if config.out_repo_id:
+    if config.out_repo:
         try:
             api = HfApi()
-            api.create_repo(config.out_repo_id, exist_ok=True)
-            api.create_branch(config.out_repo_id, branch=iter_name, exist_ok=True)
+            api.create_repo(config.out_repo, exist_ok=True)
+            api.create_branch(config.out_repo, branch=iter_name, exist_ok=True)
             api.upload_folder(
                 folder_path=results_path,
-                repo_id=config.out_repo_id,
+                repo_id=config.out_repo,
                 revision=iter_name,
             )
         except Exception as e:

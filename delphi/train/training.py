@@ -25,7 +25,7 @@ from .wandb_utils import init_wandb
 
 def setup_training(config: TrainingConfig):
     logging.info("Setting up training...")
-    os.makedirs(config.output_dir, exist_ok=True)
+    os.makedirs(config.out_dir, exist_ok=True)
 
     # torch misc - TODO: check if this is actually needed
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
@@ -36,11 +36,11 @@ def setup_training(config: TrainingConfig):
 
     # wandb setup
     if config.wandb:
-        init_wandb(config=config)
+        init_wandb(config)
 
     if config.tokenizer:
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-        tokenizer.save_pretrained(Path(config.output_dir) / "tokenizer")
+        tokenizer.save_pretrained(Path(config.out_dir) / "tokenizer")
 
 
 def run_training(config: TrainingConfig) -> tuple[ModelTrainingState, RunContext]:

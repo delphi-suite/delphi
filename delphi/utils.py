@@ -11,12 +11,12 @@ def hf_split_to_split_name(split: str) -> str:
 
 
 def load_dataset_split_features(
-    repo_id: str,
+    path: str,
     split: str,
     features: Features,
 ) -> Dataset:
     dataset = load_dataset(
-        repo_id,
+        path,
         split=split,
         features=features,
     )
@@ -25,28 +25,28 @@ def load_dataset_split_features(
 
 
 def load_dataset_split_string_feature(
-    repo_id: str,
+    path: str,
     split: str,
     feature_name: str,
 ) -> Dataset:
     print("Loading string dataset")
-    print(f"{repo_id=}, {split=}, {feature_name=}")
+    print(f"{path=}, {split=}, {feature_name=}")
     return load_dataset_split_features(
-        repo_id,
+        path,
         split,
         Features({feature_name: Value("string")}),
     )
 
 
 def load_dataset_split_sequence_int32_feature(
-    repo_id: str,
+    path: str,
     split: str,
     feature_name: str,
 ) -> Dataset:
     print("Loading sequence int32 dataset")
-    print(f"{repo_id=}, {split=}, {feature_name=}")
+    print(f"{path=}, {split=}, {feature_name=}")
     return load_dataset_split_features(
-        repo_id,
+        path,
         split,
         Features({feature_name: Sequence(Value("int32"))}),
     )

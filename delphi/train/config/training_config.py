@@ -9,7 +9,6 @@ from beartype import beartype
 from .adam_config import AdamConfig
 from .dataset_config import DatasetConfig
 from .debug_config import DebugConfig
-from .wandb_config import WandbConfig
 
 
 @beartype
@@ -23,7 +22,7 @@ class TrainingConfig:
     max_seq_len: int = field(metadata={"help": "max sequence length"})
     # meta
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    output_dir: str = field(
+    out_dir: str = field(
         default=os.path.join(platformdirs.user_data_dir(appname="delphi"), run_name),
         metadata={"help": "output directory"},
     )
@@ -97,9 +96,13 @@ class TrainingConfig:
     )
 
     # third party
-    wandb: Optional[WandbConfig] = None
-    out_repo_id: str = field(
-        metadata={"help": "set to empty string to not push to repo"},
+    wandb: str = field(
+        metadata={
+            "help": "wandb config in 'entity/project' form. Set to empty string to not use wandb."
+        },
+    )
+    out_repo: str = field(
+        metadata={"help": "HF repo id. Set to empty string to not push to repo."},
     )
 
     # debug

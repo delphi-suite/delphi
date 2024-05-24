@@ -1,5 +1,4 @@
 import logging
-import os
 from dataclasses import asdict
 
 import wandb
@@ -8,19 +7,12 @@ from .config import TrainingConfig
 from .utils import ModelTrainingState
 
 
-def silence_wandb():
-    logging.info("silencing wandb output")
-    os.environ["WANDB_SILENT"] = "true"
-
-
 def init_wandb(config: TrainingConfig):
-    # if log level < debug, silence wandb
-    assert config.wandb is not None
-    if logging.getLogger().level > logging.INFO or config.wandb.silence:
-        silence_wandb()
+    assert "/" in config.wandb, "wandb should be in the 'entity/project' form"
+    wandb_entity, wandb_project = config.wandb.split("/")
     wandb.init(
-        entity=config.wandb.entity,
-        project=config.wandb.project,
+        entity=wandb_entity,
+        project=wandb_project,
         name=config.run_name,
         config=asdict(config),
     )

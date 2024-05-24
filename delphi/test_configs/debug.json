@@ -17,5 +17,6 @@
     "dataset": {
         "name": "delphi-suite/v0-tinystories-v2-clean-tokenized"
     },
-    "out_repo_id": ""
+    "out_repo": "",
+    "wandb": ""
 }

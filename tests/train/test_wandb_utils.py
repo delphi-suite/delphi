@@ -11,7 +11,7 @@ from delphi import TEST_CONFIGS_DIR
 from delphi.train.config import TrainingConfig
 from delphi.train.config.utils import build_config_from_files_and_overrides
 from delphi.train.utils import ModelTrainingState, initialize_model_training_state
-from delphi.train.wandb_utils import init_wandb, log_to_wandb, silence_wandb
+from delphi.train.wandb_utils import init_wandb, log_to_wandb
 
 
 @pytest.fixture
@@ -19,10 +19,7 @@ def mock_training_config() -> TrainingConfig:
     preset_path = TEST_CONFIGS_DIR / "debug.json"
     overrides = {
         "run_name": "test_run",
-        "wandb": {
-            "entity": "test_entity",
-            "project": "test_project",
-        },
+        "wandb": "test_entity/test_project",
     }
     return build_config_from_files_and_overrides([preset_path], overrides)
 
@@ -37,12 +34,6 @@ def mock_model_training_state(mock_training_config):
     mts.iter_num = 1
     mts.lr = 0.001
     return mts
-
-
-@patch.dict("os.environ", {}, clear=True)
-def test_silence_wandb():
-    silence_wandb()
-    assert os.environ["WANDB_SILENT"] == "true"
 
 
 @patch("wandb.init")

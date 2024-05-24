@@ -29,14 +29,16 @@ def train_byte_level_bpe(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="", allow_abbrev=False)
+    parser = argparse.ArgumentParser(
+        description="Train a BPE tokenizer on a given dataset", allow_abbrev=False
+    )
 
     parser.add_argument(
-        "--in-repo-id",
+        "--in-dataset",
         "-i",
         type=str,
         required=True,
-        help="Input dataset",
+        help="Dataset you want to train the tokenizer on. Local path or HF repo id",
     )
     parser.add_argument(
         "--feature",
@@ -66,18 +68,16 @@ if __name__ == "__main__":
         help="Local directory to save the resulting tokenizer",
     )
     parser.add_argument(
-        "--out-repo-id",
+        "--out-repo",
         type=str,
         required=False,
         help="HF repo id to upload the resulting tokenizer",
     )
     args = parser.parse_args()
-    assert (
-        args.out_repo_id or args.out_dir
-    ), "You need to provide out_repo_id or out_dir"
+    assert args.out_repo or args.out_dir, "You need to provide out_repo or out_dir"
 
     in_dataset_split = utils.load_dataset_split_string_feature(
-        args.in_repo_id, args.split, args.feature
+        args.in_dataset, args.split, args.feature
     )
     assert isinstance(in_dataset_split, Dataset)
     tokenizer = train_byte_level_bpe(
@@ -89,9 +89,9 @@ if __name__ == "__main__":
         print(f"Saving tokenizer to '{args.out_dir}' directory...")
         tokenizer.save_pretrained(args.out_dir)
         print("Done.")
-    if args.out_repo_id:
-        print(f"Pushing tokenizer to HF repo '{args.out_repo_id}'...")
+    if args.out_repo:
+        print(f"Pushing tokenizer to HF repo '{args.out_repo}'...")
         tokenizer.push_to_hub(
-            repo_id=args.out_repo_id,
+            repo_id=args.out_repo,
         )
         print("Done.")

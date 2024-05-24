@@ -6,4 +6,3 @@ from .utils import (
     dot_notation_to_dict,
     get_user_config_path,
 )
-from .wandb_config import WandbConfig

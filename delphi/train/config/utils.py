@@ -65,28 +65,6 @@ def build_config_dict_from_files(config_files: list[Path]) -> dict[str, Any]:
     return combined_config
 
 
-def set_backup_vals(config: dict[str, Any], config_files: list[Path]):
-    """
-    Convenience default values for run_name and output_dir based on config file (if exactly one passed)
-
-    If the user is using 1 config file and has not set a run_name, we set it to the filename.
-    Likewise for output_dir, we set it to a user-specific directory based on the run_name.
-    """
-    if len(config_files) == 1:
-        prefix = f"{config_files[0].stem}__"
-    else:
-        prefix = ""
-    if "run_name" not in config:
-        run_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        config["run_name"] = f"{prefix}{run_time}"
-        logging.info(f"Setting run_name to {config['run_name']}")
-    if "output_dir" not in config:
-        config["output_dir"] = os.path.join(
-            platformdirs.user_data_dir(appname="delphi"), config["run_name"]
-        )
-        logging.info(f"Setting output_dir to {config['output_dir']}")
-
-
 def cast_types(config: dict[str, Any], target_dataclass: Type):
     """
     user overrides are passed in as strings, so we need to cast them to the correct type
@@ -118,13 +96,11 @@ def build_config_from_files_and_overrides(
         (we expect this to be passed as strings w/o type hints from a script argument:
         e.g. `--overrides model_config.hidden_size=42 run_name=foo`)
     3. Merge in overrides to config_dict, taking precedence over all config_files values.
-    4. Set backup values (for run_name and output_dir) if they are not already set.
-    5. Build the TrainingConfig object from the final config dict and return it.
+    4. Build the TrainingConfig object from the final config dict and return it.
     """
     combined_config = build_config_dict_from_files(config_files)
     cast_types(overrides, TrainingConfig)
     merge_two_dicts(merge_into=combined_config, merge_from=overrides)
-    set_backup_vals(combined_config, config_files)
     return from_dict(TrainingConfig, combined_config, config=dacite_config(strict=True))
 
 
