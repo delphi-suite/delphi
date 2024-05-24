@@ -30,7 +30,8 @@ def train_byte_level_bpe(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train a BPE tokenizer on a given dataset", allow_abbrev=False
+        description="Train a custom, reversible, BPE tokenizer (GPT2-like). You need to provide --out-repo or --out-dir.",
+        allow_abbrev=False,
     )
 
     parser.add_argument(
@@ -74,7 +75,7 @@ if __name__ == "__main__":
         help="HF repo id to upload the resulting tokenizer",
     )
     args = parser.parse_args()
-    assert args.out_repo or args.out_dir, "You need to provide out_repo or out_dir"
+    assert args.out_repo or args.out_dir, "You need to provide --out-repo or --out-dir"
 
     in_dataset_split = utils.load_dataset_split_string_feature(
         args.in_dataset, args.split, args.feature

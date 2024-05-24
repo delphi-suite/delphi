@@ -13,7 +13,7 @@ from delphi.tokenization import get_tokenized_chunks
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Tokenize a text dataset using a specific tokenizer",
+        description="Tokenize a text dataset using a specified tokenizer",
         allow_abbrev=False,
     )
 
