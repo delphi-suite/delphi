@@ -5,6 +5,7 @@ from dataclasses import fields
 from pathlib import Path
 
 import torch
+from huggingface_hub import HfApi
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
@@ -27,14 +28,15 @@ def setup_training(config: TrainingConfig):
     logging.info("Setting up training...")
     os.makedirs(config.out_dir, exist_ok=True)
 
-    # torch misc - TODO: check if this is actually needed
     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
 
-    # determinism
     setup_determinism(config.torch_seed)
 
-    # wandb setup
+    if config.out_repo:
+        api = HfApi()
+        api.create_repo(config.out_repo, exist_ok=True)
+
     if config.wandb:
         init_wandb(config)
 

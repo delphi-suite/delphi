@@ -19,7 +19,6 @@ from transformers import PreTrainedModel
 
 from .config import TrainingConfig
 from .run_context import RunContext
-from .shuffle import shuffle_list
 
 
 @dataclass
@@ -228,7 +227,6 @@ def save_results(
     if config.out_repo:
         try:
             api = HfApi()
-            api.create_repo(config.out_repo, exist_ok=True)
             api.create_branch(config.out_repo, branch=iter_name, exist_ok=True)
             api.upload_folder(
                 folder_path=results_path,
