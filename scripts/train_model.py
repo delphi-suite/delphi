@@ -3,14 +3,10 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any
 
-from delphi.train.config import (
-    build_config_from_files_and_overrides,
-    dot_notation_to_dict,
-)
+from delphi.train.config import build_config_from_files_and_overrides
 from delphi.train.training import run_training
-from delphi.train.utils import save_results
+from delphi.train.utils import overrides_to_dict, save_results
 
 
 def add_logging_args(parser: argparse.ArgumentParser):
@@ -75,12 +71,6 @@ def setup_parser() -> argparse.ArgumentParser:
     )
     add_logging_args(parser)
     return parser
-
-
-def overrides_to_dict(overrides: list[str]) -> dict[str, Any]:
-    # ["a.b.c=4", "foo=false"] to {"a": {"b": {"c": 4}}, "foo": False}
-    config_vars = {k: v for k, v in [x.split("=") for x in overrides if "=" in x]}
-    return dot_notation_to_dict(config_vars)
 
 
 def main():

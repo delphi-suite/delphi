@@ -3,6 +3,7 @@ import argparse
 import pathlib
 
 from delphi.train.config import build_config_from_files_and_overrides
+from delphi.train.utils import init_model, overrides_to_dict
 
 
 def get_config_path_with_base(config_path: pathlib.Path) -> list[pathlib.Path]:
@@ -33,15 +34,32 @@ def main():
         type=str,
         help="path to a training config json or directory of training config jsons",
     )
+    parser.add_argument(
+        "--overrides",
+        help=(
+            "Override config values with space-separated declarations. "
+            "e.g. `--overrides model_config.hidden_size=42 run_name=foo`"
+        ),
+        type=str,
+        required=False,
+        nargs="*",
+        default=[],
+    )
+    parser.add_argument("--init", help="initialize the model", action="store_true")
     args = parser.parse_args()
     config_paths = get_config_paths(args.config_path)
     print(
         f"validating configs: {' | '.join(str(config_path[-1]) for config_path in config_paths)}"
     )
+    overrides = overrides_to_dict(args.overrides)
     errors = []
+    sizes = []
     for config_path in config_paths:
         try:
-            build_config_from_files_and_overrides(config_path, {})
+            config = build_config_from_files_and_overrides(config_path, overrides)
+            if args.init:
+                model = init_model(config.model_config, seed=config.torch_seed)
+                sizes.append((config_path, model.num_parameters()))
         except Exception as e:
             errors.append((config_path, e))
             continue
@@ -51,6 +69,10 @@ def main():
             print(f"  {config_path[-1]}: {e}")
     else:
         print("all configs loaded successfully")
+        if sizes:
+            print("model sizes:")
+            for config_path, size in sizes:
+                print(f"  {config_path[-1]}: {size}")
 
 
 if __name__ == "__main__":

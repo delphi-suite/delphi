@@ -17,6 +17,8 @@ from huggingface_hub import HfApi
 from torch.optim import AdamW
 from transformers import PreTrainedModel
 
+from delphi.train.config import dot_notation_to_dict
+
 from .config import TrainingConfig
 from .run_context import RunContext
 
@@ -253,3 +255,9 @@ def init_model(model_config_dict: dict[str, Any], seed: int) -> PreTrainedModel:
     model_params_dict = model_config_dict.copy()
     model_params_dict.pop("model_class")
     return model_class(config_class(**(model_params_dict)))
+
+
+def overrides_to_dict(overrides: list[str]) -> dict[str, Any]:
+    # ["a.b.c=4", "foo=false"] to {"a": {"b": {"c": 4}}, "foo": False}
+    config_vars = {k: v for k, v in [x.split("=") for x in overrides if "=" in x]}
+    return dot_notation_to_dict(config_vars)
