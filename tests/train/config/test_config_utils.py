@@ -1,7 +1,5 @@
 from typing import Optional
 
-import pytest
-
 from delphi import TEST_CONFIGS_DIR
 from delphi.train.config.utils import (
     _unoptionalize,

@@ -24,9 +24,13 @@ export WANDB_API_KEY=...
 
 If you want to train a small and efficient model on a narrow dataset, then we recommend using a custom tokenizer with a small vocabulary. To train a reversible, GPT2-style, BPE tokenizer you can use `scripts/train_tokenizer.py`.
 
+Script usage:
+
 ```
 > scripts/train_tokenizer.py --help
-usage: train_tokenizer.py [-h] --in-dataset IN_DATASET --feature FEATURE --split SPLIT --vocab-size VOCAB_SIZE [--out-dir OUT_DIR] [--out-repo OUT_REPO]
+usage: train_tokenizer.py [-h] --in-dataset IN_DATASET --feature FEATURE --split SPLIT
+                          --vocab-size VOCAB_SIZE
+                          [--out-dir OUT_DIR] [--out-repo OUT_REPO]
 
 Train a custom, reversible, BPE tokenizer (GPT2-like). You need to provide --out-repo or --out-dir.
 
@@ -44,18 +48,18 @@ options:
   --out-repo OUT_REPO   HF repo id to upload the resulting tokenizer
 ```
 
-Here's how we trained the tokenizer for our stories-* suite of models. Please note that you can use single letter abbreviations for most arguments.
+Here's how we trained the tokenizer for our `stories-*` suite of models. Please note that you can use single letter abbreviations for most arguments.
 
 ```
 > scripts/train_tokenizer.py \
-  --in-dataset delphi-suite/stories \
-  --feature story \
-  --split train \
-  --vocab-size 4096 \
-  --out-repo delphi-suite/stories-tokenizer
+    --in-dataset delphi-suite/stories \
+    --feature story \
+    --split train \
+    --vocab-size 4096 \
+    --out-repo delphi-suite/stories-tokenizer
 ```
 
-We use the only feature named `story` in the `train` split of [delphi-suite/stories](https://huggingface.co/datasets/delphi-suite/stories). We train a tokenizer with a vocabulary of 4096 tokens, and upload it to HF model repo [delphi-suite/stories-tokenizer](https://huggingface.co/models/delphi-suite/stories-tokenizer).
+We use the only feature named `story` in the `train` split of [delphi-suite/stories](https://huggingface.co/datasets/delphi-suite/stories). We train a tokenizer with a vocabulary of 4096 tokens, and upload it to HF model repo [delphi-suite/stories-tokenizer](https://huggingface.co/delphi-suite/stories-tokenizer).
 
 
 # Tokenizing a dataset
@@ -73,10 +77,13 @@ Then this is divided into chunks, and the `<bos>` token is inserted at the begin
 ```
 It will produce sequences of specified size, by discarding the last chunk if it's too short. We don't use padding.
 
+Script usage:
 
 ```
 > scripts/tokenize_dataset.py --help
-usage: tokenize_dataset.py [-h] --in-dataset IN_DATASET --feature FEATURE --split SPLIT --tokenizer TOKENIZER --seq-len SEQ_LEN [--batch-size BATCH_SIZE] [--chunk-size CHUNK_SIZE]
+usage: tokenize_dataset.py [-h] --in-dataset IN_DATASET --feature FEATURE --split SPLIT
+                           --tokenizer TOKENIZER --seq-len SEQ_LEN
+                           [--batch-size BATCH_SIZE] [--chunk-size CHUNK_SIZE]
                            [--out-dir OUT_DIR] [--out-repo OUT_REPO]
 
 Tokenize a text dataset using a specific tokenizer
@@ -101,26 +108,61 @@ options:
   --out-repo OUT_REPO   HF repo id to upload the resulting dataset
 ```
 
-Here's how we tokenized the dataset for our stories-* suite of models. Please note that you can use single letter abbreviations for most arguments.
+Here's how we tokenized the dataset for our `stories-*` suite of models. Please note that you can use single letter abbreviations for most arguments.
 
 For `train` split:
 ```
 > scripts/tokenize_dataset.py \
-  --in-dataset delphi-suite/stories \
-  --feature story \
-  --split train \
-  --tokenizer delphi-suite/stories-tokenizer \
-  --seq-len 512 \
-  --out-repo-id delphi-suite/stories-tokenized
+    --in-dataset delphi-suite/stories \
+    --feature story \
+    --split train \
+    --tokenizer delphi-suite/stories-tokenizer \
+    --seq-len 512 \
+    --out-repo-id delphi-suite/stories-tokenized
 ```
 For `validation` split, repeated arguments omitted:
 ```
 > scripts/tokenize_dataset.py \
-  ...
-  --split validation \
-  ...
+    ...
+    --split validation \
+    ...
 ```
 
-The input dataset is the same as in tokenizer training example above. We tokenize it with our custom [delphi-suite/stories-tokenizer](https://huggingface.co/models/delphi-suite/stories-tokenizer) into sequences of length 512. We upload it to HF dataset repo [delphi-suite/stories-tokenized](https://huggingface.co/datasets/delphi-suite/stories-tokenized).
+The input dataset is the same as in tokenizer training example above. We tokenize it with our custom [delphi-suite/stories-tokenizer](https://huggingface.co/delphi-suite/stories-tokenizer) into sequences of length 512. We upload it to HF dataset repo [delphi-suite/stories-tokenized](https://huggingface.co/datasets/delphi-suite/stories-tokenized).
 
 Please note that you can use any HuggingFace tokenizer, you don't need to train a custom one.
+
+# Training a model
+
+To train a model, you'll need to create a config file. For examples see `configs/`, and for field descriptions see `delphi/train/config/training_config.py`. The training script is located in `scripts/train_model.py`.
+
+Script usage:
+
+```
+> scripts/train_model.py --help
+usage: train_model.py [-h] [--overrides [OVERRIDES ...]] [-v | -s] [config_files ...]
+
+Train a delphi model
+
+positional arguments:
+  config_files          Path to json file(s) containing config values, e.g. 'primary_config.json secondary_config.json'.
+
+options:
+  -h, --help            show this help message and exit
+  --overrides [OVERRIDES ...]
+                        Override config values with space-separated declarations. e.g. `--overrides model_config.hidden_size=42 run_name=foo`
+  -v, --verbose         Increase verbosity level, repeatable (e.g. -vvv). Mutually exclusive with --silent, --loglevel
+  -s, --silent          Silence all logging. Mutually exclusive with --verbose, --loglevel
+```
+
+You can specify primary config and secondary config, which is useful if you're training a suite of models that only differ in a few parameters. Additionally, you can override specific fields using the `--overrides` flag. If you don't want to push the model and its checkpoints to HF, you need to explicitly set `out_repo=""`. If you don't want to log to W&B, you need to set `wandb=""`. 
+
+Here is how we trained our `stories-mamba-100k` model
+```
+> scripts/train_model.py \
+    configs/stories/mamba/base.json \
+    configs/stories/mamba/100k.json \
+    --overrides \
+      out_repo="delphi-suite/stories-mamba-100k" \
+      wandb="delphi-suite/delphi"
+```

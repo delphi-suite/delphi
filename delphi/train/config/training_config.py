@@ -30,13 +30,15 @@ class TrainingConfig:
     # manually list iterations to save checkpoints on
     extra_checkpoint_iters: list[int] = field(default_factory=list)
 
-    # log every N iters
+    # log to the console every N iters; this doesn't control wandb logging which is done only on checkpoints
     log_interval: int = 1
 
-    # use N iters for each eval
+    # FIXME: there is a bug in the current implementation, and eval loss is computed on the
+    # entire dataset. In this implementation, eval_iters controls the number of minibatches
+    # the dataset is split into for evaluation.
     eval_iters: int = 100
 
-    # path to a checkpoint to resume from (if init_from=='resume')
+    # path to a checkpoint to resume from
     resume_from_path: Optional[str] = None
 
     # number of samples used to compute the gradient for a single optimizer step
@@ -51,7 +53,7 @@ class TrainingConfig:
     # if > 1 reduces memory usage by computing gradient in microbatches
     gradient_accumulation_steps: int = 1
 
-    # (adamw) optimizer
+    # AdamW optimizer
     adam: AdamConfig = field(default_factory=AdamConfig)
 
     # seed used for pseudorandomly sampling data during training
