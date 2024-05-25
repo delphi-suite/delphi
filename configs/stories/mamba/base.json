@@ -49,7 +49,7 @@
     "batch_ordering_seed": 1337,
     "torch_seed": 42,
     "dataset": {
-        "name": "delphi-suite/stories-tokenized"
+        "path": "delphi-suite/stories-tokenized"
     },
     "tokenizer": "delphi-suite/stories-tokenizer"
 }

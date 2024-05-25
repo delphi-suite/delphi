@@ -48,7 +48,7 @@ def test_build_config_from_files_and_overrides():
     assert config.eval_iters == 5
     # check base values
     assert config.max_epochs == 2
-    assert config.dataset.path == "delphi-suite/v0-tinystories-v2-clean-tokenized"
+    assert config.dataset.path == "delphi-suite/stories-tokenized"
 
 
 def test_unoptionalize():

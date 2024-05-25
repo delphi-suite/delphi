@@ -15,7 +15,7 @@
         "vocab_size": 4096
     },
     "dataset": {
-        "name": "delphi-suite/v0-tinystories-v2-clean-tokenized"
+        "path": "delphi-suite/stories-tokenized"
     },
     "out_repo": "",
     "wandb": ""
