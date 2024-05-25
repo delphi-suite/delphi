@@ -1,3 +1,8 @@
+# delphi
+
+delphi is a set of tools for standardized and (mostly) reproducible training of small language models. You can use delphi to train a custom tokenizer, tokenize your dataset, and train your model. We build on top of HuggingFace, supporting every `CausalLM` architecture. Datasets, tokenizers and models (including checkpoints!) can be downloaded from and uploaded to HuggingFace automatically, with no need to manage local files.
+
+
 # Setup
 
 1. Clone the repo
@@ -155,7 +160,7 @@ options:
   -s, --silent          Silence all logging. Mutually exclusive with --verbose, --loglevel
 ```
 
-You can specify primary config and secondary config, which is useful if you're training a suite of models that only differ in a few parameters. Additionally, you can override specific fields using the `--overrides` flag. If you don't want to push the model and its checkpoints to HF, you need to explicitly set `out_repo=""`. If you don't want to log to W&B, you need to set `wandb=""`. 
+You can specify primary config and secondary config, which is useful if you're training a suite of models that only differ in a few parameters. Additionally, you can override specific fields using the `--overrides` flag. If you don't want to push the model and its checkpoints to HF, you need to explicitly set `out_repo=""`. If you don't want to log to W&B, you need to set `wandb=""`. Please note that by default we save the optimizer state (2x model size) with every checkpoint.
 
 Here is how we trained our `stories-mamba-100k` model
 ```
@@ -165,4 +170,27 @@ Here is how we trained our `stories-mamba-100k` model
     --overrides \
       out_repo="delphi-suite/stories-mamba-100k" \
       wandb="delphi-suite/delphi"
+```
+
+# Development
+
+1. Install the `dev` and `notebooks` dependencies `pip install -e ."[dev,notebooks]"`.
+2. Run the tests `pytest`.
+3. Install pre-commit `pre-commit install`.
+4. Install the recommended vscode extensions.
+
+When you save a file vscode should automatically format it. Otherwise, pre-commit will do that, but you will need to add the changes and commit again.
+
+# Citation
+
+If you use delphi in your research, please cite using the following
+
+```bibtex
+@software{delphi,
+  title = {delphi: small language models training made easy},
+  author = {Jett Janiak, Jai Dhyani, Jannik Brinkmann, Gonçalo Paulo, Joshua Wendland, Víctor Abia Alonso, Siwei Li, Phan Anh Duong, Alice Rigg},
+  year = 2024,
+  url = {https://github.com/delphi-suite/delphi},
+  license = {apache-2.0}
+}
 ```
