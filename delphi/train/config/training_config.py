@@ -14,96 +14,67 @@ from .debug_config import DebugConfig
 @beartype
 @dataclass(frozen=True, kw_only=True)
 class TrainingConfig:
-    model_config: dict[str, Any] = field(
-        metadata={
-            "help": "model config; class_name=name of model class in transformers, everything else is kwargs for the corresponding model config"
-        },
-    )
-    max_seq_len: int = field(metadata={"help": "max sequence length"})
-    # meta
+    # model config; class_name=name of model class in transformers, everything else is kwargs for the corresponding model config
+    model_config: dict[str, Any]
+
+    max_seq_len: int
     run_name: str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    out_dir: str = field(
-        default=os.path.join(platformdirs.user_data_dir(appname="delphi"), run_name),
-        metadata={"help": "output directory"},
-    )
+    out_dir: str = os.path.join(platformdirs.user_data_dir(appname="delphi"), run_name)
 
-    # device
-    device: str = field(
-        default="auto", metadata={"help": "device to use (cuda, mps, cpu)"}
-    )
+    # device to use (cuda, mps, cpu)
+    device: str = "auto"
 
-    # checkpoints, logging, eval
-    checkpoint_interval: int = field(
-        default=2000, metadata={"help": "checkpoint every N iters"}
-    )
-    extra_checkpoint_iters: list[int] = field(
-        default_factory=list,
-        metadata={"help": "manually list iterations to save checkpoints on"},
-    )
-    log_interval: int = field(default=1, metadata={"help": "log every N iters"})
-    eval_iters: int = field(default=100, metadata={"help": "use N iters for each eval"})
+    # checkpoint every N iters
+    checkpoint_interval: int = 2000
 
-    # resume from checkpoint
-    resume_from_path: Optional[str] = field(
-        default=None,
-        metadata={
-            "help": "path to a checkpoint to resume from (if init_from=='resume')"
-        },
-    )
+    # manually list iterations to save checkpoints on
+    extra_checkpoint_iters: list[int] = field(default_factory=list)
 
-    # data
-    batch_size: int = field(
-        default=64,
-        metadata={
-            "help": "number of samples used to compute the gradient for a single optimizer step"
-        },
-    )
+    # log every N iters
+    log_interval: int = 1
 
-    # training
-    max_epochs: int = field(
-        default=10, metadata={"help": "total number of training epochs"}
-    )
-    grad_clip: float = field(
-        default=1.0,
-        metadata={"help": "clip gradients at this value, or disable if == 0.0"},
-    )
-    gradient_accumulation_steps: int = field(
-        default=1,
-        metadata={
-            "help": "if > 1 reduces memory usage by computing gradient in microbatches"
-        },
-    )
+    # use N iters for each eval
+    eval_iters: int = 100
+
+    # path to a checkpoint to resume from (if init_from=='resume')
+    resume_from_path: Optional[str] = None
+
+    # number of samples used to compute the gradient for a single optimizer step
+    batch_size: int = 64
+
+    # total number of training epochs
+    max_epochs: int = 10
+
+    # clip gradients at this value, or disable if == 0.0
+    grad_clip: float = 1.0
+
+    # if > 1 reduces memory usage by computing gradient in microbatches
+    gradient_accumulation_steps: int = 1
+
     # (adamw) optimizer
     adam: AdamConfig = field(default_factory=AdamConfig)
 
-    # reproducibility
-    batch_ordering_seed: int = field(
-        metadata={"help": "seed used for pseudorandomly sampling data during training"},
-    )
-    torch_seed: int = field(metadata={"help": "seed used for torch"})
+    # seed used for pseudorandomly sampling data during training
+    batch_ordering_seed: int
+
+    # seed used for torch
+    torch_seed: int
+
+    # whether to save the optimizer state with each checkpoint
+    # this is twice as large as the model, but allows to resume training in a reproducible way
     save_optimizer: bool = True
 
-    # data
-    dataset: DatasetConfig = field(
-        metadata={"help": "specify training and validation data"},
-    )
+    # specify training and validation data
+    dataset: DatasetConfig
 
-    tokenizer: str = field(
-        default="",
-        metadata={
-            "help": "HF repo id or local directory containing the tokenizer. Used only to upload it to HF with the model, not for training"
-        },
-    )
+    # HF repo id or local directory containing the tokenizer. Used only to upload it to HF with the model, not for training
+    tokenizer: str = ""
 
-    # third party
-    wandb: str = field(
-        metadata={
-            "help": "wandb config in 'entity/project' form. Set to empty string to not use wandb."
-        },
-    )
-    out_repo: str = field(
-        metadata={"help": "HF repo id. Set to empty string to not push to repo."},
-    )
+    # wandb config in 'entity/project' form. Set to empty string to not use wandb.
+    wandb: str
 
-    # debug
+    # HF repo id. Set to empty string to not push to repo.
+    out_repo: str
+
+    # debug config
     debug_config: DebugConfig = field(default_factory=DebugConfig)
