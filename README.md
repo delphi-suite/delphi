@@ -123,7 +123,7 @@ For `train` split:
     --split train \
     --tokenizer delphi-suite/stories-tokenizer \
     --seq-len 512 \
-    --out-repo-id delphi-suite/stories-tokenized
+    --out-repo delphi-suite/stories-tokenized
 ```
 For `validation` split, repeated arguments omitted:
 ```
