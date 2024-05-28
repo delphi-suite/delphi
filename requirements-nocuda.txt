@@ -1,2 +1,0 @@
-# this references packages specified by pyproject.toml
-.

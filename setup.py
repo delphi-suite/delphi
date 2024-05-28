@@ -2,8 +2,8 @@ from setuptools import find_packages, setup
 
 setup(
     name="delphi",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(where="."),
+    package_dir={"": "."},
     package_data={
         "delphi": ["test_configs/**/*"],
     },

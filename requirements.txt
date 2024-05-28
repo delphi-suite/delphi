@@ -1,3 +1,0 @@
-# this references dependencies in pyproject.toml (including optional cuda dependencies)
-.
-.[mamba_cuda]

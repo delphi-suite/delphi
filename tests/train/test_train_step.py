@@ -7,8 +7,7 @@ from datasets import Dataset
 from jaxtyping import Float
 from transformers import PreTrainedModel
 
-from delphi.constants import TEST_CONFIGS_DIR
-from delphi.eval.utils import get_all_and_next_logprobs
+from delphi import TEST_CONFIGS_DIR
 from delphi.train.config import TrainingConfig
 from delphi.train.config.utils import build_config_from_files_and_overrides
 from delphi.train.train_step import accumulate_gradients, train_step
@@ -18,6 +17,7 @@ from delphi.train.utils import (
     init_model,
     setup_determinism,
 )
+from delphi.utils import get_all_and_next_logprobs
 
 
 def load_test_config(preset_name: str) -> TrainingConfig:
