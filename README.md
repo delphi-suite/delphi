@@ -186,11 +186,10 @@ When you save a file vscode should automatically format it. Otherwise, pre-commi
 If you use delphi in your research, please cite using the following
 
 ```bibtex
-@software{delphi,
+@misc{delphi,
   title = {delphi: small language models training made easy},
-  author = {Jett Janiak, Jai Dhyani, Jannik Brinkmann, Gonçalo Paulo, Joshua Wendland, Víctor Abia Alonso, Siwei Li, Phan Anh Duong, Alice Rigg},
+  author = {Janiak, J. and Dhyani, J. and Brinkmann, J. and Paulo, G. and Wendland, J. and Alonso, V. A. and Li, S. and Duong, P. A. and Rigg, A.},
   year = 2024,
   url = {https://github.com/delphi-suite/delphi},
-  license = {apache-2.0}
 }
 ```
